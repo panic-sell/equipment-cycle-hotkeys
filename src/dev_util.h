@@ -6,6 +6,7 @@
 #include "hotkeys.h"
 #include "keys.h"
 #include "tes_util.h"
+#include "ui_viewmodels.h"
 
 namespace ech {
 namespace dev_util {
@@ -31,9 +32,9 @@ KeystrokesToStr(std::span<const Keystroke> keystrokes) {
     size_t i = 0;
     for (const auto& ks : keystrokes) {
         s.append("{");
-        s.append(KeycodeName(ks.Keycode()));
+        s.append(KeycodeName(ks.keycode()));
         s.append(": ");
-        s.append(std::format("{:.2f}", ks.Heldsecs()));
+        s.append(std::format("{:.2f}", ks.heldsecs()));
         s.append("}");
         i++;
         if (i < keystrokes.size()) {
@@ -119,20 +120,20 @@ InspectEquipped(std::span<const Keystroke> keystrokes, RE::Actor& actor) {
 const Equipset*
 UseHotkeys(Hotkeys<>& hotkeys, std::span<const Keystroke> keystrokes, RE::Actor& actor) {
     auto set = [&](size_t i) {
-        auto hotkeys_ir = HotkeysIr<Equipset>::From(hotkeys);
-        auto equipset = Equipset::FromEquipped(actor, true);
-        hotkeys_ir[i].equipsets.push_back(std::move(equipset));
-        hotkeys = hotkeys_ir.To();
+        auto hotkeys_vm = ui::HotkeysVM<>::From(hotkeys);
+        auto equipset_vm = ui::EquipsetVM::From(Equipset::FromEquipped(actor, true));
+        hotkeys_vm[i].equipsets.push_back(std::move(equipset_vm));
+        hotkeys = hotkeys_vm.To();
         SKSE::log::info("added equipset to hotkey {}", i + 1);
     };
     auto remove = [&](size_t i) {
-        auto hotkeys_ir = HotkeysIr<Equipset>::From(hotkeys);
-        auto& equipsets = hotkeys_ir[i].equipsets;
-        if (equipsets.empty()) {
+        auto hotkeys_vm = ui::HotkeysVM<>::From(hotkeys);
+        auto& equipsets_vm = hotkeys_vm[i].equipsets;
+        if (equipsets_vm.empty()) {
             return;
         }
-        equipsets.pop_back();
-        hotkeys = hotkeys_ir.To();
+        equipsets_vm.pop_back();
+        hotkeys = hotkeys_vm.To();
         SKSE::log::info("removed equipset from hotkey {}", i + 1);
     };
 

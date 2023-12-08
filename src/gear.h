@@ -13,10 +13,9 @@ enum class Gearslot : uint8_t {
     kAmmo,
     /// Shouts or other voice-equipped spells.
     kShout,
-
-    MAX = kShout,
 };
 
+/// `kGearslots[i] == static_cast<Gearslot>(i)` for all `0 <= i < kGearslots.size()`
 constexpr inline auto kGearslots = std::array{
     Gearslot::kLeft,
     Gearslot::kRight,
@@ -168,23 +167,25 @@ class Gear {
   public:
     static constexpr inline float kExtraHealthNone = std::numeric_limits<float>::quiet_NaN();
 
+    bool operator==(const Gear& other) const = default;
+
     const RE::TESForm&
-    Form() const {
+    form() const {
         return *form_;
     }
 
     Gearslot
-    Slot() const {
+    slot() const {
         return slot_;
     }
 
     float
-    ExtraHealth() const {
+    extra_health() const {
         return extra_health_;
     }
 
     const RE::EnchantmentItem*
-    ExtraEnch() const {
+    extra_ench() const {
         return extra_ench_;
     }
 
@@ -226,7 +227,7 @@ class Gear {
         }
 
         if (gear) {
-            SKSE::log::trace("{} contains {}", slot, gear->Form());
+            SKSE::log::trace("{} contains {}", slot, gear->form());
         } else {
             SKSE::log::trace("{} is empty or contains unsupported gear", slot);
         }
@@ -236,7 +237,7 @@ class Gear {
     void
     Equip(RE::ActorEquipManager& aem, RE::Actor& actor) const {
         auto success = false;
-        switch (Slot()) {
+        switch (slot()) {
             case Gearslot::kLeft:
                 success = EquipSpell(aem, actor) || EquipWeapon(aem, actor)
                           || EquipTorch(aem, actor) || EquipShield(aem, actor);
@@ -253,9 +254,9 @@ class Gear {
         }
 
         if (success) {
-            SKSE::log::trace("{} equipped {}", Slot(), Form());
+            SKSE::log::trace("{} equipped {}", slot(), form());
         } else {
-            SKSE::log::trace("{} ignored: {} not in inventory", Slot(), Form());
+            SKSE::log::trace("{} ignored: {} not in inventory", slot(), form());
         }
     }
 
@@ -517,7 +518,11 @@ class Gear {
         return {tot_count - xl_count, nullptr};
     }
 
-    Gear(RE::TESForm* form, Gearslot slot, float extra_health, RE::EnchantmentItem* extra_ench)
+    // Subclassed in tests.
+  protected:
+    explicit Gear(
+        RE::TESForm* form, Gearslot slot, float extra_health, RE::EnchantmentItem* extra_ench
+    )
         : form_(form),
           slot_(slot),
           extra_health_(extra_health),
@@ -538,19 +543,32 @@ class GearOrSlot {
 
     /// Returns nullptr if this object is storing a `Gearslot`.
     const ech::Gear*
-    Gear() const {
+    gear() const {
         return std::get_if<ech::Gear>(&variant_);
     }
 
     Gearslot
-    Slot() const {
-        if (auto* gear = Gear()) {
-            return gear->Slot();
+    slot() const {
+        if (gear()) {
+            return gear()->slot();
         }
         if (auto* slot = std::get_if<Gearslot>(&variant_)) {
             return *slot;
         }
         std::unreachable();
+    }
+
+    bool
+    operator==(const GearOrSlot& other) const {
+        auto a = gear();
+        auto b = other.gear();
+        if (a && b) {
+            return *a == *b;
+        }
+        if (!a && !b) {
+            return slot() == other.slot();
+        }
+        return false;
     }
 
   private:

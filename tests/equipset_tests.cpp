@@ -2,13 +2,90 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "equipsets.h"
+#include "gear.h"
+
+namespace Catch {
+
+template <>
+struct StringMaker<ech::GearOrSlot> {
+    static std::string
+    convert(const ech::GearOrSlot& value) {
+        return fmt::format(
+            "({}{}{})",
+            value.slot(),
+            value.gear() ? ", " : "",
+            value.gear() ? fmt::format("{:.1f}", value.gear()->extra_health()) : ""
+        );
+    }
+};
+
+}  // namespace Catch
 
 namespace ech {
 namespace {
 
 using TestEquipsets = Equipsets<int>;
 
+class TestGear : public Gear {
+  public:
+    explicit TestGear(Gearslot slot, float extra_health = 0.f)
+        : Gear(nullptr, slot, extra_health, nullptr) {}
+};
+
+static_assert(sizeof(TestGear) == sizeof(Gear));
+
 }  // namespace
+
+TEST_CASE("Equipset ctor") {
+    struct Testcase {
+        std::string_view name;
+        std::vector<GearOrSlot> arg;
+        std::vector<GearOrSlot> want;
+    };
+
+    auto testcase = GENERATE(
+        Testcase{
+            .name = "empty",
+            .arg{},
+            .want{},
+        },
+        Testcase{
+            .name = "ordering",
+            .arg{
+                TestGear(Gearslot::kShout),
+                TestGear(Gearslot::kRight),
+                Gearslot::kLeft,
+                Gearslot::kAmmo,
+            },
+            .want{
+                Gearslot::kLeft,
+                TestGear(Gearslot::kRight),
+                TestGear(Gearslot::kShout),
+                Gearslot::kAmmo,
+            },
+        },
+        Testcase{
+            .name = "remove_duplicates",
+            .arg{
+                TestGear(Gearslot::kShout),
+                Gearslot::kRight,
+                Gearslot::kLeft,
+                TestGear(Gearslot::kRight),
+                TestGear(Gearslot::kLeft),
+            },
+            .want{
+                Gearslot::kLeft,
+                TestGear(Gearslot::kShout),
+                Gearslot::kRight,
+            },
+        }
+    );
+
+    CAPTURE(testcase.name);
+    auto es = Equipset(testcase.arg);
+    auto& got = es.vec();
+    REQUIRE(got == testcase.want);
+}
 
 TEST_CASE("Equipsets empty") {
     auto es = TestEquipsets{};
@@ -18,7 +95,7 @@ TEST_CASE("Equipsets empty") {
     REQUIRE(!es.GetActive());
 }
 
-TEST_CASE("Equipsets nonempty") {
+TEST_CASE("Equipsets nonempty activation") {
     struct Testcase {
         std::string_view name;
         TestEquipsets equipsets;
@@ -70,6 +147,21 @@ TEST_CASE("Equipsets nonempty") {
 
     es.ActivateFirst();
     REQUIRE(*es.GetActive() == testcase.initial_slot);
+}
+
+TEST_CASE("Equipsets ctor specialization prunes empty equipsets") {
+    auto initial = std::vector<Equipset>{
+        Equipset(),
+        Equipset({Gearslot::kLeft}),
+        Equipset(),
+        Equipset({TestGear(Gearslot::kLeft)}),
+    };
+    auto want = std::vector<Equipset>{
+        Equipset({Gearslot::kLeft}),
+        Equipset({TestGear(Gearslot::kLeft)}),
+    };
+    auto equipsets = Equipsets(initial);
+    REQUIRE(equipsets.vec() == want);
 }
 
 }  // namespace ech

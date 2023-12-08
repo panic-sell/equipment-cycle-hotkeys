@@ -51,8 +51,8 @@ TEST_CASE("Keystroke ctor") {
     if (testcase.want_null) {
         REQUIRE(!ks);
     } else {
-        REQUIRE(ks->Keycode() == testcase.keycode);
-        REQUIRE(ks->Heldsecs() == testcase.heldsecs);
+        REQUIRE(ks->keycode() == testcase.keycode);
+        REQUIRE(ks->heldsecs() == testcase.heldsecs);
     }
 }
 
@@ -89,7 +89,7 @@ TEST_CASE("Keysets ctor") {
     );
 
     auto ks = Keysets(std::move(testcase.input));
-    auto got_inner = ks.Vec();
+    auto got_inner = ks.vec();
     auto want_inner = std::span<const Keyset>(testcase.want_inner);
     CAPTURE(testcase.name, want_inner, got_inner);
     REQUIRE(std::equal(got_inner.cbegin(), got_inner.cend(), want_inner.cbegin(), want_inner.cend())

@@ -401,7 +401,7 @@ CaptureKeyboardInput(const RE::ButtonEvent& button) {
 
     auto vk = MapVirtualKeyW(scancode, MAPVK_VSC_TO_VK);
     auto buf = std::array<WCHAR, 4>{0};
-    int count = ToUnicode(vk, scancode, &vk_keystate[0], &buf[0], static_cast<int>(buf.size()), 0);
+    auto count = ToUnicode(vk, scancode, &vk_keystate[0], &buf[0], static_cast<int>(buf.size()), 0);
     for (int i = 0; i < count; i++) {
         io.AddInputCharacterUTF16(buf[i]);
     }

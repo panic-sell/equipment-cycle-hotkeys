@@ -365,12 +365,12 @@ class Keystroke {
     }
 
     constexpr uint32_t
-    Keycode() const {
+    keycode() const {
         return keycode_;
     }
 
     constexpr float
-    Heldsecs() const {
+    heldsecs() const {
         return heldsecs_;
     }
 
@@ -442,7 +442,7 @@ class Keysets {
     }
 
     const std::vector<Keyset>&
-    Vec() const {
+    vec() const {
         return keysets_;
     }
 
@@ -471,15 +471,15 @@ class Keysets {
             }
 
             auto keystroke_is_matching = [=](const Keystroke& keystroke) {
-                return keystroke.Keycode() == keycode;
+                return keystroke.keycode() == keycode;
             };
             auto it = std::find_if(keystrokes.cbegin(), keystrokes.cend(), keystroke_is_matching);
             if (it == keystrokes.cend()) {
                 // Current keyset keycode does not match any keystroke.
                 return MatchResult::kNone;
             }
-            if (it->Heldsecs() < min_heldsecs) {
-                min_heldsecs = it->Heldsecs();
+            if (it->heldsecs() < min_heldsecs) {
+                min_heldsecs = it->heldsecs();
             }
         }
 

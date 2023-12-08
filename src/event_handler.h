@@ -5,6 +5,7 @@
 #include "hotkeys.h"
 #include "keys.h"
 #include "tes_util.h"
+#include "ui_viewmodels.h"
 
 namespace ech {
 namespace internal {
@@ -57,10 +58,6 @@ class EventHandler : public RE::BSTEventSink<RE::InputEvent*>,
     }
 
   private:
-    /// If this amount of time (in ms) has passed since hotkeys triggered an equip/unequip action,
-    /// then subsequent equip/unequip action NOT triggered through hotkeys will deactivate hotkeys.
-    static constexpr inline uint32_t kHotkeyDeactivationThreshold = 500;
-
     void
     HandleInputEvents(RE::InputEvent* const* events) {
         if (!events || !internal::GameIsAcceptingInput()) {
@@ -119,15 +116,15 @@ class EventHandler : public RE::BSTEventSink<RE::InputEvent*>,
         }
 
         auto now = RE::GetDurationOfApplicationRunTime();
-        if (now >= most_recent_hotkey_equip_time_ + kHotkeyDeactivationThreshold) {
+        if (now >= most_recent_hotkey_equip_time_ + 500) {
             hotkeys_.Deactivate();
         }
     }
 
     EventHandler() = default;
     EventHandler(const EventHandler&) = delete;
-    EventHandler(EventHandler&&) = delete;
     EventHandler& operator=(const EventHandler&) = delete;
+    EventHandler(EventHandler&&) = delete;
     EventHandler& operator=(EventHandler&&) = delete;
 
     /// Reusable buffer for storing input keystrokes and avoiding per-input-event allocations.
@@ -135,20 +132,20 @@ class EventHandler : public RE::BSTEventSink<RE::InputEvent*>,
     /// In milliseconds since application start.
     uint32_t most_recent_hotkey_equip_time_ = 0;
     Hotkeys<> hotkeys_ =
-        HotkeysIr<>{
-            HotkeyIr<>{
+        ui::HotkeysVM<>{
+            ui::HotkeyVM<>{
                 .name = "1",
                 .keysets = {{2}},
             },
-            HotkeyIr<>{
+            ui::HotkeyVM<>{
                 .name = "2",
                 .keysets = {{3}},
             },
-            HotkeyIr<>{
+            ui::HotkeyVM<>{
                 .name = "3",
                 .keysets = {{4}},
             },
-            HotkeyIr<>{
+            ui::HotkeyVM<>{
                 .name = "4",
                 .keysets = {{5}},
             },

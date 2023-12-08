@@ -10,7 +10,6 @@ namespace {
 using TestEquipsets = Equipsets<std::string_view>;
 using TestHotkey = Hotkey<std::string_view>;
 using TestHotkeys = Hotkeys<std::string_view>;
-using TestHotkeysIr = HotkeysIr<std::string_view>;
 
 }  // namespace
 
@@ -24,7 +23,7 @@ TEST_CASE("Hotkeys ctor") {
 
     SECTION("normal") {
         auto hm = TestHotkeys(hotkeys);
-        REQUIRE(hm.Vec().size() == hotkeys.size() - 1);
+        REQUIRE(hm.vec().size() == hotkeys.size() - 1);
         REQUIRE(!hm.GetActiveEquipset());
     }
 
@@ -303,53 +302,6 @@ TEST_CASE("Hotkeys keystroke concurrency") {
         };
         REQUIRE(*hotkeys.GetNextEquipset(ks) == "b1");
     }
-}
-
-TEST_CASE("Hotkeys ir conversions") {
-    auto initial_ir = TestHotkeysIr{
-        {
-            .name = "",
-            .keysets = {},
-            .equipsets = {"a"},
-        },
-        {
-            .name = "hotkeys whose keysets and equipsets are both empty get pruned",
-            .keysets = {},
-            .equipsets = {},
-        },
-        {
-            .name = "hk",
-            .keysets = {{1}, {2, 3}},
-            .equipsets = {},
-        },
-        {
-            .name = "hotkey",
-            // Keyset constructor will sort invalid keys to the end.
-            .keysets = {{1, 0, 2, 0}, {11, 12}},
-            .equipsets = {"a", "b", "c", ""},
-        },
-    };
-    auto want_final_ir = TestHotkeysIr{
-        {
-            .name = "",
-            .keysets = {},
-            .equipsets = {"a"},
-        },
-        {
-            .name = "hk",
-            .keysets = {{1}, {2, 3}},
-            .equipsets = {},
-        },
-        {
-            .name = "hotkey",
-            .keysets = {{1, 2}, {11, 12}},
-            .equipsets = {"a", "b", "c", ""},
-        },
-    };
-
-    auto hotkeys = initial_ir.To();
-    auto got_final_ir = TestHotkeysIr::From(hotkeys);
-    REQUIRE(got_final_ir == want_final_ir);
 }
 
 }  // namespace ech

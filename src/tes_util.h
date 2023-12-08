@@ -132,16 +132,11 @@ ForEachExtraList(
 
 inline int32_t
 GetExtraListCount(RE::InventoryEntryData* ied) {
-    if (!ied || !ied->extraLists) {
-        return 0;
-    }
-
     int32_t count = 0;
-    for (auto* xl : *ied->extraLists) {
-        if (xl) {
-            count += xl->GetCount();
-        }
-    }
+    ForEachExtraList(ied, [&](RE::ExtraDataList& xl) {
+        count += xl.GetCount();
+        return ForEachExtraListControl::kContinue;
+    });
     return count;
 }
 
@@ -155,20 +150,20 @@ IsVoiceEquippable(const RE::TESForm* form) {
 inline bool
 IsTwoHandedWeapon(const RE::TESForm* form) {
     auto* weap = form ? form->As<RE::TESObjectWEAP>() : nullptr;
-    if (!weap) {
-        return false;
-    }
-    return weap->IsTwoHandedAxe() || weap->IsTwoHandedSword() || weap->IsBow()
-           || weap->IsCrossbow();
+    // clang-format off
+    return weap && (
+        weap->IsTwoHandedAxe()
+        || weap->IsTwoHandedSword()
+        || weap->IsBow()
+        || weap->IsCrossbow()
+    );
+    // clang-format on
 }
 
 inline bool
 IsShield(const RE::TESForm* form) {
     auto* armor = form ? form->As<RE::TESObjectARMO>() : nullptr;
-    if (!armor) {
-        return false;
-    }
-    return armor->HasPartOf(RE::BGSBipedObjectForm::BipedObjectSlot::kShield);
+    return armor && armor->HasPartOf(RE::BGSBipedObjectForm::BipedObjectSlot::kShield);
 }
 
 }  // namespace tes_util

@@ -9,9 +9,30 @@ namespace ech {
 ///
 /// Invariants:
 /// - Items are sorted based on `GetActuationIndex()`.
+/// - No two items share the same gear slot.
 class Equipset {
   public:
     Equipset() = default;
+    bool operator==(const Equipset& other) const = default;
+
+    explicit Equipset(std::vector<GearOrSlot> items) : items_(std::move(items)) {
+        std::stable_sort(
+            items_.begin(),
+            items_.end(),
+            [](const GearOrSlot& a, const GearOrSlot& b) { return a.slot() < b.slot(); }
+        );
+        items_.erase(
+            std::unique(
+                items_.begin(),
+                items_.end(),
+                [](const GearOrSlot& a, const GearOrSlot& b) { return a.slot() == b.slot(); }
+            ),
+            items_.end()
+        );
+        std::sort(items_.begin(), items_.end(), [](const GearOrSlot& a, const GearOrSlot& b) {
+            return GetActuationIndex(a) < GetActuationIndex(b);
+        });
+    }
 
     static Equipset
     FromEquipped(RE::Actor& actor, bool unequip_empty_slots = false) {
@@ -27,24 +48,19 @@ class Equipset {
         return Equipset(std::move(items));
     }
 
-    explicit Equipset(std::vector<GearOrSlot> items) : items_(std::move(items)) {
-        std::sort(items_.begin(), items_.end(), [](const GearOrSlot& a, const GearOrSlot& b) {
-            return GetActuationIndex(a) < GetActuationIndex(b);
-        });
-    }
-
     const std::vector<GearOrSlot>&
-    Vec() const {
+    vec() const {
         return items_;
     }
 
     void
     Apply(RE::ActorEquipManager& aem, RE::Actor& actor) const {
         for (const auto& item : items_) {
-            if (auto* gear = item.Gear()) {
+            auto* gear = item.gear();
+            if (gear) {
                 gear->Equip(aem, actor);
             } else {
-                UnequipGear(aem, actor, item.Slot());
+                UnequipGear(aem, actor, item.slot());
             }
         }
     }
@@ -57,8 +73,8 @@ class Equipset {
     /// 1. Equip-right must precede unequip-ammo because equipping a bow/crossbow auto equips ammo.
     static int
     GetActuationIndex(const GearOrSlot& item) {
-        if (item.Gear()) {
-            switch (item.Slot()) {
+        if (item.gear()) {
+            switch (item.slot()) {
                 case Gearslot::kLeft:
                     return 0;
                 case Gearslot::kRight:
@@ -69,7 +85,7 @@ class Equipset {
                     return 12;
             }
         } else {
-            switch (item.Slot()) {
+            switch (item.slot()) {
                 case Gearslot::kLeft:
                     return 1;
                 case Gearslot::kRight:
@@ -106,7 +122,7 @@ class Equipsets {
     }
 
     const std::vector<T>&
-    Vec() const {
+    vec() const {
         return equipsets_;
     }
 
@@ -137,14 +153,15 @@ class Equipsets {
     size_t active_index_ = 0;
 };
 
-/// Constructor specialization that ensures every equipset is nonempty.
+/// Constructor specialization that prunes empty equipsets. An empty equipset ignores all gear
+/// slots, so cycling into one gives no user feedback. Hence, such equipsets are not desirable.
 ///
 /// `active_index` applies AFTER pruning empty equipsets.
 template <>
 inline Equipsets<Equipset>::Equipsets(std::vector<Equipset> equipsets, size_t active_index)
     : equipsets_(std::move(equipsets)),
       active_index_(active_index) {
-    std::erase_if(equipsets_, [](const Equipset& equipset) { return equipset.Vec().empty(); });
+    std::erase_if(equipsets_, [](const Equipset& equipset) { return equipset.vec().empty(); });
     if (active_index_ >= equipsets_.size()) {
         ActivateFirst();
     }

@@ -12,15 +12,6 @@ struct Hotkey {
     Equipsets<T> equipsets;
 };
 
-template <typename T = Equipset>
-struct HotkeyIr {
-    std::string name;
-    std::vector<Keyset> keysets;
-    std::vector<T> equipsets;
-
-    bool operator==(const HotkeyIr&) const = default;
-};
-
 /// An ordered collection of 0 or more hotkeys.
 ///
 /// The "active" hotkey is the one that most recently matched key inputs.
@@ -44,7 +35,7 @@ class Hotkeys {
         : hotkeys_(std::move(hotkeys)),
           active_index_(active_index) {
         std::erase_if(hotkeys_, [](const Hotkey<T>& hk) {
-            return hk.keysets.Vec().empty() && hk.equipsets.Vec().empty();
+            return hk.keysets.vec().empty() && hk.equipsets.vec().empty();
         });
         if (active_index_ >= hotkeys_.size()) {
             Deactivate();
@@ -52,7 +43,7 @@ class Hotkeys {
     }
 
     const std::vector<Hotkey<T>>&
-    Vec() const {
+    vec() const {
         return hotkeys_;
     }
 
@@ -95,7 +86,7 @@ class Hotkeys {
 
         auto match_res = Keysets::MatchResult::kNone;
         auto it = std::find_if(hotkeys_.begin(), hotkeys_.end(), [&](const Hotkey<T>& hotkey) {
-            if (hotkey.equipsets.Vec().empty()) {
+            if (hotkey.equipsets.vec().empty()) {
                 return false;
             }
             match_res = hotkey.keysets.Match(keystrokes);
@@ -130,43 +121,6 @@ class Hotkeys {
 
     size_t active_index_;
     const T* most_recent_next_equipset_ = nullptr;
-};
-
-/// `Hotkeys` intermediate representation. Since `Hotkeys` is effectively immutable, it must be
-/// converted to this IR in order to be serialized to disk or to be modified via UI.
-template <typename T = Equipset>
-class HotkeysIr : public std::vector<HotkeyIr<T>> {
-  public:
-    using std::vector<HotkeyIr<T>>::vector;
-
-    static HotkeysIr<T>
-    From(const Hotkeys<T>& hotkeys) {
-        HotkeysIr<T> hotkeys_ir;
-        for (const Hotkey<T>& hk : hotkeys.Vec()) {
-            auto keysets_span = hk.keysets.Vec();
-            auto equipsets_span = hk.equipsets.Vec();
-            auto hotkey_ir = HotkeyIr<T>{
-                .name = hk.name,
-                .keysets = hk.keysets.Vec(),
-                .equipsets = hk.equipsets.Vec(),
-            };
-            hotkeys_ir.push_back(std::move(hotkey_ir));
-        }
-        return hotkeys_ir;
-    }
-
-    Hotkeys<T>
-    To() const {
-        std::vector<Hotkey<T>> hotkeys;
-        for (const HotkeyIr<T>& hk_ir : *this) {
-            hotkeys.push_back({
-                .name = hk_ir.name,
-                .keysets = Keysets(hk_ir.keysets),
-                .equipsets = Equipsets(hk_ir.equipsets),
-            });
-        }
-        return Hotkeys(std::move(hotkeys));
-    }
 };
 
 }  // namespace ech

@@ -116,6 +116,7 @@
 #include <REL/Relocation.h>
 #include <SKSE/SKSE.h>
 #include <fmt/format.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
 // UI
