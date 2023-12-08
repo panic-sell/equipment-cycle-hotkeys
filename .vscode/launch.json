@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "name": "Debug (Attach)",
+            "type": "cppvsdbg",
+            "request": "attach",
+            "processId": "${command:pickProcess}"
+        },
+    ]
+}

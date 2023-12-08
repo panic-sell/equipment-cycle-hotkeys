@@ -1,0 +1,29 @@
+---
+BasedOnStyle: Google
+ColumnLimit: 100
+IndentWidth: 4
+AccessModifierOffset: -2
+
+AlignAfterOpenBracket: BlockIndent
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: All
+AlwaysBreakAfterReturnType: AllDefinitions
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeTernaryOperators: true
+DerivePointerAlignment: false
+IndentRequiresClause: false
+InsertBraces: true
+InsertNewlineAtEOF: true
+PackConstructorInitializers: CurrentLine
+PointerAlignment: Left
+SeparateDefinitionBlocks: Always
+ShortNamespaceLines: 0
+
+PenaltyBreakAssignment: 100
+PenaltyBreakBeforeFirstCallParameter: 0
+PenaltyBreakOpenParenthesis: 0
+PenaltyBreakString: 100
+
+...

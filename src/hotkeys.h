@@ -1,0 +1,172 @@
+#pragma once
+
+#include "equipsets.h"
+#include "keys.h"
+
+namespace ech {
+
+template <typename T = Equipset>
+struct Hotkey {
+    std::string name;
+    Keysets keysets;
+    Equipsets<T> equipsets;
+};
+
+template <typename T = Equipset>
+struct HotkeyIr {
+    std::string name;
+    std::vector<Keyset> keysets;
+    std::vector<T> equipsets;
+
+    bool operator==(const HotkeyIr&) const = default;
+};
+
+/// An ordered collection of 0 or more hotkeys.
+///
+/// The "active" hotkey is the one that most recently matched key inputs.
+///
+/// Invariants:
+/// - All hotkeys have at least 1 keyset or at least 1 equipset.
+/// - `active_index_ == hotkeys_.size()` means no hotkeys are active.
+/// - `most_recent_next_equipset_ == nullptr` if no hotkeys are active.
+///
+/// This class is templated by "equipset" to facilitate unit testing. We swap out the real Equipset
+/// type so that tests don't depend on Skyrim itself.
+template <typename T = Equipset>
+class Hotkeys {
+  public:
+    Hotkeys() = default;
+
+    /// `active_index` applies AFTER pruning hotkeys.
+    explicit Hotkeys(
+        std::vector<Hotkey<T>> hotkeys, size_t active_index = std::numeric_limits<size_t>::max()
+    )
+        : hotkeys_(std::move(hotkeys)),
+          active_index_(active_index) {
+        std::erase_if(hotkeys_, [](const Hotkey<T>& hk) {
+            return hk.keysets.Vec().empty() && hk.equipsets.Vec().empty();
+        });
+        if (active_index_ >= hotkeys_.size()) {
+            Deactivate();
+        }
+    }
+
+    const std::vector<Hotkey<T>>&
+    Vec() const {
+        return hotkeys_;
+    }
+
+    /// Make none of the hotkeys active.
+    void
+    Deactivate() {
+        active_index_ = hotkeys_.size();
+        most_recent_next_equipset_ = nullptr;
+    }
+
+    /// Returns the active hotkey's active equipset. Returns nullptr if:
+    /// - No hotkey is active.
+    /// - The active hotkey has no equipsets.
+    const T*
+    GetActiveEquipset() const {
+        if (active_index_ >= hotkeys_.size()) {
+            return nullptr;
+        }
+        const Hotkey<T>& hk = hotkeys_[active_index_];
+        return hk.equipsets.GetActive();
+    }
+
+    /// Activates the first hotkey that has at least one equipset and matches `keystrokes`, then
+    /// returns that hotkey's next active equipset. A non-null return value means "player should
+    /// equip what was returned".
+    ///
+    /// Returns nullptr if:
+    /// - `keytrokes` is empty.
+    /// - There are no hotkeys.
+    /// - No hotkey matches `keystrokes`.
+    /// - The matched hotkey has no equipsets.
+    /// - The matched hotkey's match result is a semihold.
+    /// - This function would have returned E, where E is the most recent non-null equipset returned
+    /// by a prior call of this function.
+    const T*
+    GetNextEquipset(std::span<const Keystroke> keystrokes) {
+        if (keystrokes.empty()) {
+            return nullptr;
+        }
+
+        auto match_res = Keysets::MatchResult::kNone;
+        auto it = std::find_if(hotkeys_.begin(), hotkeys_.end(), [&](const Hotkey<T>& hotkey) {
+            if (hotkey.equipsets.Vec().empty()) {
+                return false;
+            }
+            match_res = hotkey.keysets.Match(keystrokes);
+            return match_res != Keysets::MatchResult::kNone;
+        });
+        if (it == hotkeys_.end() || match_res == Keysets::MatchResult::kSemihold) {
+            return nullptr;
+        }
+
+        Hotkey<T>& hk = *it;
+        auto orig_active_index = active_index_;
+        active_index_ = it - hotkeys_.begin();
+
+        if (match_res == Keysets::MatchResult::kHold) {
+            hk.equipsets.ActivateFirst();
+        } else if (active_index_ == orig_active_index) {
+            hk.equipsets.ActivateNext();
+        }
+        auto next = hk.equipsets.GetActive();
+
+        // When resetting a hotkey's active equipset, this prevents returning the first equipset
+        // over and over again.
+        if (next == most_recent_next_equipset_) {
+            return nullptr;
+        }
+        most_recent_next_equipset_ = next;
+        return next;
+    }
+
+  private:
+    std::vector<Hotkey<T>> hotkeys_;
+
+    size_t active_index_;
+    const T* most_recent_next_equipset_ = nullptr;
+};
+
+/// `Hotkeys` intermediate representation. Since `Hotkeys` is effectively immutable, it must be
+/// converted to this IR in order to be serialized to disk or to be modified via UI.
+template <typename T = Equipset>
+class HotkeysIr : public std::vector<HotkeyIr<T>> {
+  public:
+    using std::vector<HotkeyIr<T>>::vector;
+
+    static HotkeysIr<T>
+    From(const Hotkeys<T>& hotkeys) {
+        HotkeysIr<T> hotkeys_ir;
+        for (const Hotkey<T>& hk : hotkeys.Vec()) {
+            auto keysets_span = hk.keysets.Vec();
+            auto equipsets_span = hk.equipsets.Vec();
+            auto hotkey_ir = HotkeyIr<T>{
+                .name = hk.name,
+                .keysets = hk.keysets.Vec(),
+                .equipsets = hk.equipsets.Vec(),
+            };
+            hotkeys_ir.push_back(std::move(hotkey_ir));
+        }
+        return hotkeys_ir;
+    }
+
+    Hotkeys<T>
+    To() const {
+        std::vector<Hotkey<T>> hotkeys;
+        for (const HotkeyIr<T>& hk_ir : *this) {
+            hotkeys.push_back({
+                .name = hk_ir.name,
+                .keysets = Keysets(hk_ir.keysets),
+                .equipsets = Equipsets(hk_ir.equipsets),
+            });
+        }
+        return Hotkeys(std::move(hotkeys));
+    }
+};
+
+}  // namespace ech

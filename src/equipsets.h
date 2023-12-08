@@ -1,0 +1,153 @@
+#pragma once
+
+#include "gear.h"
+#include "tes_util.h"
+
+namespace ech {
+
+/// A collection of to-be-equipped gear and to-be-unequipped slots.
+///
+/// Invariants:
+/// - Items are sorted based on `GetActuationIndex()`.
+class Equipset {
+  public:
+    Equipset() = default;
+
+    static Equipset
+    FromEquipped(RE::Actor& actor, bool unequip_empty_slots = false) {
+        std::vector<GearOrSlot> items;
+        for (auto slot : kGearslots) {
+            auto gear = Gear::FromEquipped(actor, slot);
+            if (gear) {
+                items.emplace_back(*gear);
+            } else if (unequip_empty_slots) {
+                items.emplace_back(slot);
+            }
+        }
+        return Equipset(std::move(items));
+    }
+
+    explicit Equipset(std::vector<GearOrSlot> items) : items_(std::move(items)) {
+        std::sort(items_.begin(), items_.end(), [](const GearOrSlot& a, const GearOrSlot& b) {
+            return GetActuationIndex(a) < GetActuationIndex(b);
+        });
+    }
+
+    const std::vector<GearOrSlot>&
+    Vec() const {
+        return items_;
+    }
+
+    void
+    Apply(RE::ActorEquipManager& aem, RE::Actor& actor) const {
+        for (const auto& item : items_) {
+            if (auto* gear = item.Gear()) {
+                gear->Equip(aem, actor);
+            } else {
+                UnequipGear(aem, actor, item.Slot());
+            }
+        }
+    }
+
+  private:
+    /// Higher number means later actuation and taking precedence over preceding items.
+    ///
+    /// In general, the only hard requirements are that:
+    /// 1. Unequip-left must precede equip-right because unequip-left removes 2h gear.
+    /// 1. Equip-right must precede unequip-ammo because equipping a bow/crossbow auto equips ammo.
+    static int
+    GetActuationIndex(const GearOrSlot& item) {
+        if (item.Gear()) {
+            switch (item.Slot()) {
+                case Gearslot::kLeft:
+                    return 0;
+                case Gearslot::kRight:
+                    return 10;
+                case Gearslot::kAmmo:
+                    return 11;
+                case Gearslot::kShout:
+                    return 12;
+            }
+        } else {
+            switch (item.Slot()) {
+                case Gearslot::kLeft:
+                    return 1;
+                case Gearslot::kRight:
+                    return 20;
+                case Gearslot::kAmmo:
+                    return 21;
+                case Gearslot::kShout:
+                    return 22;
+            }
+        }
+        return 99;
+    }
+
+    std::vector<GearOrSlot> items_;
+};
+
+/// An ordered collection of 0 or more equipsets.
+///
+/// Invariants:
+/// - If `equipsets_.empty()`, then `active_index_ == 0`.
+/// - If `!equipsets_.empty()`, then `active_index_ < equipsets.size()`. In other words, there is
+/// always an active equipset.
+template <typename T = Equipset>
+class Equipsets {
+  public:
+    Equipsets() = default;
+
+    explicit Equipsets(std::vector<T> equipsets, size_t active_index = 0)
+        : equipsets_(std::move(equipsets)),
+          active_index_(active_index) {
+        if (active_index_ >= equipsets_.size()) {
+            ActivateFirst();
+        }
+    }
+
+    const std::vector<T>&
+    Vec() const {
+        return equipsets_;
+    }
+
+    const T*
+    GetActive() const {
+        if (equipsets_.empty()) {
+            return nullptr;
+        }
+        auto i = active_index_ < equipsets_.size() ? active_index_ : 0;
+        return &equipsets_[i];
+    }
+
+    void
+    ActivateNext() {
+        if (equipsets_.empty()) {
+            return;
+        }
+        active_index_ = (active_index_ + 1) % equipsets_.size();
+    }
+
+    void
+    ActivateFirst() {
+        active_index_ = 0;
+    }
+
+  private:
+    std::vector<T> equipsets_;
+    size_t active_index_ = 0;
+};
+
+/// Constructor specialization that ensures every equipset is nonempty.
+///
+/// `active_index` applies AFTER pruning empty equipsets.
+template <>
+inline Equipsets<Equipset>::Equipsets(std::vector<Equipset> equipsets, size_t active_index)
+    : equipsets_(std::move(equipsets)),
+      active_index_(active_index) {
+    std::erase_if(equipsets_, [](const Equipset& equipset) { return equipset.Vec().empty(); });
+    if (active_index_ >= equipsets_.size()) {
+        ActivateFirst();
+    }
+}
+
+}  // namespace ech
