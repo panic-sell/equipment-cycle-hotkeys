@@ -142,6 +142,32 @@ main(int, char**) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        {
+            const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+            auto mv_size = main_viewport->WorkSize;
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(mv_size * ImVec2(.5f, 1));
+            ImGui::SetNextWindowBgAlpha(.85f);
+
+            auto window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
+                                | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
+            auto open = false;
+            ImGui::Begin("Equipment Cycle Hotkeys", &open, window_flags);
+
+            ImGui::BeginChild("hotkey list", mv_size * ImVec2(.1f, 0), true);
+            // ImGui::Selectable("Hotkey 1", );
+            ImGui::EndChild();
+
+            ImGui::SameLine();
+
+            ImGui::BeginChild("selected hotkey", ImVec2(0, 0));
+            ImGui::Text("Selected Hotkey");
+            ImGui::Separator();
+            ImGui::EndChild();
+
+            ImGui::End();
+        }
+
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You
         // can browse its code to learn more about Dear ImGui!).
         if (show_demo_window) {

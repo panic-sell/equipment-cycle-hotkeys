@@ -3,6 +3,7 @@
 
 #include "dev_util.h"
 #include "keys.h"
+#include "ui.h"
 
 namespace ech {
 namespace ui {
@@ -318,7 +319,8 @@ RenderHook(uint32_t x) {
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::ShowDemoWindow();
+    Draw();
+    // ImGui::ShowDemoWindow();
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
