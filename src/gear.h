@@ -23,7 +23,7 @@ constexpr inline auto kGearslots = std::array{
     Gearslot::kShout,
 };
 
-// Forward declaration for `TestGear()`.
+// Forward declaration for `GearForTest()`.
 class Gear;
 
 }  // namespace ech
@@ -54,8 +54,7 @@ struct fmt::formatter<ech::Gearslot> : fmt::formatter<std::string_view> {
 namespace ech {
 namespace internal {
 
-/// Only used in tests.
-Gear TestGear(Gearslot);
+Gear GearForTest(Gearslot);
 
 static std::optional<Gearslot>
 GetExpectedGearslot(const RE::TESForm* form, bool prefer_left) {
@@ -522,7 +521,7 @@ class Gear final {
         return {tot_count - xl_count, nullptr};
     }
 
-    friend Gear internal::TestGear(Gearslot);
+    friend Gear internal::GearForTest(Gearslot);
 
     explicit Gear(
         RE::TESForm* form, Gearslot slot, float extra_health, RE::EnchantmentItem* extra_ench
@@ -559,7 +558,7 @@ class GearOrSlot final {
         if (auto* slot = std::get_if<Gearslot>(&variant_)) {
             return *slot;
         }
-        std::unreachable();
+        return static_cast<Gearslot>(0);
     }
 
   private:

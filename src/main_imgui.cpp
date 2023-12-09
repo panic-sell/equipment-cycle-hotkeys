@@ -7,7 +7,11 @@
 // - Introduction, links and more at the top of imgui.cpp
 
 #include <d3d11.h>
+#include <imgui_internal.h>
 #include <tchar.h>
+
+#include "keys.h"
+#include "ui.h"
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -142,80 +146,40 @@ main(int, char**) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        {
-            const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
-            auto mv_size = main_viewport->WorkSize;
-            ImGui::SetNextWindowPos(ImVec2(0, 0));
-            ImGui::SetNextWindowSize(mv_size * ImVec2(.5f, 1));
-            ImGui::SetNextWindowBgAlpha(.85f);
+        static auto hotkeys_vm = ech::ui::HotkeysVM<>{
+            {
+                .name = "asdf",
+                .keysets{
+                    {1, 2, 3, 4},
+                    {5, 0, 45, 104},
+                    {7, 0, 0, 0},
+                    {4, 3, 2, 1},
+                    {0, 20, 19, 18},
+                    {0},
+                },
+                .equipsets{
+                    {},
+                    {},
+                    {},
+                    {},
+                },
+            },
+        };
+        static int selected = -1;
+        ech::ui::Draw(hotkeys_vm, selected);
 
-            auto window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
-                                | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
-            auto open = false;
-            ImGui::Begin("Equipment Cycle Hotkeys", &open, window_flags);
-
-            ImGui::BeginChild("hotkey list", mv_size * ImVec2(.1f, 0), true);
-            // ImGui::Selectable("Hotkey 1", );
-            ImGui::EndChild();
-
-            ImGui::SameLine();
-
-            ImGui::BeginChild("selected hotkey", ImVec2(0, 0));
-            ImGui::Text("Selected Hotkey");
-            ImGui::Separator();
-            ImGui::EndChild();
-
-            ImGui::End();
-        }
-
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You
-        // can browse its code to learn more about Dear ImGui!).
+        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()!
+        // You can browse its code to learn more about Dear ImGui!).
         if (show_demo_window) {
             ImGui::ShowDemoWindow(&show_demo_window);
-        }
-
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a
-        // named window.
-        {
-            static float f = 0.0f;
-            static int counter = 0;
-
-            ImGui::Begin("Hello, world!"
-            );  // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text."
-            );  // Display some text (you can use a format strings too)
-            ImGui::Checkbox(
-                "Demo Window", &show_demo_window
-            );  // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat(
-                "float", &f, 0.0f, 1.0f
-            );  // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3(
-                "clear color", (float*)&clear_color
-            );  // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button")) {  // Buttons return true when clicked (most widgets return
-                                            // true when edited/activated)
-                counter++;
-            }
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text(
-                "Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate
-            );
-            ImGui::End();
         }
 
         // 3. Show another simple window.
         if (show_another_window) {
             ImGui::Begin(
                 "Another Window", &show_another_window
-            );  // Pass a pointer to our bool variable (the window will have a closing button that
-                // will clear the bool when clicked)
+            );  // Pass a pointer to our bool variable (the window will have a closing button
+                // that will clear the bool when clicked)
             ImGui::Text("Hello from another window!");
             if (ImGui::Button("Close Me")) {
                 show_another_window = false;
@@ -293,8 +257,8 @@ CreateDeviceD3D(HWND hWnd) {
         &featureLevel,
         &g_pd3dDeviceContext
     );
-    if (res == DXGI_ERROR_UNSUPPORTED) {  // Try high-performance WARP software driver if hardware
-                                          // is not available.
+    if (res == DXGI_ERROR_UNSUPPORTED) {  // Try high-performance WARP software driver if
+                                          // hardware is not available.
         res = D3D11CreateDeviceAndSwapChain(
             nullptr,
             D3D_DRIVER_TYPE_WARP,
@@ -356,13 +320,13 @@ extern IMGUI_IMPL_API LRESULT
 ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Win32 message handler
-// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to
-// use your inputs.
-// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or
-// clear/overwrite your copy of the mouse data.
+// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui
+// wants to use your inputs.
+// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main
+// application, or clear/overwrite your copy of the mouse data.
 // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main
-// application, or clear/overwrite your copy of the keyboard data. Generally you may always pass all
-// inputs to dear imgui, and hide them from your application based on those two flags.
+// application, or clear/overwrite your copy of the keyboard data. Generally you may always pass
+// all inputs to dear imgui, and hide them from your application based on those two flags.
 LRESULT WINAPI
 WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) {

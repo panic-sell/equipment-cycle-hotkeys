@@ -5,6 +5,23 @@
 
 namespace ech {
 
+TEST_CASE("Keycode from name") {
+    struct Testcase {
+        std::string_view name;
+        uint32_t want;
+    };
+
+    auto testcase = GENERATE(
+        Testcase{.name = "", .want = 0},
+        Testcase{.name = "081i3nof09", .want = 0},
+        Testcase{.name = "lshift", .want = 42},
+        Testcase{.name = "GamEPADrt", .want = 281}
+    );
+
+    auto got = KeycodeFromName(testcase.name);
+    REQUIRE(got == testcase.want);
+}
+
 TEST_CASE("Keystroke ctor") {
     struct Testcase {
         std::string_view name;

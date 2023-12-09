@@ -7,11 +7,11 @@ namespace ech {
 namespace ui {
 
 struct EsvmItem final {
-    enum class Choice : uint8_t {
-        /// Ignore gear slot.
-        kIgnore,
+    enum class Choice {
         /// Equip gear.
         kGear,
+        /// Ignore gear slot.
+        kIgnore,
         /// Unequip gear slot.
         kUnequip,
     };
@@ -35,7 +35,6 @@ struct EsvmItem final {
 /// - `(*this)[i].slot() == static_cast<Gearslot>(i)`
 class EquipsetVM final : public std::array<EsvmItem, kGearslots.size()> {
   public:
-    /// Sets all items to `Choice::kUnequip`.
     EquipsetVM() {
         for (auto slot : kGearslots) {
             (*this)[static_cast<size_t>(slot)].gos = slot;
@@ -88,7 +87,7 @@ class EquipsetVM final : public std::array<EsvmItem, kGearslots.size()> {
 
 template <typename T = EquipsetVM>
 struct HotkeyVM final {
-    std::string name;
+    std::string name = "Hotkey";
     std::vector<Keyset> keysets;
     std::vector<T> equipsets;
 };

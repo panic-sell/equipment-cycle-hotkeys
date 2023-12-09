@@ -319,8 +319,8 @@ RenderHook(uint32_t x) {
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    Draw();
-    // ImGui::ShowDemoWindow();
+    // Draw();
+    ImGui::ShowDemoWindow();
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

@@ -11,7 +11,7 @@
 namespace ech {
 namespace dev_util {
 
-using StrKeyset = std::array<std::string_view, std::tuple_size<Keyset>::value>;
+using StrKeyset = std::array<std::string_view, std::tuple_size_v<Keyset>>;
 
 inline Keysets
 KeysetsFromStr(std::initializer_list<StrKeyset> keysets) {
