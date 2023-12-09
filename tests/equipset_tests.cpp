@@ -11,10 +11,7 @@ struct StringMaker<ech::GearOrSlot> {
     static std::string
     convert(const ech::GearOrSlot& value) {
         return fmt::format(
-            "({}{}{})",
-            value.slot(),
-            value.gear() ? ", " : "",
-            value.gear() ? fmt::format("{:.1f}", value.gear()->extra_health()) : ""
+            "({}{}{})", value.slot(), value.gear() ? ", " : "", value.gear() ? "gear" : ""
         );
     }
 };
@@ -22,19 +19,39 @@ struct StringMaker<ech::GearOrSlot> {
 }  // namespace Catch
 
 namespace ech {
-namespace {
+namespace internal {
+
+Gear
+TestGear(Gearslot slot) {
+    return Gear(nullptr, slot, 0.f, nullptr);
+}
+
+}  // namespace internal
 
 using TestEquipsets = Equipsets<int>;
 
-class TestGear : public Gear {
-  public:
-    explicit TestGear(Gearslot slot, float extra_health = 0.f)
-        : Gear(nullptr, slot, extra_health, nullptr) {}
-};
+bool
+operator==(const Gear& a, const Gear& b) {
+    return a.slot() == b.slot();
+}
 
-static_assert(sizeof(TestGear) == sizeof(Gear));
+bool
+operator==(const GearOrSlot& a, const GearOrSlot& b) {
+    auto* ag = a.gear();
+    auto* bg = b.gear();
+    if (ag && bg) {
+        return *ag == *bg;
+    }
+    if (!ag && !bg) {
+        return a.slot() == b.slot();
+    }
+    return false;
+}
 
-}  // namespace
+bool
+operator==(const Equipset& a, const Equipset& b) {
+    return a.vec() == b.vec();
+}
 
 TEST_CASE("Equipset ctor") {
     struct Testcase {
@@ -52,30 +69,30 @@ TEST_CASE("Equipset ctor") {
         Testcase{
             .name = "ordering",
             .arg{
-                TestGear(Gearslot::kShout),
-                TestGear(Gearslot::kRight),
+                internal::TestGear(Gearslot::kShout),
+                internal::TestGear(Gearslot::kRight),
                 Gearslot::kLeft,
                 Gearslot::kAmmo,
             },
             .want{
                 Gearslot::kLeft,
-                TestGear(Gearslot::kRight),
-                TestGear(Gearslot::kShout),
+                internal::TestGear(Gearslot::kRight),
+                internal::TestGear(Gearslot::kShout),
                 Gearslot::kAmmo,
             },
         },
         Testcase{
             .name = "remove_duplicates",
             .arg{
-                TestGear(Gearslot::kShout),
+                internal::TestGear(Gearslot::kShout),
                 Gearslot::kRight,
                 Gearslot::kLeft,
-                TestGear(Gearslot::kRight),
-                TestGear(Gearslot::kLeft),
+                internal::TestGear(Gearslot::kRight),
+                internal::TestGear(Gearslot::kLeft),
             },
             .want{
                 Gearslot::kLeft,
-                TestGear(Gearslot::kShout),
+                internal::TestGear(Gearslot::kShout),
                 Gearslot::kRight,
             },
         }
@@ -154,11 +171,11 @@ TEST_CASE("Equipsets ctor specialization prunes empty equipsets") {
         Equipset(),
         Equipset({Gearslot::kLeft}),
         Equipset(),
-        Equipset({TestGear(Gearslot::kLeft)}),
+        Equipset({internal::TestGear(Gearslot::kLeft)}),
     };
     auto want = std::vector<Equipset>{
         Equipset({Gearslot::kLeft}),
-        Equipset({TestGear(Gearslot::kLeft)}),
+        Equipset({internal::TestGear(Gearslot::kLeft)}),
     };
     auto equipsets = Equipsets(initial);
     REQUIRE(equipsets.vec() == want);

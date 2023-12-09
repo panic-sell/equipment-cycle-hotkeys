@@ -23,6 +23,9 @@ constexpr inline auto kGearslots = std::array{
     Gearslot::kShout,
 };
 
+// Forward declaration for `TestGear()`.
+class Gear;
+
 }  // namespace ech
 
 template <>
@@ -50,6 +53,9 @@ struct fmt::formatter<ech::Gearslot> : fmt::formatter<std::string_view> {
 
 namespace ech {
 namespace internal {
+
+/// Only used in tests.
+Gear TestGear(Gearslot);
 
 static std::optional<Gearslot>
 GetExpectedGearslot(const RE::TESForm* form, bool prefer_left) {
@@ -163,11 +169,9 @@ UnequipGear(RE::ActorEquipManager& aem, RE::Actor& actor, Gearslot slot) {
 /// - `form_` is of a supported gear type per `GetExpectedGearslot()`.
 /// - `extra_health == NaN` indicates weapon/shield has not been improved.
 /// - `extra_ench == nullptr` indicates weapon/shield does not have custom enchantment.
-class Gear {
+class Gear final {
   public:
     static constexpr inline float kExtraHealthNone = std::numeric_limits<float>::quiet_NaN();
-
-    bool operator==(const Gear& other) const = default;
 
     const RE::TESForm&
     form() const {
@@ -518,8 +522,8 @@ class Gear {
         return {tot_count - xl_count, nullptr};
     }
 
-    // Subclassed in tests.
-  protected:
+    friend Gear internal::TestGear(Gearslot);
+
     explicit Gear(
         RE::TESForm* form, Gearslot slot, float extra_health, RE::EnchantmentItem* extra_ench
     )
@@ -535,7 +539,7 @@ class Gear {
 };
 
 /// Like a `std::variant<Gear, Gearslot>`.
-class GearOrSlot {
+class GearOrSlot final {
   public:
     GearOrSlot(ech::Gear gear) : variant_(gear) {}
 
@@ -556,19 +560,6 @@ class GearOrSlot {
             return *slot;
         }
         std::unreachable();
-    }
-
-    bool
-    operator==(const GearOrSlot& other) const {
-        auto a = gear();
-        auto b = other.gear();
-        if (a && b) {
-            return *a == *b;
-        }
-        if (!a && !b) {
-            return slot() == other.slot();
-        }
-        return false;
     }
 
   private:

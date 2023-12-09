@@ -5,13 +5,10 @@
 #include "hotkeys.h"
 
 namespace ech {
-namespace {
 
 using TestEquipsets = Equipsets<std::string_view>;
 using TestHotkey = Hotkey<std::string_view>;
 using TestHotkeys = Hotkeys<std::string_view>;
-
-}  // namespace
 
 TEST_CASE("Hotkeys ctor") {
     auto hotkeys = std::vector<TestHotkey>{

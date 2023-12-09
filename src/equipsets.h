@@ -10,10 +10,9 @@ namespace ech {
 /// Invariants:
 /// - Items are sorted based on `GetActuationIndex()`.
 /// - No two items share the same gear slot.
-class Equipset {
+class Equipset final {
   public:
     Equipset() = default;
-    bool operator==(const Equipset& other) const = default;
 
     explicit Equipset(std::vector<GearOrSlot> items) : items_(std::move(items)) {
         std::stable_sort(
@@ -109,13 +108,20 @@ class Equipset {
 /// - If `!equipsets_.empty()`, then `active_index_ < equipsets.size()`. In other words, there is
 /// always an active equipset.
 template <typename T = Equipset>
-class Equipsets {
+class Equipsets final {
   public:
     Equipsets() = default;
 
     explicit Equipsets(std::vector<T> equipsets, size_t active_index = 0)
         : equipsets_(std::move(equipsets)),
           active_index_(active_index) {
+        // Prune empty equipsets. An empty equipset ignores all gear slots, so cycling into one
+        // gives no user feedback, which could be confusing.
+        if constexpr (std::is_same_v<T, Equipset>) {
+            std::erase_if(equipsets_, [](const Equipset& equipset) {
+                return equipset.vec().empty();
+            });
+        }
         if (active_index_ >= equipsets_.size()) {
             ActivateFirst();
         }
@@ -152,19 +158,5 @@ class Equipsets {
     std::vector<T> equipsets_;
     size_t active_index_ = 0;
 };
-
-/// Constructor specialization that prunes empty equipsets. An empty equipset ignores all gear
-/// slots, so cycling into one gives no user feedback. Hence, such equipsets are not desirable.
-///
-/// `active_index` applies AFTER pruning empty equipsets.
-template <>
-inline Equipsets<Equipset>::Equipsets(std::vector<Equipset> equipsets, size_t active_index)
-    : equipsets_(std::move(equipsets)),
-      active_index_(active_index) {
-    std::erase_if(equipsets_, [](const Equipset& equipset) { return equipset.vec().empty(); });
-    if (active_index_ >= equipsets_.size()) {
-        ActivateFirst();
-    }
-}
 
 }  // namespace ech

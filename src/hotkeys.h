@@ -6,7 +6,7 @@
 namespace ech {
 
 template <typename T = Equipset>
-struct Hotkey {
+struct Hotkey final {
     std::string name;
     Keysets keysets;
     Equipsets<T> equipsets;
@@ -24,7 +24,7 @@ struct Hotkey {
 /// This class is templated by "equipset" to facilitate unit testing. We swap out the real Equipset
 /// type so that tests don't depend on Skyrim itself.
 template <typename T = Equipset>
-class Hotkeys {
+class Hotkeys final {
   public:
     Hotkeys() = default;
 

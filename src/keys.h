@@ -333,7 +333,7 @@ KeycodeFromScancode(uint32_t scancode, RE::INPUT_DEVICE device) {
 /// - `keycode_` is valid.
 /// - `heldsecs_` nonnegative and finite.
 /// - One of `IsKeyboard()`, `IsMouse()`, and `IsGamepad()` is true.
-class Keystroke {
+class Keystroke final {
   public:
     static void
     InputEventsToBuffer(const RE::InputEvent* events, std::vector<Keystroke>& buf) {
@@ -388,7 +388,7 @@ using Keyset = std::array<uint32_t, 4>;
 /// Invariants:
 /// - All keysets have at least one valid keycode.
 /// - All keysets are sorted such that valid keycodes precede invalid ones.
-class Keysets {
+class Keysets final {
   public:
     enum class MatchResult {
         kNone,

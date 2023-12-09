@@ -26,8 +26,8 @@ GameIsAcceptingInput() {
 
 }  // namespace internal
 
-class EventHandler : public RE::BSTEventSink<RE::InputEvent*>,
-                     public RE::BSTEventSink<RE::TESEquipEvent> {
+class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
+                           public RE::BSTEventSink<RE::TESEquipEvent> {
   public:
     static std::expected<void, std::string_view>
     Register() {

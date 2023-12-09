@@ -5,11 +5,16 @@
 #include "ui_viewmodels.h"
 
 namespace ech {
-namespace {
+namespace ui {
 
-using TestHotkeysVM = ui::HotkeysVM<std::string_view>;
+using TestHotkeysVM = HotkeysVM<std::string_view>;
 
-}  // namespace
+template <typename T>
+requires(std::equality_comparable<T>)
+bool
+operator==(const HotkeyVM<T>& a, const HotkeyVM<T>& b) {
+    return a.name == b.name && a.keysets == b.keysets && a.equipsets == b.equipsets;
+}
 
 TEST_CASE("HotkeysVM conversions") {
     auto initial_vm = TestHotkeysVM{
@@ -59,4 +64,5 @@ TEST_CASE("HotkeysVM conversions") {
     REQUIRE(got_final_vm == want_final_vm);
 }
 
+}  // namespace ui
 }  // namespace ech
