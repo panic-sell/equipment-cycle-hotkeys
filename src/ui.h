@@ -6,8 +6,6 @@ namespace ech {
 namespace ui {
 namespace internal {
 
-constexpr inline auto kDropdownFlags = ImGuiComboFlags_HeightLarge | ImGuiComboFlags_NoArrowButton;
-
 constexpr inline auto kKeycodeNamesForUI = []() {
     auto arr = kKeycodeNames;
     arr[0] = "(Unbound)";
@@ -90,13 +88,12 @@ DrawTable(
 ) {
     // Index of the column containing control buttons.
     const auto last_col = static_cast<int>(headers.size());
-    const auto columns = last_col + 1;
+    const auto cols = last_col + 1;
     const auto rows = row_entities.size();
 
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(2, 4));
-    if (!ImGui::BeginTable(
-            table_id, columns, ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_BordersInnerH
-        )) {
+    constexpr auto table_flags = ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_BordersInnerH;
+    if (!ImGui::BeginTable(table_id, cols, table_flags)) {
         ImGui::PopStyleVar();
         return {};
     }
@@ -122,7 +119,7 @@ DrawTable(
         for (int col = 0; col < last_col; col++) {
             ImGui::TableSetColumnIndex(col);
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-            ImGui::PushID(row * columns + col);
+            ImGui::PushID(row * cols + col);
             draw_cell(row_entity, row, col);
             ImGui::PopID();
         }
@@ -130,9 +127,9 @@ DrawTable(
         // Control buttons.
         {
             auto draw_drag = [&]() { draw_drag_tooltip(row_entity); };
-            ImGui::TableSetColumnIndex(columns - 1);
+            ImGui::TableSetColumnIndex(last_col);
             ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
-            ImGui::PushID(row * columns + columns - 1);
+            ImGui::PushID(row * cols + last_col);
 
             if (ImGui::ArrowButton("up", ImGuiDir_Up) && row > 0) {
                 drag_source = row;
@@ -202,7 +199,7 @@ DrawHotkeyList(HotkeysVM<>& hotkeys_vm, int& selected) {
         }
     };
 
-    auto draw_drag_tooltip = [&](const HotkeyVM<>& hotkey_vm) {
+    auto draw_drag_tooltip = [](const HotkeyVM<>& hotkey_vm) {
         ImGui::Text("%s", hotkey_vm.name.c_str());
     };
 
@@ -227,10 +224,10 @@ DrawHotkeyList(HotkeysVM<>& hotkeys_vm, int& selected) {
         selected = 0;
     }
     // At this point, it's guaranteed that `selected` is in bounds.
-    if (ImGui::Button("Duplicate selected", ImGui::GetContentRegionAvail() * ImVec2(1, 0))) {
-        hotkeys_vm.insert(hotkeys_vm.begin() + selected + 1, hotkeys_vm[selected]);
-        selected++;
-    }
+    // if (ImGui::Button("Clone Selected", ImGui::GetContentRegionAvail() * ImVec2(1, 0))) {
+    //     hotkeys_vm.insert(hotkeys_vm.begin() + selected + 1, hotkeys_vm[selected]);
+    //     selected++;
+    // }
 }
 
 inline void
@@ -240,9 +237,11 @@ DrawKeysets(std::vector<Keyset>& keysets) {
     auto draw_dropdown = [](Keyset& keyset, int, int col) {
         auto& keycode = keyset[col];
         const char* preview = kKeycodeNamesForUI[KeycodeNormalize(keycode)];
-        if (!ImGui::BeginCombo("##dropdown", preview, kDropdownFlags)) {
+        constexpr auto combo_flags = ImGuiComboFlags_HeightLarge | ImGuiComboFlags_NoArrowButton;
+        if (!ImGui::BeginCombo("##dropdown", preview, combo_flags)) {
             return;
         }
+
         for (uint32_t opt_keycode = 0; opt_keycode < kKeycodeNamesForUI.size(); opt_keycode++) {
             const char* opt = kKeycodeNamesForUI[opt_keycode];
             if (!*opt) {
@@ -259,13 +258,14 @@ DrawKeysets(std::vector<Keyset>& keysets) {
         ImGui::EndCombo();
     };
 
-    auto draw_drag_tooltip = [&](const Keyset& keyset) {
+    auto draw_drag_tooltip = [](const Keyset& keyset) {
         auto names = std::array{
             kKeycodeNamesForUI[KeycodeNormalize(keyset[0])],
             kKeycodeNamesForUI[KeycodeNormalize(keyset[1])],
             kKeycodeNamesForUI[KeycodeNormalize(keyset[2])],
             kKeycodeNamesForUI[KeycodeNormalize(keyset[3])],
         };
+        static_assert(std::tuple_size_v<decltype(names)> == std::tuple_size_v<Keyset>);
         ImGui::Text("%s+%s+%s+%s", names[0], names[1], names[2], names[3]);
     };
 
@@ -283,7 +283,9 @@ DrawEquipsets(std::vector<EquipsetVM>& equipsets_vm) {
 
     auto draw_dropdown = [](EquipsetVM& equipset_vm, int, int col) {
         auto& esvm_item = equipset_vm[col];
-        if (!ImGui::BeginCombo("##dropdown", EsvmItemToCStr(esvm_item), kDropdownFlags)) {
+        const char* preview = EsvmItemToCStr(esvm_item);
+        constexpr auto combo_flags = ImGuiComboFlags_HeightLarge | ImGuiComboFlags_NoArrowButton;
+        if (!ImGui::BeginCombo("##dropdown", preview, combo_flags)) {
             return;
         }
 
@@ -309,20 +311,21 @@ DrawEquipsets(std::vector<EquipsetVM>& equipsets_vm) {
     };
 
     auto draw_drag_tooltip = [](const EquipsetVM& equipset_vm) {
-        ImGui::Text(
-            "%s, %s, %s, %s",
+        auto names = std::array{
             EsvmItemToCStr(equipset_vm[static_cast<size_t>(Gearslot::kLeft)]),
             EsvmItemToCStr(equipset_vm[static_cast<size_t>(Gearslot::kRight)]),
             EsvmItemToCStr(equipset_vm[static_cast<size_t>(Gearslot::kAmmo)]),
-            EsvmItemToCStr(equipset_vm[static_cast<size_t>(Gearslot::kShout)])
-        );
+            EsvmItemToCStr(equipset_vm[static_cast<size_t>(Gearslot::kShout)]),
+        };
+        static_assert(std::tuple_size_v<decltype(names)> == kGearslots.size());
+        ImGui::Text("%s, %s, %s, %s", names[0], names[1], names[2], names[3]);
     };
 
     ImGui::SeparatorText("Equipsets");
     DrawTable<EquipsetVM>(
         "equipset_table", equipsets_vm, headers, draw_dropdown, draw_drag_tooltip
     );
-    if (ImGui::Button("Add currently equipped", ImGui::GetContentRegionAvail() * ImVec2(1, 0))) {
+    if (ImGui::Button("Add Currently Equipped", ImGui::GetContentRegionAvail() * ImVec2(1, 0))) {
         equipsets_vm.emplace_back();
     }
 }
@@ -330,30 +333,170 @@ DrawEquipsets(std::vector<EquipsetVM>& equipsets_vm) {
 }  // namespace internal
 
 inline void
+SetStyle() {
+    // auto& style = ImGui::GetStyle();
+    // style.CellPadding = ImVec2(2, 4);
+}
+
+struct Dims {
+    ImVec2 max_size = {FLT_MAX, FLT_MAX};
+    ImVec2 window_initial_pos = {.1f, .1f};
+    ImVec2 window_initial_size = {.5f, .8f};
+    ImVec2 window_min_size = {.25f, .25f};
+    ImVec2 hklist_initial_size = {.15f, 0};
+    ImVec2 hklist_min_size = {.15f, 0};
+
+    explicit Dims(const ImVec2& viewport_size) {
+        window_initial_pos *= viewport_size;
+        window_initial_size *= viewport_size;
+        window_min_size *= viewport_size;
+        hklist_initial_size *= viewport_size;
+        hklist_min_size *= viewport_size;
+    }
+};
+
+class MenuBar final {
+  public:
+    void
+    DrawImportMenu() {}
+
+  private:
+    std::string export_fn_;
+};
+
+inline void
+DrawMenuBar(
+    std::span<const std::string> filenames,
+    std::function<void(std::string_view filename)> import_callback,
+    std::function<void(std::string_view filename)> export_callback
+) {
+    if (!ImGui::BeginMenuBar()) {
+        return;
+    }
+
+    if (ImGui::BeginMenu("Profiles")) {
+        ImGui::Text("hi");
+        ImGui::Separator();
+        static std::string buf;
+        if (ImGui::InputTextWithHint(
+                "##profile_name", "Name...", &buf, ImGuiInputTextFlags_EnterReturnsTrue
+            )) {
+        }
+        ImGui::SameLine();
+        ImGui::Button("Create");
+
+        ImGui::EndMenu();
+    }
+
+    constexpr const char* import_popup_id = "import";
+    if (ImGui::Button("Import")) {
+        ImGui::OpenPopup(import_popup_id);
+    }
+    if (ImGui::BeginPopup(import_popup_id)) {
+        if (filenames.empty()) {
+            ImGui::Text("No files to import.");
+        } else {
+            for (const auto& fn : filenames) {
+                if (ImGui::MenuItem(fn.c_str())) {
+                    import_callback(fn);
+                }
+            }
+        }
+
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine(0);
+
+    constexpr const char* export_popup_id = "export";
+    if (ImGui::Button("Export")) {
+        ImGui::OpenPopup(export_popup_id);
+    }
+    if (ImGui::BeginPopup(export_popup_id)) {
+        for (const auto& fn : filenames) {
+            if (ImGui::MenuItem(fn.c_str())) {
+                export_callback(fn);
+            }
+        }
+        ImGui::SeparatorText("New File");
+        static std::string buf;
+        if (ImGui::InputTextWithHint(
+                "##new_file", "Filename...", &buf, ImGuiInputTextFlags_EnterReturnsTrue
+            )) {
+            export_callback(buf);
+        }
+
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine(0);
+
+    constexpr const char* settings_popup_id = "settings";
+    if (ImGui::Button("Settings")) {
+        ImGui::OpenPopup(settings_popup_id);
+    }
+    if (ImGui::BeginPopup(settings_popup_id)) {
+        ImGui::SeparatorText("Font Scale");
+        ImGui::DragFloat(
+            "##font_scale",
+            &ImGui::GetIO().FontGlobalScale,
+            /*v_speed=*/.01f,
+            /*v_min=*/.5f,
+            /*v_max=*/2.f,
+            /*format=*/"%.2f",
+            ImGuiSliderFlags_AlwaysClamp
+        );
+
+        static int color = 0;
+        ImGui::SeparatorText("Colors");
+        if (ImGui::MenuItem("Dark", nullptr, color == 0)) {
+            ImGui::StyleColorsDark();
+            color = 0;
+        }
+        if (ImGui::MenuItem("Light", nullptr, color == 1)) {
+            ImGui::StyleColorsLight();
+            color = 1;
+        }
+        if (ImGui::MenuItem("Classic", nullptr, color == 2)) {
+            ImGui::StyleColorsClassic();
+            color = 2;
+        }
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::EndMenuBar();
+}
+
+inline void
 Draw(HotkeysVM<>& hotkeys_vm, int& selected) {
     const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
     if (!main_viewport) {
         return;
     }
-    auto mv_size = main_viewport->WorkSize;
-    ImGui::SetNextWindowPos(mv_size * ImVec2(.1f, .1f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(mv_size * ImVec2(.4f, .8f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(mv_size * ImVec2(.4f, .4f), ImVec2(FLT_MAX, FLT_MAX));
-    auto open = false;
-    ImGui::Begin(
-        "Equipment Cycle Hotkeys",
-        &open,
-        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings
-    );
+    const auto dims = Dims(main_viewport->WorkSize);
+    ImGui::SetNextWindowPos(dims.window_initial_pos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(dims.window_initial_size, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(dims.window_min_size, dims.max_size);
+    constexpr auto window_flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
+                                  | ImGuiWindowFlags_NoSavedSettings;
+    ImGui::Begin("Equipment Cycle Hotkeys", nullptr, window_flags);
 
-    ImGui::SetNextWindowSizeConstraints(mv_size * ImVec2(.15f, 0), ImVec2(FLT_MAX, FLT_MAX));
+    static std::vector<std::string> filenames;
+    auto import_callback = [&](std::string_view fn) {
+
+    };
+    auto export_callback = [&](std::string_view fn) {
+
+    };
+    DrawMenuBar(filenames, import_callback, export_callback);
+
+    ImGui::SetNextWindowSizeConstraints(dims.hklist_min_size, dims.max_size);
     ImGui::BeginChild(
         "hotkey_list",
-        mv_size * ImVec2(.15f, 0),
+        dims.hklist_initial_size,
         ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX,
         ImGuiWindowFlags_NoSavedSettings
     );
-    ech::ui::internal::DrawHotkeyList(hotkeys_vm, selected);
+    internal::DrawHotkeyList(hotkeys_vm, selected);
     ImGui::EndChild();
 
     ImGui::SameLine();
@@ -361,16 +504,21 @@ Draw(HotkeysVM<>& hotkeys_vm, int& selected) {
     ImGui::BeginChild("selected_hotkey", ImVec2(0, 0));
     if (selected >= 0 && selected < hotkeys_vm.size()) {
         auto& hotkey_vm = hotkeys_vm[selected];
-        ImGui::InputTextWithHint("Hotkey name", "(Unnamed)", &hotkey_vm.name);
+        ImGui::InputTextWithHint("Hotkey Name", "(Unnamed)", &hotkey_vm.name);
         ImGui::Dummy(ImVec2(0, ImGui::GetTextLineHeight()));
-        ech::ui::internal::DrawKeysets(hotkey_vm.keysets);
+        internal::DrawKeysets(hotkey_vm.keysets);
         ImGui::Dummy(ImVec2(0, ImGui::GetTextLineHeight()));
-        ech::ui::internal::DrawEquipsets(hotkey_vm.equipsets);
+        internal::DrawEquipsets(hotkey_vm.equipsets);
     }
     ImGui::EndChild();
 
     ImGui::End();
 }
+
+class UI {
+  public:
+  private:
+};
 
 }  // namespace ui
 }  // namespace ech

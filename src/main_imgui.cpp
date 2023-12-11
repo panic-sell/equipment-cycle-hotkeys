@@ -12,6 +12,7 @@
 
 #include "keys.h"
 #include "ui.h"
+#include "ui_drawing.h"
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -140,6 +141,8 @@ main(int, char**) {
             g_ResizeWidth = g_ResizeHeight = 0;
             CreateRenderTarget();
         }
+
+        ech::ui::SetStyle();
 
         // Start the Dear ImGui frame
         ImGui_ImplDX11_NewFrame();

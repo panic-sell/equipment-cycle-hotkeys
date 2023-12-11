@@ -18,6 +18,7 @@ set(headers
     "src/keys.h"
     "src/tes_util.h"
     "src/ui.h"
+    "src/ui_drawing.h"
     "src/ui_plumbing.h"
     "src/ui_viewmodels.h"
 )
