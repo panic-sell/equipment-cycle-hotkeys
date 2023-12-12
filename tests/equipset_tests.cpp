@@ -19,14 +19,11 @@ struct StringMaker<ech::GearOrSlot> {
 }  // namespace Catch
 
 namespace ech {
-namespace internal {
 
 Gear
 GearForTest(Gearslot slot) {
     return Gear(nullptr, slot, 0.f, nullptr);
 }
-
-}  // namespace internal
 
 using TestEquipsets = Equipsets<int>;
 
@@ -69,30 +66,30 @@ TEST_CASE("Equipset ctor") {
         Testcase{
             .name = "ordering",
             .arg{
-                internal::GearForTest(Gearslot::kShout),
-                internal::GearForTest(Gearslot::kRight),
+                GearForTest(Gearslot::kShout),
+                GearForTest(Gearslot::kRight),
                 Gearslot::kLeft,
                 Gearslot::kAmmo,
             },
             .want{
                 Gearslot::kLeft,
-                internal::GearForTest(Gearslot::kRight),
-                internal::GearForTest(Gearslot::kShout),
+                GearForTest(Gearslot::kRight),
+                GearForTest(Gearslot::kShout),
                 Gearslot::kAmmo,
             },
         },
         Testcase{
             .name = "remove_duplicates",
             .arg{
-                internal::GearForTest(Gearslot::kShout),
+                GearForTest(Gearslot::kShout),
                 Gearslot::kRight,
                 Gearslot::kLeft,
-                internal::GearForTest(Gearslot::kRight),
-                internal::GearForTest(Gearslot::kLeft),
+                GearForTest(Gearslot::kRight),
+                GearForTest(Gearslot::kLeft),
             },
             .want{
                 Gearslot::kLeft,
-                internal::GearForTest(Gearslot::kShout),
+                GearForTest(Gearslot::kShout),
                 Gearslot::kRight,
             },
         }
@@ -171,11 +168,11 @@ TEST_CASE("Equipsets ctor specialization prunes empty equipsets") {
         Equipset(),
         Equipset({Gearslot::kLeft}),
         Equipset(),
-        Equipset({internal::GearForTest(Gearslot::kLeft)}),
+        Equipset({GearForTest(Gearslot::kLeft)}),
     };
     auto want = std::vector<Equipset>{
         Equipset({Gearslot::kLeft}),
-        Equipset({internal::GearForTest(Gearslot::kLeft)}),
+        Equipset({GearForTest(Gearslot::kLeft)}),
     };
     auto equipsets = Equipsets(initial);
     REQUIRE(equipsets.vec() == want);

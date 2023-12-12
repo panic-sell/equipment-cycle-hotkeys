@@ -23,9 +23,6 @@ constexpr inline auto kGearslots = std::array{
     Gearslot::kShout,
 };
 
-// Forward declaration for `GearForTest()`.
-class Gear;
-
 }  // namespace ech
 
 template <>
@@ -53,8 +50,6 @@ struct fmt::formatter<ech::Gearslot> : fmt::formatter<std::string_view> {
 
 namespace ech {
 namespace internal {
-
-Gear GearForTest(Gearslot);
 
 static std::optional<Gearslot>
 GetExpectedGearslot(const RE::TESForm* form, bool prefer_left) {
@@ -521,8 +516,6 @@ class Gear final {
         return {tot_count - xl_count, nullptr};
     }
 
-    friend Gear internal::GearForTest(Gearslot);
-
     explicit Gear(
         RE::TESForm* form, Gearslot slot, float extra_health, RE::EnchantmentItem* extra_ench
     )
@@ -535,6 +528,8 @@ class Gear final {
     Gearslot slot_;
     float extra_health_ = kExtraHealthNone;
     RE::EnchantmentItem* extra_ench_ = nullptr;
+
+    friend Gear GearForTest(Gearslot);
 };
 
 /// Like a `std::variant<Gear, Gearslot>`.

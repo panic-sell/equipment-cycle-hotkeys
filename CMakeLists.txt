@@ -13,6 +13,7 @@ set(headers
     "src/dev_util.h"
     "src/equipsets.h"
     "src/event_handler.h"
+    "src/fs.h"
     "src/gear.h"
     "src/hotkeys.h"
     "src/keys.h"
@@ -24,6 +25,7 @@ set(headers
 )
 set(tests
     "tests/equipset_tests.cpp"
+    "tests/fs_tests.cpp"
     "tests/hotkey_tests.cpp"
     "tests/key_tests.cpp"
     "tests/misc_tests.cpp"

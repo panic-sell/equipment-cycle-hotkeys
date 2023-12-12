@@ -142,34 +142,12 @@ main(int, char**) {
             CreateRenderTarget();
         }
 
-        ech::ui::SetStyle();
-
         // Start the Dear ImGui frame
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        static auto hotkeys_vm = ech::ui::HotkeysVM<>{
-            {
-                .name = "asdf",
-                .keysets{
-                    {1, 2, 3, 4},
-                    {5, 0, 45, 104},
-                    {7, 0, 0, 0},
-                    {4, 3, 2, 1},
-                    {0, 20, 19, 18},
-                    {0},
-                },
-                .equipsets{
-                    {},
-                    {},
-                    {},
-                    {},
-                },
-            },
-        };
-        static int selected = -1;
-        ech::ui::Draw(hotkeys_vm, selected);
+        ech::ui::Draw();
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()!
         // You can browse its code to learn more about Dear ImGui!).

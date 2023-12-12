@@ -319,8 +319,8 @@ RenderHook(uint32_t x) {
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    // Draw();
-    ImGui::ShowDemoWindow();
+    Draw();
+    // ImGui::ShowDemoWindow();
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -482,11 +482,11 @@ Init() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
+    ImGui::StyleColorsClassic();
     auto& io = ImGui::GetIO();
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    ImGui::StyleColorsClassic();
     if (!ImGui_ImplWin32_Init(sd.OutputWindow) || !ImGui_ImplDX11_Init(device, ctx)) {
         return std::unexpected("failed to initialize Dear ImGui");
     }
