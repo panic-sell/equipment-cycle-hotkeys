@@ -3,7 +3,7 @@
 namespace ech {
 
 // https://ck.uesp.net/wiki/Input_Script
-constexpr inline auto kKeycodeNames = std::array{
+inline constexpr auto kKeycodeNames = std::array{
     "",              // 0
     "Esc",           // 1
     "1",             // 2
@@ -430,7 +430,7 @@ class Keysets final {
     };
 
     /// Time (in seconds) a button must be pressed in order to be considered a "hold".
-    static constexpr inline float kHoldThreshold = .5f;
+    static constexpr float kHoldThreshold = .5f;
 
     Keysets() = default;
 

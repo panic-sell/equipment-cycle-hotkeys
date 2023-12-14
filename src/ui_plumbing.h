@@ -3,7 +3,7 @@
 
 #include "dev_util.h"
 #include "keys.h"
-#include "ui.h"
+#include "ui_drawing.h"
 
 namespace ech {
 namespace ui {
@@ -11,7 +11,7 @@ namespace internal {
 
 /// This only contains keys that should be fed into `io.AddKeyEvent()`. I.e. Mouse keys are not
 /// mapped.
-constexpr inline auto kImGuiKeys = std::array{
+inline constexpr auto kImGuiKeys = std::array{
     ImGuiKey_None,              // 0
     ImGuiKey_Escape,            // 1
     ImGuiKey_1,                 // 2
@@ -482,8 +482,9 @@ Init() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    ImGui::StyleColorsClassic();
+    ImGui::StyleColorsDark();
     auto& io = ImGui::GetIO();
+    io.IniFilename = "Data/SKSE/Plugins/EquipmentCycleHotkeys_imgui.ini";
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 

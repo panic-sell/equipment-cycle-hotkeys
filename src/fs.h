@@ -4,6 +4,8 @@
 namespace ech {
 namespace fs {
 
+inline const std::filesystem::path kProfileDir = "Data/SKSE/Plugins/EquipmentCycleHotkeys";
+
 /// Returns nullopt on failure.
 inline std::optional<std::string>
 Read(const std::filesystem::path& fp) {

@@ -2,9 +2,18 @@
 
 #include "equipsets.h"
 #include "hotkeys.h"
+#include "keys.h"
 
 namespace ech {
 namespace ui {
+
+struct UISettings {
+    static constexpr auto kColors = std::array{"dark"sv, "light"sv, "classic"sv};
+
+    Keysets toggle_keysets;
+    float font_scale = 1.f;
+    std::string_view color = kColors[0];
+};
 
 struct EsvmItem final {
     enum class Choice {

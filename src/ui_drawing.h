@@ -186,12 +186,6 @@ struct Table final {
     }
 };
 
-inline std::filesystem::path
-ProfileToPath(std::string_view profile) {
-    constexpr auto dir = "Data/SKSE/Plugins/EquipmentCycleHotkeys"sv;
-    return std::filesystem::path(dir) / profile;
-}
-
 inline Action
 DrawImportMenu(const std::vector<std::string>& profiles) {
     if (!ImGui::BeginMenu("Import")) {
@@ -529,9 +523,7 @@ Draw() {
     ImGui::SetNextWindowSize(dims.window_initial_size, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(dims.window_min_size, dims.max_size);
     ImGui::Begin(
-        "Equipment Cycle Hotkeys",
-        nullptr,
-        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings
+        "Equipment Cycle Hotkeys", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
     );
 
     Action action;
@@ -553,10 +545,7 @@ Draw() {
     // List of hotkeys.
     ImGui::SetNextWindowSizeConstraints(dims.hklist_min_size, dims.max_size);
     ImGui::BeginChild(
-        "hotkey_list",
-        dims.hklist_initial_size,
-        ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX,
-        ImGuiWindowFlags_NoSavedSettings
+        "hotkey_list", dims.hklist_initial_size, ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX
     );
     if (auto a = DrawHotkeyList(hotkeys, selected_hotkey)) {
         action = a;

@@ -2,6 +2,5 @@
 .vscode/*
 !.vscode/launch.json
 build/*
-sandbox/*
-dll_folder.cmake
-imgui.ini
+misc/*
+**/*imgui.ini

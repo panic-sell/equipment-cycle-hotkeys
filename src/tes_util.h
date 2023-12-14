@@ -25,10 +25,10 @@ struct fmt::formatter<RE::TESForm> {
 namespace ech {
 namespace tes_util {
 
-constexpr inline RE::FormID kEqupRightHand = 0x13f42;
-constexpr inline RE::FormID kEqupLeftHand = 0x13f43;
-constexpr inline RE::FormID kEqupVoice = 0x25bee;
-constexpr inline RE::FormID kWeapDummy = 0x20163;
+inline constexpr RE::FormID kEqupRightHand = 0x13f42;
+inline constexpr RE::FormID kEqupLeftHand = 0x13f43;
+inline constexpr RE::FormID kEqupVoice = 0x25bee;
+inline constexpr RE::FormID kWeapDummy = 0x20163;
 
 /// Like `RE::TESForm::LookupByID()` but logs on failure.
 inline RE::TESForm*

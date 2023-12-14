@@ -16,7 +16,7 @@ enum class Gearslot : uint8_t {
 };
 
 /// `kGearslots[i] == static_cast<Gearslot>(i)` for all `0 <= i < kGearslots.size()`
-constexpr inline auto kGearslots = std::array{
+inline constexpr auto kGearslots = std::array{
     Gearslot::kLeft,
     Gearslot::kRight,
     Gearslot::kAmmo,
@@ -165,7 +165,7 @@ UnequipGear(RE::ActorEquipManager& aem, RE::Actor& actor, Gearslot slot) {
 /// - `extra_ench == nullptr` indicates weapon/shield does not have custom enchantment.
 class Gear final {
   public:
-    static constexpr inline float kExtraHealthNone = std::numeric_limits<float>::quiet_NaN();
+    static constexpr float kExtraHealthNone = std::numeric_limits<float>::quiet_NaN();
 
     const RE::TESForm&
     form() const {
