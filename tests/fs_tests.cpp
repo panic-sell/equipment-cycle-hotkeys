@@ -36,16 +36,14 @@ class Tempdir {
 TEST_CASE("Read/Write") {
     Tempdir td;
 
-    auto fp = td.path() / "some_file.txt";
+    // Auto creates the intermediate folder `dir`.
+    auto fp = td.path() / "dir" / "some_file.txt";
     auto contents = "hi how are you";
     REQUIRE(Write(fp, contents));
 
     auto read_contents = Read(fp);
     REQUIRE(read_contents);
     REQUIRE(*read_contents == contents);
-
-    // Can't write if one of the directory segments does not exist.
-    REQUIRE(!Write(td.path() / "dir" / "nested_file.txt", ""));
 }
 
 TEST_CASE("Remove") {

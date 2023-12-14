@@ -16,9 +16,15 @@ Read(const std::filesystem::path& fp) {
     return ss.str();
 }
 
-/// Returns false on failure.
+/// Will create intermediate directories as needed. Returns false on failure.
 inline bool
 Write(const std::filesystem::path& fp, std::string_view contents) {
+    std::error_code ec;
+    std::filesystem::create_directories(fp.parent_path(), ec);
+    if (ec) {
+        return false;
+    }
+
     auto f = std::ofstream(fp);
     if (!f.is_open()) {
         return false;

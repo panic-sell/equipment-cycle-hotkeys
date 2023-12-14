@@ -7,12 +7,6 @@
 namespace ech {
 namespace ui {
 
-inline std::filesystem::path
-ProfilePath(std::string_view profile) {
-    constexpr auto dir = "Data/SKSE/Plugins/EquipmentCycleHotkeys"sv;
-    return std::filesystem::path(dir) / profile;
-}
-
 using Action = std::function<void()>;
 
 struct TableRowChanges final {
@@ -43,12 +37,8 @@ struct Table final {
     /// if this function draws a combo box, it should return a callback for selecting an item.
     const std::function<Action(const T& obj, size_t row, size_t col)> draw_cell;
 
-    /// (Optional) Typically just a wrapper for `ImGui::Text`. If emptpy, disables row dragging.
-    const std::function<void(const T& obj)> draw_drag_tooltip = {};
-    /// (Optional)
-    const ImVec2 cell_padding = {2, 4};
-    /// (Optional)
-    const ImGuiTableFlags table_flags = ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_BordersInnerH;
+    /// Typically just a wrapper for `ImGui::Text`.
+    const std::function<void(const T& obj)> draw_drag_tooltip;
 
     /// Returns:
     /// 1. A callback to update `viewmodel` (the callback may be empty).
@@ -58,6 +48,9 @@ struct Table final {
     /// fine for the callback to outlive this table object.
     std::pair<Action, TableRowChanges>
     Draw() const {
+        constexpr auto cell_padding = ImVec2(2, 4);
+        constexpr auto table_flags = ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_BordersInnerH;
+
         ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, cell_padding);
         if (!ImGui::BeginTable(id, static_cast<int>(cols()), table_flags)) {
             ImGui::PopStyleVar();
@@ -93,18 +86,16 @@ struct Table final {
             ImGui::TableSetColumnIndex(static_cast<int>(ctrl_col()));
             ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32_BLACK_TRANS);
             ImGui::PushID(cell_id(r, ctrl_col()));
-            if (draw_drag_tooltip) {
-                if (auto atrc = DrawDragButton(r, ImGuiDir_Up); atrc.first) {
-                    draw_res = atrc;
-                }
-                ImGui::SameLine(0, 0);
-                if (auto atrc = DrawDragButton(r, ImGuiDir_Down); atrc.first) {
-                    draw_res = atrc;
-                }
-                ImGui::SameLine(0, 0);
+            if (auto atrc = DrawDragButton(r, ImGuiDir_Up); atrc.first) {
+                draw_res = atrc;
             }
-            if (auto arc = DrawCloseButton(r); arc.first) {
-                draw_res = arc;
+            ImGui::SameLine(0, 0);
+            if (auto atrc = DrawDragButton(r, ImGuiDir_Down); atrc.first) {
+                draw_res = atrc;
+            }
+            ImGui::SameLine(0, 0);
+            if (auto atrc = DrawCloseButton(r); atrc.first) {
+                draw_res = atrc;
             }
             ImGui::PopID();
             ImGui::PopStyleColor();
@@ -195,119 +186,99 @@ struct Table final {
     }
 };
 
-inline Action
-DrawExportMenu(const std::vector<std::string>& profiles, const std::string& new_profile_buf) {
-    auto table = Table<std::string, 1>{
-        .id = "export_menu",
-        .headers = std::array{""},
-        .viewmodel = profiles,
-        .draw_cell = [&profiles](const std::string& s, size_t, size_t) -> Action {
-            if (!ImGui::MenuItem(s.c_str())) {
-                return {};
-            }
-            return []() {
-                // serialize current hotkey
-                // fs::Write(ProfilePath(s), "")
-            };
-
-            // auto& profiles_mut = const_cast<std::vector<std::string>&>(profiles);
-            // return [&profiles_mut]() {
-            //     profiles_mut.clear();
-            //     fs::ListDirectoryToBuffer(
-            //         "Data/SKSE/Plugins/EquipmentCycleHotkeys", profiles_mut
-            //     );
-        },
-    };
-
-    auto atrc = table.Draw();
-    return {};
+inline std::filesystem::path
+ProfileToPath(std::string_view profile) {
+    constexpr auto dir = "Data/SKSE/Plugins/EquipmentCycleHotkeys"sv;
+    return std::filesystem::path(dir) / profile;
 }
 
 inline Action
-DrawMenuBar(const std::vector<std::string>& profiles, const std::string& new_profile_buf) {
-    if (!ImGui::BeginMenuBar()) {
+DrawImportMenu(const std::vector<std::string>& profiles) {
+    if (!ImGui::BeginMenu("Import")) {
         return {};
     }
 
-    if (ImGui::BeginMenu("Profiles")) {
-        ImGui::Text("hi");
-        ImGui::Separator();
-        static std::string buf;
-        if (ImGui::InputTextWithHint(
-                "##profile_name", "Name...", &buf, ImGuiInputTextFlags_EnterReturnsTrue
-            )) {
+    Action action;
+    for (const auto& p : profiles) {
+        if (ImGui::MenuItem(p.c_str())) {
+            // TODO: define action
         }
-        ImGui::SameLine();
-        ImGui::Button("Create");
+    }
+    if (profiles.empty()) {
+        ImGui::Text("No profiles to import.");
+    }
 
+    ImGui::EndMenu();
+    return action;
+}
+
+inline Action
+DrawExportMenu(const std::vector<std::string>& profiles, std::string& profile_buf) {
+    auto confirm_export = false;
+    if (ImGui::BeginMenu("Export")) {
+        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &profile_buf);
+        if (ImGui::Button("Export Profile")) {
+            confirm_export = !profile_buf.empty();
+        }
         ImGui::EndMenu();
     }
 
-    constexpr const char* import_popup_id = "import";
-    if (ImGui::Button("Import")) {
-        ImGui::OpenPopup(import_popup_id);
+    Action action;
+    if (confirm_export) {
+        ImGui::OpenPopup("confirm_export");
     }
-    if (ImGui::BeginPopup(import_popup_id)) {
-        if (profiles.empty()) {
-            ImGui::Text("No files to import.");
-        } else {
-            for (const auto& p : profiles) {
-                if (ImGui::MenuItem(p.c_str())) {
-                    // define action
-                }
-            }
+    if (ImGui::BeginPopup("confirm_export")) {
+        auto* msg = profiles.cend() == std::find(profiles.cbegin(), profiles.cend(), profile_buf)
+                        ? "Save to new profile '%s'?"
+                        : "Overwrite existing profile '%s'?";
+        ImGui::Text(msg, profile_buf.c_str());
+        if (ImGui::Button("Yes")) {
+            // TODO: action
+            ImGui::CloseCurrentPopup();
         }
-
-        ImGui::EndPopup();
-    }
-    ImGui::SameLine(0);
-
-    constexpr const char* export_popup_id = "export";
-    if (ImGui::Button("Export")) {
-        ImGui::OpenPopup(export_popup_id);
-    }
-    if (ImGui::BeginPopup(export_popup_id)) {
-        DrawExportMenu(profiles, new_profile_buf);
-
-        ImGui::EndPopup();
-    }
-    ImGui::SameLine(0);
-
-    constexpr const char* settings_popup_id = "settings";
-    if (ImGui::Button("Settings")) {
-        ImGui::OpenPopup(settings_popup_id);
-    }
-    if (ImGui::BeginPopup(settings_popup_id)) {
-        ImGui::SeparatorText("Font Scale");
-        ImGui::DragFloat(
-            "##font_scale",
-            &ImGui::GetIO().FontGlobalScale,
-            /*v_speed=*/.01f,
-            /*v_min=*/.5f,
-            /*v_max=*/2.f,
-            /*format=*/"%.2f",
-            ImGuiSliderFlags_AlwaysClamp
-        );
-
-        static int color = 0;
-        ImGui::SeparatorText("Colors");
-        if (ImGui::MenuItem("Dark", nullptr, color == 0)) {
-            ImGui::StyleColorsDark();
-            color = 0;
+        ImGui::SameLine();
+        if (ImGui::Button("No")) {
+            ImGui::CloseCurrentPopup();
         }
-        if (ImGui::MenuItem("Light", nullptr, color == 1)) {
-            ImGui::StyleColorsLight();
-            color = 1;
-        }
-        if (ImGui::MenuItem("Classic", nullptr, color == 2)) {
-            ImGui::StyleColorsClassic();
-            color = 2;
-        }
-
         ImGui::EndPopup();
     }
 
-    ImGui::EndMenuBar();
+    return action;
+}
+
+inline Action
+DrawSettingsMenu() {
+    if (!ImGui::BeginMenu("Settings")) {
+        return {};
+    }
+
+    ImGui::SeparatorText("Font Scale");
+    ImGui::DragFloat(
+        "##font_scale",
+        &ImGui::GetIO().FontGlobalScale,
+        /*v_speed=*/.01f,
+        /*v_min=*/.5f,
+        /*v_max=*/2.f,
+        /*format=*/"%.2f",
+        ImGuiSliderFlags_AlwaysClamp
+    );
+
+    static int color = 0;
+    ImGui::SeparatorText("Colors");
+    if (ImGui::MenuItem("Dark", nullptr, color == 0)) {
+        ImGui::StyleColorsDark();
+        color = 0;
+    }
+    if (ImGui::MenuItem("Light", nullptr, color == 1)) {
+        ImGui::StyleColorsLight();
+        color = 1;
+    }
+    if (ImGui::MenuItem("Classic", nullptr, color == 2)) {
+        ImGui::StyleColorsClassic();
+        color = 2;
+    }
+
+    ImGui::EndMenu();
     return {};
 }
 
@@ -365,7 +336,7 @@ DrawHotkeyList(const HotkeysVM<>& hotkeys, const size_t& selected) {
 
 inline void
 DrawName(HotkeyVM<>& hotkey) {
-    ImGui::InputTextWithHint("Hotkey Name", "Hotkey name...", &hotkey.name);
+    ImGui::InputTextWithHint("Hotkey Name", "Enter hotkey name...", &hotkey.name);
 }
 
 inline Action
@@ -506,37 +477,11 @@ DrawEquipsets(const std::vector<EquipsetVM>& equipsets) {
 
 inline void
 Draw() {
-    const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
-    if (!main_viewport) {
-        return;
-    }
-
-    struct Dims {
-        ImVec2 max_size = {FLT_MAX, FLT_MAX};
-        ImVec2 window_initial_pos = {.1f, .1f};
-        ImVec2 window_initial_size = {.5f, .8f};
-        ImVec2 window_min_size = {.25f, .25f};
-        ImVec2 hklist_initial_size = {.15f, 0};
-        ImVec2 hklist_min_size = {.15f, 0};
-
-        explicit Dims(const ImVec2& viewport_size) {
-            window_initial_pos *= viewport_size;
-            window_initial_size *= viewport_size;
-            window_min_size *= viewport_size;
-            hklist_initial_size *= viewport_size;
-            hklist_min_size *= viewport_size;
-        }
-    };
-
-    const auto dims = Dims(main_viewport->WorkSize);
-    ImGui::SetNextWindowPos(dims.window_initial_pos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(dims.window_initial_size, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(dims.window_min_size, dims.max_size);
-    constexpr auto window_flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
-                                  | ImGuiWindowFlags_NoSavedSettings;
-    ImGui::Begin("Equipment Cycle Hotkeys", nullptr, window_flags);
-
-    static auto hotkeys_vm = ech::ui::HotkeysVM<>{
+    // static auto profiles = std::vector<std::string>{};
+    static auto profiles = std::vector<std::string>{"hi", "how", "are", "you"};
+    static std::string profile_buf;
+    static size_t selected_hotkey = 0;
+    static auto hotkeys = ech::ui::HotkeysVM<>{
         {
             .name = "asdf",
             .keysets{
@@ -555,16 +500,57 @@ Draw() {
             },
         },
     };
-    static size_t selected = 0;
-    static auto profiles = std::vector<std::string>{"hi", "how", "are", "you"};
-    static std::string new_profile_buf;
+
+    struct Dims {
+        ImVec2 max_size = {FLT_MAX, FLT_MAX};
+        ImVec2 window_initial_pos = {.1f, .1f};
+        ImVec2 window_initial_size = {.5f, .8f};
+        ImVec2 window_min_size = {.25f, .25f};
+        ImVec2 hklist_initial_size = {.15f, 0};
+        ImVec2 hklist_min_size = {.15f, 0};
+
+        explicit Dims(const ImVec2& viewport_size) {
+            window_initial_pos *= viewport_size;
+            window_initial_size *= viewport_size;
+            window_min_size *= viewport_size;
+            hklist_initial_size *= viewport_size;
+            hklist_min_size *= viewport_size;
+        }
+    };
+
+    const auto* main_viewport = ImGui::GetMainViewport();
+    if (!main_viewport) {
+        return;
+    }
+    const auto dims = Dims(main_viewport->WorkSize);
+
+    // Set up main window.
+    ImGui::SetNextWindowPos(dims.window_initial_pos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(dims.window_initial_size, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(dims.window_min_size, dims.max_size);
+    ImGui::Begin(
+        "Equipment Cycle Hotkeys",
+        nullptr,
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoSavedSettings
+    );
 
     Action action;
 
-    if (auto a = DrawMenuBar(profiles, new_profile_buf)) {
-        action = a;
+    // Menu bar.
+    if (ImGui::BeginMenuBar()) {
+        if (auto a = DrawImportMenu(profiles)) {
+            action = a;
+        }
+        if (auto a = DrawExportMenu(profiles, profile_buf)) {
+            action = a;
+        }
+        if (auto a = DrawSettingsMenu()) {
+            action = a;
+        }
+        ImGui::EndMenuBar();
     }
 
+    // List of hotkeys.
     ImGui::SetNextWindowSizeConstraints(dims.hklist_min_size, dims.max_size);
     ImGui::BeginChild(
         "hotkey_list",
@@ -572,35 +558,35 @@ Draw() {
         ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX,
         ImGuiWindowFlags_NoSavedSettings
     );
-    if (auto a = DrawHotkeyList(hotkeys_vm, selected)) {
+    if (auto a = DrawHotkeyList(hotkeys, selected_hotkey)) {
         action = a;
     }
     ImGui::EndChild();
 
     ImGui::SameLine();
 
+    // Hotkey details.
     ImGui::BeginChild("selected_hotkey", ImVec2(0, 0));
-    if (selected >= 0 && selected < hotkeys_vm.size()) {
-        auto& hotkey_vm = hotkeys_vm[selected];
-        DrawName(hotkey_vm);
+    if (selected_hotkey >= 0 && selected_hotkey < hotkeys.size()) {
+        auto& hotkey = hotkeys[selected_hotkey];
+        DrawName(hotkey);
 
         ImGui::Dummy(ImVec2(0, ImGui::GetTextLineHeight()));
-        if (auto a = DrawKeysets(hotkey_vm.keysets)) {
+        if (auto a = DrawKeysets(hotkey.keysets)) {
             action = a;
         }
 
         ImGui::Dummy(ImVec2(0, ImGui::GetTextLineHeight()));
-        if (auto a = DrawEquipsets(hotkey_vm.equipsets)) {
+        if (auto a = DrawEquipsets(hotkey.equipsets)) {
             action = a;
         }
     }
     ImGui::EndChild();
 
+    ImGui::End();
     if (action) {
         action();
     }
-
-    ImGui::End();
 }
 
 }  // namespace ui
