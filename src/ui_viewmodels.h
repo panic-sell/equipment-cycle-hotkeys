@@ -15,7 +15,7 @@ struct UISettings {
     std::string_view color = kColors[0];
 };
 
-struct EsvmItem final {
+struct EsItemVM final {
     enum class Choice {
         /// Equip gear.
         kGear,
@@ -42,7 +42,7 @@ struct EsvmItem final {
 ///
 /// Invariants:
 /// - `(*this)[i].slot() == static_cast<Gearslot>(i)`
-class EquipsetVM final : public std::array<EsvmItem, kGearslots.size()> {
+class EquipsetVM final : public std::array<EsItemVM, kGearslots.size()> {
   public:
     EquipsetVM() {
         for (auto slot : kGearslots) {
@@ -59,7 +59,7 @@ class EquipsetVM final : public std::array<EsvmItem, kGearslots.size()> {
                 continue;
             }
             item_vm.gos = *gos;
-            item_vm.choice = gos->gear() ? EsvmItem::Choice::kGear : EsvmItem::Choice::kUnequip;
+            item_vm.choice = gos->gear() ? EsItemVM::Choice::kGear : EsItemVM::Choice::kUnequip;
         }
         return esvm;
     }
@@ -69,12 +69,12 @@ class EquipsetVM final : public std::array<EsvmItem, kGearslots.size()> {
         std::vector<GearOrSlot> items;
         for (const auto& item_vm : *this) {
             switch (item_vm.canonical_choice()) {
-                case EsvmItem::Choice::kIgnore:
+                case EsItemVM::Choice::kIgnore:
                     break;
-                case EsvmItem::Choice::kGear:
+                case EsItemVM::Choice::kGear:
                     items.push_back(item_vm.gos);
                     break;
-                case EsvmItem::Choice::kUnequip:
+                case EsItemVM::Choice::kUnequip:
                     items.emplace_back(item_vm.gos.slot());
                     break;
             }
@@ -99,12 +99,13 @@ struct HotkeyVM final {
     std::string name = "Hotkey";
     std::vector<Keyset> keysets;
     std::vector<T> equipsets;
+    size_t active_equipset = 0;
 };
 
 template <typename T = EquipsetVM>
-class HotkeysVM final : public std::vector<HotkeyVM<T>> {
-  public:
-    using std::vector<HotkeyVM<T>>::vector;
+struct HotkeysVM final {
+    std::vector<HotkeyVM<T>> vec;
+    size_t active = std::numeric_limits<size_t>::max();
 
     static HotkeysVM<EquipsetVM>
     From(const Hotkeys<Equipset>& hotkeys)
@@ -131,7 +132,7 @@ class HotkeysVM final : public std::vector<HotkeyVM<T>> {
                 .keysets = hk.keysets.vec(),
                 .equipsets = std::move(equipsets_vm),
             };
-            hotkeys_vm.push_back(std::move(hk_vm));
+            hotkeys_vm.vec.push_back(std::move(hk_vm));
         }
         return hotkeys_vm;
     }
@@ -147,7 +148,7 @@ class HotkeysVM final : public std::vector<HotkeyVM<T>> {
     Hotkeys<U>
     To(std::function<U(const T&)> f) const {
         std::vector<Hotkey<U>> hotkeys;
-        for (const HotkeyVM<T>& hk_vm : *this) {
+        for (const HotkeyVM<T>& hk_vm : vec) {
             std::vector<U> equipsets;
             std::transform(
                 hk_vm.equipsets.cbegin(), hk_vm.equipsets.cend(), std::back_inserter(equipsets), f
@@ -161,6 +162,14 @@ class HotkeysVM final : public std::vector<HotkeyVM<T>> {
             hotkeys.push_back(std::move(hk));
         }
         return Hotkeys(std::move(hotkeys));
+    }
+
+    void
+    ResetActive() {
+        active = std::numeric_limits<size_t>::max();
+        for (HotkeyVM<T>& hotkey : vec) {
+            hotkey.active_equipset = 0;
+        }
     }
 };
 

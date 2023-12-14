@@ -18,7 +18,7 @@ struct Hotkey final {
 ///
 /// Invariants:
 /// - All hotkeys have at least 1 keyset or at least 1 equipset.
-/// - `active_index_ == hotkeys_.size()` means no hotkeys are active.
+/// - `active_ == hotkeys_.size()` means no hotkeys are active.
 /// - `most_recent_next_equipset_ == nullptr` if no hotkeys are active.
 ///
 /// This class is templated by "equipset" to facilitate unit testing. We swap out the real Equipset
@@ -33,11 +33,11 @@ class Hotkeys final {
         std::vector<Hotkey<T>> hotkeys, size_t active_index = std::numeric_limits<size_t>::max()
     )
         : hotkeys_(std::move(hotkeys)),
-          active_index_(active_index) {
+          active_(active_index) {
         std::erase_if(hotkeys_, [](const Hotkey<T>& hk) {
             return hk.keysets.vec().empty() && hk.equipsets.vec().empty();
         });
-        if (active_index_ >= hotkeys_.size()) {
+        if (active_ >= hotkeys_.size()) {
             Deactivate();
         }
     }
@@ -47,10 +47,16 @@ class Hotkeys final {
         return hotkeys_;
     }
 
+    /// Returns the active hotkey's index.
+    size_t
+    active() const {
+        return active_;
+    }
+
     /// Make none of the hotkeys active.
     void
     Deactivate() {
-        active_index_ = hotkeys_.size();
+        active_ = hotkeys_.size();
         most_recent_next_equipset_ = nullptr;
     }
 
@@ -59,10 +65,10 @@ class Hotkeys final {
     /// - The active hotkey has no equipsets.
     const T*
     GetActiveEquipset() const {
-        if (active_index_ >= hotkeys_.size()) {
+        if (active_ >= hotkeys_.size()) {
             return nullptr;
         }
-        const Hotkey<T>& hk = hotkeys_[active_index_];
+        const Hotkey<T>& hk = hotkeys_[active_];
         return hk.equipsets.GetActive();
     }
 
@@ -97,12 +103,12 @@ class Hotkeys final {
         }
 
         Hotkey<T>& hk = *it;
-        auto orig_active_index = active_index_;
-        active_index_ = it - hotkeys_.begin();
+        auto orig_active = active_;
+        active_ = it - hotkeys_.begin();
 
         if (match_res == Keysets::MatchResult::kHold) {
             hk.equipsets.ActivateFirst();
-        } else if (active_index_ == orig_active_index) {
+        } else if (active_ == orig_active) {
             hk.equipsets.ActivateNext();
         }
         auto next = hk.equipsets.GetActive();
@@ -119,7 +125,7 @@ class Hotkeys final {
   private:
     std::vector<Hotkey<T>> hotkeys_;
 
-    size_t active_index_;
+    size_t active_;
     const T* most_recent_next_equipset_ = nullptr;
 };
 

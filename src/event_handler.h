@@ -131,26 +131,25 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
     std::vector<Keystroke> keystroke_buf_;
     /// In milliseconds since application start.
     uint32_t most_recent_hotkey_equip_time_ = 0;
-    Hotkeys<> hotkeys_ =
-        ui::HotkeysVM<>{
-            ui::HotkeyVM<>{
-                .name = "1",
-                .keysets = {{2}},
-            },
-            ui::HotkeyVM<>{
-                .name = "2",
-                .keysets = {{3}},
-            },
-            ui::HotkeyVM<>{
-                .name = "3",
-                .keysets = {{4}},
-            },
-            ui::HotkeyVM<>{
-                .name = "4",
-                .keysets = {{5}},
-            },
-        }
-            .To();
+    Hotkeys<> hotkeys_ = ui::HotkeysVM<>{.vec{
+                                             ui::HotkeyVM<>{
+                                                 .name = "1",
+                                                 .keysets = {{2}},
+                                             },
+                                             ui::HotkeyVM<>{
+                                                 .name = "2",
+                                                 .keysets = {{3}},
+                                             },
+                                             ui::HotkeyVM<>{
+                                                 .name = "3",
+                                                 .keysets = {{4}},
+                                             },
+                                             ui::HotkeyVM<>{
+                                                 .name = "4",
+                                                 .keysets = {{5}},
+                                             },
+                                         }
+    }.To();
 };
 
 }  // namespace ech

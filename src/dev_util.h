@@ -122,13 +122,13 @@ UseHotkeys(Hotkeys<>& hotkeys, std::span<const Keystroke> keystrokes, RE::Actor&
     auto set = [&](size_t i) {
         auto hotkeys_vm = ui::HotkeysVM<>::From(hotkeys);
         auto equipset_vm = ui::EquipsetVM::From(Equipset::FromEquipped(actor, true));
-        hotkeys_vm[i].equipsets.push_back(std::move(equipset_vm));
+        hotkeys_vm.vec[i].equipsets.push_back(std::move(equipset_vm));
         hotkeys = hotkeys_vm.To();
         SKSE::log::info("added equipset to hotkey {}", i + 1);
     };
     auto remove = [&](size_t i) {
         auto hotkeys_vm = ui::HotkeysVM<>::From(hotkeys);
-        auto& equipsets_vm = hotkeys_vm[i].equipsets;
+        auto& equipsets_vm = hotkeys_vm.vec[i].equipsets;
         if (equipsets_vm.empty()) {
             return;
         }

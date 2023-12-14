@@ -119,6 +119,9 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
+// Serde
+#include <nlohmann/json.hpp>
+
 // UI
 #include <Windows.h>
 #include <d3d11.h>

@@ -2,6 +2,7 @@
 
 #include "fs.h"
 #include "keys.h"
+#include "serde.h"
 #include "ui_viewmodels.h"
 
 namespace ech {
@@ -277,7 +278,7 @@ DrawSettingsMenu() {
 }
 
 inline Action
-DrawHotkeyList(const HotkeysVM<>& hotkeys, const size_t& selected) {
+DrawHotkeyList(const std::vector<HotkeyVM<>>& hotkeys, const size_t& selected) {
     auto table = Table<HotkeyVM<>, 1>{
         .id = "hotkeys_list",
         .headers = std::array{""},
@@ -296,7 +297,7 @@ DrawHotkeyList(const HotkeysVM<>& hotkeys, const size_t& selected) {
 
     auto atrc = table.Draw();
     if (ImGui::Button("New", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        auto& hotkeys_mut = const_cast<HotkeysVM<>&>(hotkeys);
+        auto& hotkeys_mut = const_cast<std::vector<HotkeyVM<>>&>(hotkeys);
         auto& selected_mut = const_cast<size_t&>(selected);
         auto a = [&hotkeys_mut, &selected_mut]() {
             hotkeys_mut.emplace_back();
@@ -396,17 +397,17 @@ DrawKeysets(const std::vector<Keyset>& keysets) {
 
 inline Action
 DrawEquipsets(const std::vector<EquipsetVM>& equipsets) {
-    constexpr auto esvmitem_opt_template = []() {
+    constexpr auto opts_template = []() {
         auto arr = std::array{"", "", ""};
-        arr[static_cast<size_t>(EsvmItem::Choice::kIgnore)] = "(Ignore)";
-        arr[static_cast<size_t>(EsvmItem::Choice::kUnequip)] = "(Unequip)";
+        arr[static_cast<size_t>(EsItemVM::Choice::kIgnore)] = "(Ignore)";
+        arr[static_cast<size_t>(EsItemVM::Choice::kUnequip)] = "(Unequip)";
         return arr;
     }();
-    constexpr auto esvmitem_to_str = [](const EsvmItem& item) -> const char* {
-        if (item.canonical_choice() == EsvmItem::Choice::kGear) {
+    constexpr auto item_to_str = [](const EsItemVM& item) -> const char* {
+        if (item.canonical_choice() == EsItemVM::Choice::kGear) {
             return item.gos.gear()->form().GetName();
         }
-        return esvmitem_opt_template[static_cast<size_t>(item.canonical_choice())];
+        return opts_template[static_cast<size_t>(item.canonical_choice())];
     };
 
     auto table = Table<EquipsetVM, kGearslots.size()>{
@@ -416,16 +417,16 @@ DrawEquipsets(const std::vector<EquipsetVM>& equipsets) {
         .viewmodel = equipsets,
         .draw_cell = [](const EquipsetVM& equipset, size_t, size_t col) -> Action {
             const auto& item = equipset[col];
-            const char* preview = esvmitem_to_str(item);
+            const char* preview = item_to_str(item);
             constexpr auto combo_flags = ImGuiComboFlags_HeightLarge
                                          | ImGuiComboFlags_NoArrowButton;
             if (!ImGui::BeginCombo("##dropdown", preview, combo_flags)) {
                 return {};
             }
 
-            auto opts = esvmitem_opt_template;
+            auto opts = opts_template;
             if (auto* gear = item.gos.gear()) {
-                opts[static_cast<size_t>(EsvmItem::Choice::kGear)] = gear->form().GetName();
+                opts[static_cast<size_t>(EsItemVM::Choice::kGear)] = gear->form().GetName();
             }
 
             Action action;
@@ -434,10 +435,10 @@ DrawEquipsets(const std::vector<EquipsetVM>& equipsets) {
                 if (!*opt) {
                     continue;
                 }
-                auto opt_choice = static_cast<EsvmItem::Choice>(i);
+                auto opt_choice = static_cast<EsItemVM::Choice>(i);
                 auto is_selected = opt_choice == item.canonical_choice();
                 if (ImGui::Selectable(opt, is_selected)) {
-                    auto& item_mut = const_cast<EsvmItem&>(item);
+                    auto& item_mut = const_cast<EsItemVM&>(item);
                     action = [&item_mut, opt_choice]() { item_mut.choice = opt_choice; };
                 }
                 if (is_selected) {
@@ -450,10 +451,10 @@ DrawEquipsets(const std::vector<EquipsetVM>& equipsets) {
         .draw_drag_tooltip =
             [](const EquipsetVM& equipset) {
                 auto names = std::array{
-                    esvmitem_to_str(equipset[static_cast<size_t>(Gearslot::kLeft)]),
-                    esvmitem_to_str(equipset[static_cast<size_t>(Gearslot::kRight)]),
-                    esvmitem_to_str(equipset[static_cast<size_t>(Gearslot::kAmmo)]),
-                    esvmitem_to_str(equipset[static_cast<size_t>(Gearslot::kShout)]),
+                    item_to_str(equipset[static_cast<size_t>(Gearslot::kLeft)]),
+                    item_to_str(equipset[static_cast<size_t>(Gearslot::kRight)]),
+                    item_to_str(equipset[static_cast<size_t>(Gearslot::kAmmo)]),
+                    item_to_str(equipset[static_cast<size_t>(Gearslot::kShout)]),
                 };
                 static_assert(std::tuple_size_v<decltype(names)> == kGearslots.size());
                 ImGui::Text("%s, %s, %s, %s", names[0], names[1], names[2], names[3]);
@@ -475,7 +476,7 @@ Draw() {
     static auto profiles = std::vector<std::string>{"hi", "how", "are", "you"};
     static std::string profile_buf;
     static size_t selected_hotkey = 0;
-    static auto hotkeys = ech::ui::HotkeysVM<>{
+    static auto hotkeys = ech::ui::HotkeysVM<>{.vec{
         {
             .name = "asdf",
             .keysets{
@@ -493,7 +494,7 @@ Draw() {
                 {},
             },
         },
-    };
+    }};
 
     struct Dims {
         ImVec2 max_size = {FLT_MAX, FLT_MAX};
@@ -547,7 +548,7 @@ Draw() {
     ImGui::BeginChild(
         "hotkey_list", dims.hklist_initial_size, ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX
     );
-    if (auto a = DrawHotkeyList(hotkeys, selected_hotkey)) {
+    if (auto a = DrawHotkeyList(hotkeys.vec, selected_hotkey)) {
         action = a;
     }
     ImGui::EndChild();
@@ -556,8 +557,8 @@ Draw() {
 
     // Hotkey details.
     ImGui::BeginChild("selected_hotkey", ImVec2(0, 0));
-    if (selected_hotkey >= 0 && selected_hotkey < hotkeys.size()) {
-        auto& hotkey = hotkeys[selected_hotkey];
+    if (selected_hotkey >= 0 && selected_hotkey < hotkeys.vec.size()) {
+        auto& hotkey = hotkeys.vec[selected_hotkey];
         DrawName(hotkey);
 
         ImGui::Dummy(ImVec2(0, ImGui::GetTextLineHeight()));

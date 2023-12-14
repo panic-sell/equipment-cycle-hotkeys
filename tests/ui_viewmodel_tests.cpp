@@ -17,7 +17,7 @@ operator==(const HotkeyVM<T>& a, const HotkeyVM<T>& b) {
 }
 
 TEST_CASE("HotkeysVM conversions") {
-    auto initial_vm = TestHotkeysVM{
+    auto initial_vm = TestHotkeysVM{.vec{
         {
             .name = "",
             .keysets = {},
@@ -39,8 +39,8 @@ TEST_CASE("HotkeysVM conversions") {
             .keysets = {{1, 0, 2, 0}, {11, 12}},
             .equipsets = {"a", "b", "c", ""},
         },
-    };
-    auto want_final_vm = TestHotkeysVM{
+    }};
+    auto want_final_vm = TestHotkeysVM{.vec{
         {
             .name = "",
             .keysets = {},
@@ -56,12 +56,12 @@ TEST_CASE("HotkeysVM conversions") {
             .keysets = {{1, 2}, {11, 12}},
             .equipsets = {"a", "b", "c", ""},
         },
-    };
+    }};
 
     auto f = [](const std::string_view& s) { return s; };
     auto hotkeys = initial_vm.To<std::string_view>(f);
     auto got_final_vm = TestHotkeysVM::From<std::string_view>(hotkeys, f);
-    REQUIRE(got_final_vm == want_final_vm);
+    REQUIRE(got_final_vm.vec == want_final_vm.vec);
 }
 
 }  // namespace ui

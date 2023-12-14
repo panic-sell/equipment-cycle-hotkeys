@@ -104,8 +104,8 @@ class Equipset final {
 /// An ordered collection of 0 or more equipsets.
 ///
 /// Invariants:
-/// - If `equipsets_.empty()`, then `active_index_ == 0`.
-/// - If `!equipsets_.empty()`, then `active_index_ < equipsets.size()`. In other words, there is
+/// - If `equipsets_.empty()`, then `active_ == 0`.
+/// - If `!equipsets_.empty()`, then `active_ < equipsets.size()`. In other words, there is
 /// always an active equipset.
 template <typename T = Equipset>
 class Equipsets final {
@@ -114,7 +114,7 @@ class Equipsets final {
 
     explicit Equipsets(std::vector<T> equipsets, size_t active_index = 0)
         : equipsets_(std::move(equipsets)),
-          active_index_(active_index) {
+          active_(active_index) {
         // Prune empty equipsets. An empty equipset ignores all gear slots, so cycling into one
         // gives no user feedback, which could be confusing.
         if constexpr (std::is_same_v<T, Equipset>) {
@@ -122,7 +122,7 @@ class Equipsets final {
                 return equipset.vec().empty();
             });
         }
-        if (active_index_ >= equipsets_.size()) {
+        if (active_ >= equipsets_.size()) {
             ActivateFirst();
         }
     }
@@ -132,12 +132,17 @@ class Equipsets final {
         return equipsets_;
     }
 
+    size_t
+    active() const {
+        return active_;
+    }
+
     const T*
     GetActive() const {
         if (equipsets_.empty()) {
             return nullptr;
         }
-        auto i = active_index_ < equipsets_.size() ? active_index_ : 0;
+        auto i = active_ < equipsets_.size() ? active_ : 0;
         return &equipsets_[i];
     }
 
@@ -146,17 +151,17 @@ class Equipsets final {
         if (equipsets_.empty()) {
             return;
         }
-        active_index_ = (active_index_ + 1) % equipsets_.size();
+        active_ = (active_ + 1) % equipsets_.size();
     }
 
     void
     ActivateFirst() {
-        active_index_ = 0;
+        active_ = 0;
     }
 
   private:
     std::vector<T> equipsets_;
-    size_t active_index_ = 0;
+    size_t active_ = 0;
 };
 
 }  // namespace ech

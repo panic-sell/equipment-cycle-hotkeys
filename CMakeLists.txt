@@ -17,6 +17,7 @@ set(headers
     "src/gear.h"
     "src/hotkeys.h"
     "src/keys.h"
+    "src/serde.h"
     "src/tes_util.h"
     "src/ui_drawing.h"
     "src/ui_plumbing.h"
