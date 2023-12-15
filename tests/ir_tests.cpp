@@ -135,7 +135,7 @@ TEST_CASE("HotkeysIR serialize") {
                     .active_equipset = 0,
                 },
             },
-            static_cast<size_t>(-1)
+            size_t(-1)
         );
         CompareHotkeysIR(got, want);
     }
@@ -221,7 +221,7 @@ TEST_CASE("HotkeysIR deserialize") {
                     .equipsets = Equipsets<std::string_view>({"a", "b", "c", ""}, 0),
                 },
             },
-            3  // Hotkeys constructor caps this at # of hotkeys.
+            size_t(-1)  // Hotkeys constructor caps this at # of hotkeys.
         );
         CompareHotkeys(got, want);
     }

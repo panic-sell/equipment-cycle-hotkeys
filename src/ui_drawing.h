@@ -10,9 +10,9 @@ namespace ui {
 using Action = std::function<void()>;
 
 struct TableRowChanges final {
-    size_t remove = static_cast<size_t>(-1);
-    size_t drag_source = static_cast<size_t>(-1);
-    size_t drag_target = static_cast<size_t>(-1);
+    size_t remove = size_t(-1);
+    size_t drag_source = size_t(-1);
+    size_t drag_target = size_t(-1);
 };
 
 /// A table where rows can be reordered and deleted. Control buttons are located in the rightmost

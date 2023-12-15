@@ -18,7 +18,7 @@ struct Hotkey final {
 ///
 /// Invariants:
 /// - All hotkeys have at least 1 keyset or at least 1 equipset.
-/// - `active_ == hotkeys_.size()` means no hotkeys are active.
+/// - `active_ == size_t(-1)` means no hotkeys are active.
 /// - `most_recent_next_equipset_ == nullptr` if no hotkeys are active.
 ///
 /// This class is templated by "equipset" to facilitate unit testing. We swap out the real Equipset
@@ -54,7 +54,7 @@ class Hotkeys final {
     /// Make none of the hotkeys active.
     void
     Deactivate() {
-        active_ = hotkeys_.size();
+        active_ = size_t(-1);
         most_recent_next_equipset_ = nullptr;
     }
 
@@ -122,7 +122,7 @@ class Hotkeys final {
 
   private:
     std::vector<Hotkey<T>> hotkeys_;
-    size_t active_;
+    size_t active_ = size_t(-1);
     const T* most_recent_next_equipset_ = nullptr;
 };
 

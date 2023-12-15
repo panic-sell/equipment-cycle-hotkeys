@@ -222,9 +222,7 @@ class HotkeysIR final {
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(HotkeysIR, hotkeys, active_hotkey);
 
-    explicit HotkeysIR(
-        std::vector<HotkeyIR<K, E>> hks = {}, size_t active_hotkey = static_cast<size_t>(-1)
-    )
+    explicit HotkeysIR(std::vector<HotkeyIR<K, E>> hks = {}, size_t active_hotkey = -1)
         : hotkeys(std::move(hks)),
           active_hotkey(active_hotkey) {}
 
@@ -342,7 +340,7 @@ class HotkeysIR final {
     /// equipset.
     void
     ResetActive() {
-        active_hotkey = static_cast<size_t>(-1);
+        active_hotkey = size_t(-1);
         for (HotkeyIR<K, E>& hotkey : hotkeys) {
             hotkey.active_equipset = 0;
         }
