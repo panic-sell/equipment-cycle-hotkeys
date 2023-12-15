@@ -1,7 +1,6 @@
 // SKSE plugin entry point.
 #include "event_handler.h"
 #include "ui_plumbing.h"
-#include "ui_viewmodels.h"
 
 namespace {
 

@@ -16,20 +16,18 @@ set(headers
     "src/fs.h"
     "src/gear.h"
     "src/hotkeys.h"
+    "src/ir.h"
     "src/keys.h"
-    "src/serde.h"
     "src/tes_util.h"
     "src/ui_drawing.h"
     "src/ui_plumbing.h"
-    "src/ui_viewmodels.h"
 )
 set(tests
     "tests/equipset_tests.cpp"
     "tests/fs_tests.cpp"
     "tests/hotkey_tests.cpp"
+    "tests/ir_tests.cpp"
     "tests/key_tests.cpp"
-    "tests/misc_tests.cpp"
-    "tests/ui_viewmodel_tests.cpp"
 )
 
 

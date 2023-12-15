@@ -29,9 +29,7 @@ class Hotkeys final {
     Hotkeys() = default;
 
     /// `active_index` applies AFTER pruning hotkeys.
-    explicit Hotkeys(
-        std::vector<Hotkey<T>> hotkeys, size_t active_index = std::numeric_limits<size_t>::max()
-    )
+    explicit Hotkeys(std::vector<Hotkey<T>> hotkeys, size_t active_index = -1)
         : hotkeys_(std::move(hotkeys)),
           active_(active_index) {
         std::erase_if(hotkeys_, [](const Hotkey<T>& hk) {
@@ -124,7 +122,6 @@ class Hotkeys final {
 
   private:
     std::vector<Hotkey<T>> hotkeys_;
-
     size_t active_;
     const T* most_recent_next_equipset_ = nullptr;
 };

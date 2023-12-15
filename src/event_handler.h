@@ -3,9 +3,9 @@
 #include "dev_util.h"
 #include "equipsets.h"
 #include "hotkeys.h"
+#include "ir.h"
 #include "keys.h"
 #include "tes_util.h"
-#include "ui_viewmodels.h"
 
 namespace ech {
 namespace internal {
@@ -131,25 +131,26 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
     std::vector<Keystroke> keystroke_buf_;
     /// In milliseconds since application start.
     uint32_t most_recent_hotkey_equip_time_ = 0;
-    Hotkeys<> hotkeys_ = ui::HotkeysVM<>{.vec{
-                                             ui::HotkeyVM<>{
-                                                 .name = "1",
-                                                 .keysets = {{2}},
-                                             },
-                                             ui::HotkeyVM<>{
-                                                 .name = "2",
-                                                 .keysets = {{3}},
-                                             },
-                                             ui::HotkeyVM<>{
-                                                 .name = "3",
-                                                 .keysets = {{4}},
-                                             },
-                                             ui::HotkeyVM<>{
-                                                 .name = "4",
-                                                 .keysets = {{5}},
-                                             },
-                                         }
-    }.To();
+    Hotkeys<> hotkeys_ = HotkeysIR(std::vector{
+                                       HotkeyIR<Keyset, EquipsetUI>{
+                                           .name = "1",
+                                           .keysets = {{2}},
+                                       },
+                                       HotkeyIR<Keyset, EquipsetUI>{
+                                           .name = "2",
+                                           .keysets = {{3}},
+                                       },
+                                       HotkeyIR<Keyset, EquipsetUI>{
+                                           .name = "3",
+                                           .keysets = {{4}},
+                                       },
+                                       HotkeyIR<Keyset, EquipsetUI>{
+                                           .name = "4",
+                                           .keysets = {{5}},
+                                       },
+                                   })
+                             .ConvertEquipset(std::mem_fn(&EquipsetUI::To))
+                             .Into();
 };
 
 }  // namespace ech
