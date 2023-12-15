@@ -18,7 +18,7 @@ InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
     logger->flush_on(spdlog::level::level_enum::trace);
     logger->set_level(spdlog::level::level_enum::trace);
     // https://github.com/gabime/spdlog/wiki/3.-Custom-formatting#pattern-flags
-    logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%s:%#] %v");
+    logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s:%#] %v");
 
     spdlog::set_default_logger(std::move(logger));
 }

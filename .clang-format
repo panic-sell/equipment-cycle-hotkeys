@@ -13,6 +13,7 @@ BinPackParameters: false
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeTernaryOperators: true
 DerivePointerAlignment: false
+IndentPPDirectives: BeforeHash
 IndentRequiresClause: false
 InsertBraces: true
 InsertNewlineAtEOF: true

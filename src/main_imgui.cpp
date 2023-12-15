@@ -10,6 +10,9 @@
 #include <imgui_internal.h>
 #include <tchar.h>
 
+#define ECH_UI_DEV_MODE
+#include "fs.h"
+#include "ir.h"
 #include "keys.h"
 #include "ui_drawing.h"
 
@@ -27,6 +30,27 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+#if 0
+int
+main() {
+    using namespace ech;
+
+    std::println("{}", std::stof("nan"));
+    std::println("{}", std::stof("123123"));
+    std::println("{}", std::stof("inf"));
+
+    size_t i = -1;
+    float f = std::stof("asdf", &i);
+
+    // nlohmann::json j;
+    // {
+    //     auto f = std::ifstream(".ech/testjson/equipset_ser.json");
+    //     j = nlohmann::json::parse(f, nullptr, false);
+    //     assert(!j.is_discarded());
+    // }
+    // auto hotkeys = j.template get<EsItemSer>();
+}
+#else
 // Main code
 int
 main(int, char**) {
@@ -76,10 +100,10 @@ main(int, char**) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = ech::fs::kUiIniPath;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
-    io.IniFilename = "misc/EquipmentCycleHotkeys_imgui.ini";
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -194,6 +218,7 @@ main(int, char**) {
 
     return 0;
 }
+#endif
 
 // Helper functions
 

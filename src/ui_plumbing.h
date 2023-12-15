@@ -2,6 +2,7 @@
 #pragma once
 
 #include "dev_util.h"
+#include "fs.h"
 #include "keys.h"
 #include "ui_drawing.h"
 
@@ -297,7 +298,7 @@ inline constexpr auto kImGuiKeys = std::array{
 };
 
 /// Whether the UI is visible. Equivalently, whether the UI is capturing all input.
-inline bool kIsActive = false;
+inline std::atomic<bool> gIsActive = false;
 
 inline REL::Relocation<void(uint32_t)> Render;
 inline REL::Relocation<void(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent* const*)>
@@ -306,24 +307,6 @@ inline REL::Relocation<void(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent
 constexpr ImGuiKey
 ImGuiKeyFromKeycode(uint32_t keycode) {
     return keycode < internal::kImGuiKeys.size() ? internal::kImGuiKeys[keycode] : ImGuiKey_None;
-}
-
-inline void
-RenderHook(uint32_t x) {
-    Render(x);
-    if (!kIsActive) {
-        return;
-    }
-
-    ImGui_ImplDX11_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
-
-    Draw();
-    // ImGui::ShowDemoWindow();
-
-    ImGui::Render();
-    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
 inline bool
@@ -438,9 +421,18 @@ MaybeToggleActiveState(const RE::InputEvent* events) {
     static std::vector<Keystroke> keybuf;
     keybuf.clear();
     Keystroke::InputEventsToBuffer(events, keybuf);
-    if (toggle_key.Match(keybuf) == Keysets::MatchResult::kPress) {
-        kIsActive = !kIsActive;
-        ImGui::GetIO().MouseDrawCursor = kIsActive;
+    if (toggle_key.Match(keybuf) != Keysets::MatchResult::kPress) {
+        return;
+    }
+    auto& io = ImGui::GetIO();
+    if (gIsActive.load()) {
+        // Immediately disable state, then perform cleanup.
+        gIsActive.store(false);
+        io.MouseDrawCursor = false;
+    } else {
+        // Set things up before enabling state.
+        io.MouseDrawCursor = true;
+        gIsActive.store(true);
     }
 }
 
@@ -452,7 +444,7 @@ HandleInputHook(RE::BSTEventSource<RE::InputEvent*>* event_src, RE::InputEvent* 
     }
 
     MaybeToggleActiveState(*events);
-    if (!kIsActive) {
+    if (!gIsActive.load()) {
         HandleInput(event_src, events);
         return;
     }
@@ -460,6 +452,24 @@ HandleInputHook(RE::BSTEventSource<RE::InputEvent*>* event_src, RE::InputEvent* 
     CaptureInputs(*events);
     auto dummy = std::array{static_cast<RE::InputEvent*>(nullptr)};
     HandleInput(event_src, &dummy[0]);
+}
+
+inline void
+RenderHook(uint32_t x) {
+    Render(x);
+    if (!gIsActive.load()) {
+        return;
+    }
+
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    Draw();
+    // ImGui::ShowDemoWindow();
+
+    ImGui::Render();
+    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
 }  // namespace internal
@@ -484,7 +494,7 @@ Init() {
 
     ImGui::StyleColorsDark();
     auto& io = ImGui::GetIO();
-    io.IniFilename = "Data/SKSE/Plugins/EquipmentCycleHotkeys_imgui.ini";
+    io.IniFilename = fs::kUiIniPath;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
