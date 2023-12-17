@@ -36,12 +36,14 @@ set(tests
 ###########################################################
 
 find_package(CommonLibSSE CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS json)
 find_package(imgui CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} "src/main.cpp")
 target_link_libraries(${PROJECT_NAME} PUBLIC
-    d3d11
+    ${Boost_LIBRARIES}
+    d3d11  # for Dear ImGui
     imgui::imgui
     nlohmann_json::nlohmann_json
 )

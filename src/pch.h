@@ -120,6 +120,7 @@
 #include <spdlog/spdlog.h>
 
 // Serde
+#include <boost/json.hpp>
 #include <nlohmann/json.hpp>
 
 // UI

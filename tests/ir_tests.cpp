@@ -324,7 +324,6 @@ TEST_CASE("HotkeysIR json") {
 
     auto final_ir = j.template get<HotkeysIR<K, Q>>();
     CompareHotkeysIR(final_ir, initial_ir);
-    // REQUIRE(final_ir == initial_ir);
 }
 
 }  // namespace ech

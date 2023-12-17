@@ -30,25 +30,15 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-#if 0
+#if 1
 int
 main() {
     using namespace ech;
+    namespace json = boost::json;
 
-    std::println("{}", std::stof("nan"));
-    std::println("{}", std::stof("123123"));
-    std::println("{}", std::stof("inf"));
-
-    size_t i = -1;
-    float f = std::stof("asdf", &i);
-
-    // nlohmann::json j;
-    // {
-    //     auto f = std::ifstream(".ech/testjson/equipset_ser.json");
-    //     j = nlohmann::json::parse(f, nullptr, false);
-    //     assert(!j.is_discarded());
-    // }
-    // auto hotkeys = j.template get<EsItemSer>();
+    auto x = json::value_from<uint8_t>(123);
+    auto s = json::serialize(x);
+    std::println("{}", s);
 }
 #else
 // Main code

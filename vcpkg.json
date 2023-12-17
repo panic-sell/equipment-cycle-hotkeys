@@ -3,6 +3,7 @@
   "name": "equipment-cycle-hotkeys",
   "version-string": "1.0.0",
   "dependencies": [
+    "boost-json",
     "catch2",
     "commonlibsse-ng-flatrim",
     "nlohmann-json",
