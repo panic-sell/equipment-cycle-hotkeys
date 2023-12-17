@@ -121,7 +121,6 @@
 
 // Serde
 #include <boost/json.hpp>
-#include <nlohmann/json.hpp>
 
 // UI
 #include <Windows.h>

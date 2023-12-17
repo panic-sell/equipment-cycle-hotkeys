@@ -210,21 +210,10 @@ struct Context final {
 
 inline Action
 DrawImportMenu(Context& ctx) {
-    constexpr auto try_parse_profile = [](const std::filesystem::path& fp
-                                       ) -> std::optional<HotkeysIR<Keyset, EquipsetUI>> {
-        nlohmann::json j;
-        {
-            auto f = std::ifstream(fp);
-            j = nlohmann::json::parse(f, nullptr, false);
-            if (j.is_discarded()) {
-                return std::nullopt;
-            }
-        }
-        // TODO: Fix j.template get<>() throwing exception.
-        auto hotkeys = j.template get<HotkeysIR<KeysetSer, EquipsetSer>>()
-                           .ConvertKeyset(std::mem_fn(&KeysetSer::To))
-                           .ConvertEquipset(std::mem_fn(&EquipsetSer::To));
-        return HotkeysIR(hotkeys).ConvertEquipset(EquipsetUI::From);
+    constexpr auto try_parse_profile =
+        [](const std::filesystem::path&) -> std::optional<HotkeysIR<Keyset, EquipsetUI>> {
+        // TODO: implement
+        return std::nullopt;
     };
 
     if (!ImGui::BeginMenu("Import")) {
@@ -282,19 +271,14 @@ DrawExportMenu(Context& ctx) {
             action = [&ctx]() {
                 auto hotkeys_real =
                     HotkeysIR(ctx.hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
-                nlohmann::json j = HotkeysIR(hotkeys_real)
-                                       .ConvertKeyset(KeysetSer::From)
-                                       .ConvertEquipset(EquipsetSer::From);
+                // TODO: convert to json
                 std::error_code ec;
                 std::filesystem::create_directories(ctx.profile_dir, ec);
                 if (ec) {
                     // TODO: log error
                     return;
                 }
-                {
-                    auto f = std::ofstream(ctx.profile_dir / ctx.export_name_buf);
-                    f << std::setw(2) << j << std::endl;
-                }
+                // TODO: implement export
                 ctx.ReloadProfileCache();
             };
             ImGui::CloseCurrentPopup();

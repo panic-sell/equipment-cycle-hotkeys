@@ -6,7 +6,6 @@
     "boost-json",
     "catch2",
     "commonlibsse-ng-flatrim",
-    "nlohmann-json",
     {
       "name": "imgui",
       "features": [

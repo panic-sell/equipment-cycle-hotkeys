@@ -44,10 +44,6 @@ struct EsItemSer final {
     std::string extra_ench_modname = "";
     RE::FormID extra_ench_id = 0;
 
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(
-        EsItemSer, slot, unequip, modname, id, extra_health, extra_ench_modname, extra_ench_id
-    );
-
     static EsItemSer
     From(const GearOrSlot& gos) {
         auto item = EsItemSer{.slot = std::to_underlying(gos.slot())};
@@ -200,10 +196,6 @@ struct HotkeyIR final {
     std::vector<K> keysets;
     std::vector<Q> equipsets;
     size_t active_equipset = 0;
-
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(
-        HotkeyIR, name, keysets, equipsets, active_equipset
-    );
 };
 
 template <typename K, typename Q>
@@ -218,8 +210,6 @@ class HotkeysIR final {
   public:
     std::vector<HotkeyIR<K, Q>> hotkeys;
     size_t active_hotkey;
-
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(HotkeysIR, hotkeys, active_hotkey);
 
     explicit HotkeysIR(std::vector<HotkeyIR<K, Q>> hks = {}, size_t active_hotkey = -1)
         : hotkeys(std::move(hks)),
