@@ -48,9 +48,9 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 target_include_directories(${PROJECT_NAME} PUBLIC "src")
 target_precompile_headers(${PROJECT_NAME} PUBLIC "src/pch.h")
 
-set(IMGUI_DEMO_NAME "${PROJECT_NAME}_ImguiDemo")
-add_executable(${IMGUI_DEMO_NAME} ${headers} "src/main_imgui.cpp")
-target_link_libraries(${IMGUI_DEMO_NAME} PRIVATE ${PROJECT_NAME})
+set(DEV_APP_NAME "${PROJECT_NAME}_DevApp")
+add_executable(${DEV_APP_NAME} ${headers} "src/main_dev.cpp")
+target_link_libraries(${DEV_APP_NAME} PRIVATE ${PROJECT_NAME})
 
 
 ###########################################################
