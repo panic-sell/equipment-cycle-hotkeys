@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.27.2)
 project(EquipmentCycleHotkeys VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -36,7 +36,7 @@ set(tests
 ###########################################################
 
 find_package(CommonLibSSE CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS json)
+find_package(Boost 1.83.0 REQUIRED COMPONENTS json)
 find_package(imgui CONFIG REQUIRED)
 
 add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} "src/main.cpp")

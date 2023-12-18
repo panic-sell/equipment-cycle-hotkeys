@@ -31,14 +31,110 @@ void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 #if 1
+namespace json = boost::json;
+
+namespace custom_ns {
+
+// test nan, test int narrowing
+template <typename T>
+struct A {
+    int8_t i8 = 127;
+    float f32 = 1.f;
+    std::vector<std::string_view> sv = {"abc", "def"};
+    T t;
+};
+
+template <typename T>
+inline void
+tag_invoke(const json::value_from_tag&, json::value& jv, const A<T>& a) {
+    json::object o;
+    o.insert_or_assign("i8", a.i8);
+    o.insert_or_assign("f32", a.f32);
+    jv = o;
+}
+
+template <typename T>
+inline json::result_for<A<T>, json::value>::type
+tag_invoke(const json::try_value_to_tag<A<T>>&, const json::value& jv) {
+    if (!jv.is_object()) {
+        return json::make_error_code(json::error::not_object);
+    }
+    A<T> a;
+    const auto& o = jv.as_object();
+    if (auto it = o.find("i8"); it != o.end()) {
+        const auto& [__, v] = *it;
+        if (v.is_double()) {
+            a.i8 = static_cast<decltype(a.i8)>(v.as_double());
+        } else if (v.is_int64()) {
+            a.i8 = static_cast<decltype(a.i8)>(v.as_int64());
+        } else if (v.is_uint64()) {
+            a.i8 = static_cast<decltype(a.i8)>(v.as_uint64());
+        }
+    }
+    if (auto it = o.find("f32"); it != o.end()) {
+        const auto& [__, v] = *it;
+        if (v.is_double()) {
+            a.f32 = static_cast<decltype(a.f32)>(v.as_double());
+        } else if (v.is_int64()) {
+            a.f32 = static_cast<decltype(a.f32)>(v.as_int64());
+        } else if (v.is_uint64()) {
+            a.f32 = static_cast<decltype(a.f32)>(v.as_uint64());
+        }
+    }
+    return a;
+}
+
+}  // namespace custom_ns
+
 int
 main() {
     using namespace ech;
-    namespace json = boost::json;
 
-    auto x = json::value_from<uint8_t>(123);
-    auto s = json::serialize(x);
-    std::println("{}", s);
+    json::parse_options opts;
+    opts.allow_infinity_and_nan = true;
+    opts.numbers = json::number_precision::precise;
+
+    json::value j;
+    json::error_code ec;
+
+    j = json::parse(json::string_view(R"({"i8": 126.123})"), {}, opts);
+
+    // j = json::value_from<float>(std::numeric_limits<float>::quiet_NaN());
+    // j = json::value_from<uint8_t>(uint16_t(256));
+    // j = json::value_from(A());
+
+    struct B {
+        int i = 91;
+    };
+
+    auto a = json::try_value_to<custom_ns::A<bool>>(j);
+    if (a.has_error()) {
+        std::println("{}", a.error().what());
+        return 1;
+    }
+    std::println("{}", a->i8);
+    std::println("{}", a->f32);
+    fmt::println("{}", fmt::join(a->sv, ", "));
+    std::println("{}", a->t);
+
+    custom_ns::A<bool> x = *a;
+    json::value j2;
+    try {
+        j2 = json::value_from(x);
+    } catch (json::system_error e) {
+        std::println("{}", e.what());
+        return 1;
+    }
+    std::println("{}", json::serialize(j2));
+
+    // try {
+    //     j = json::parse(json::string_view(R"(asdf)"));
+    // } catch (json::system_error e) {
+    //     std::println("{}", e.what());
+    //     return 1;
+    // }
+    // auto s = json::serialize(j);
+    // std::println("{}", s);
 }
 #else
 // Main code
