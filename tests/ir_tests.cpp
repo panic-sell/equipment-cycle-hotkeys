@@ -7,14 +7,14 @@
 
 namespace ech {
 
-template <typename T>
+template <typename Q>
 void
-CompareHotkeys(const Hotkeys<T>& a, const Hotkeys<T>& b) {
+CompareHotkeys(const Hotkeys<Q>& a, const Hotkeys<Q>& b) {
     auto sz = std::min(a.vec().size(), b.vec().size());
     for (size_t i = 0; i < sz; i++) {
         CAPTURE(i);
-        const Hotkey<T>& ah = a.vec()[i];
-        const Hotkey<T>& bh = b.vec()[i];
+        const Hotkey<Q>& ah = a.vec()[i];
+        const Hotkey<Q>& bh = b.vec()[i];
         REQUIRE(ah.name == bh.name);
         REQUIRE(ah.keysets.vec() == bh.keysets.vec());
         REQUIRE(ah.equipsets.vec() == bh.equipsets.vec());
@@ -24,14 +24,14 @@ CompareHotkeys(const Hotkeys<T>& a, const Hotkeys<T>& b) {
     REQUIRE(a.vec().size() == b.vec().size());
 }
 
-template <typename K, typename E>
+template <typename K, typename Q>
 void
-CompareHotkeysIR(const HotkeysIR<K, E>& a, const HotkeysIR<K, E>& b) {
+CompareHotkeysIR(const HotkeysIR<K, Q>& a, const HotkeysIR<K, Q>& b) {
     auto sz = std::min(a.hotkeys.size(), b.hotkeys.size());
     for (size_t i = 0; i < sz; i++) {
         CAPTURE(i);
-        const HotkeyIR<K, E>& ah = a.hotkeys[i];
-        const HotkeyIR<K, E>& bh = b.hotkeys[i];
+        const HotkeyIR<K, Q>& ah = a.hotkeys[i];
+        const HotkeyIR<K, Q>& bh = b.hotkeys[i];
         REQUIRE(ah.name == bh.name);
         REQUIRE(ah.keysets == bh.keysets);
         REQUIRE(ah.equipsets == bh.equipsets);
@@ -41,18 +41,18 @@ CompareHotkeysIR(const HotkeysIR<K, E>& a, const HotkeysIR<K, E>& b) {
     REQUIRE(a.hotkeys.size() == b.hotkeys.size());
 }
 
-template <typename K, typename E>
-requires(std::equality_comparable<K> && std::equality_comparable<E>)
+template <typename K, typename Q>
+requires(std::equality_comparable<K> && std::equality_comparable<Q>)
 bool
-operator==(const HotkeyIR<K, E>& a, const HotkeyIR<K, E>& b) {
+operator==(const HotkeyIR<K, Q>& a, const HotkeyIR<K, Q>& b) {
     return a.name == b.name && a.keysets == b.keysets && a.equipsets == b.equipsets
            && a.active_equipset == b.active_equipset;
 }
 
-template <typename K, typename E>
-requires(std::equality_comparable<K> && std::equality_comparable<E>)
+template <typename K, typename Q>
+requires(std::equality_comparable<K> && std::equality_comparable<Q>)
 bool
-operator==(const HotkeysIR<K, E>& a, const HotkeysIR<K, E>& b) {
+operator==(const HotkeysIR<K, Q>& a, const HotkeysIR<K, Q>& b) {
     return a.hotkeys == b.hotkeys && a.active_hotkey == b.active_hotkey;
 }
 
@@ -297,9 +297,9 @@ TEST_CASE("HotkeysIR keyset/equipset conversions") {
 
 TEST_CASE("HotkeysIR json") {
     using K = std::vector<int>;
-    using E = std::vector<std::string_view>;
+    using Q = std::vector<std::string_view>;
     auto initial_ir = HotkeysIR(
-        std::vector<HotkeyIR<K, E>>{
+        std::vector<HotkeyIR<K, Q>>{
             {
                 .name = "a hotkey",
                 .keysets = {{}, {1}, {2, 3, 4}},
@@ -322,7 +322,7 @@ TEST_CASE("HotkeysIR json") {
     auto j = nlohmann::json::parse(s, nullptr, false);
     REQUIRE(!j.is_discarded());
 
-    auto final_ir = j.template get<HotkeysIR<K, E>>();
+    auto final_ir = j.template get<HotkeysIR<K, Q>>();
     CompareHotkeysIR(final_ir, initial_ir);
     // REQUIRE(final_ir == initial_ir);
 }

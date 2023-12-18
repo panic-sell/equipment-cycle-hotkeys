@@ -5,11 +5,11 @@
 
 namespace ech {
 
-template <typename T = Equipset>
+template <typename Q = Equipset>
 struct Hotkey final {
     std::string name;
     Keysets keysets;
-    Equipsets<T> equipsets;
+    Equipsets<Q> equipsets;
 };
 
 /// An ordered collection of 0 or more hotkeys.
@@ -23,16 +23,16 @@ struct Hotkey final {
 ///
 /// This class is templated by "equipset" to facilitate unit testing. We swap out the real Equipset
 /// type so that tests don't depend on Skyrim itself.
-template <typename T = Equipset>
+template <typename Q = Equipset>
 class Hotkeys final {
   public:
     Hotkeys() = default;
 
     /// `active_index` applies AFTER pruning hotkeys.
-    explicit Hotkeys(std::vector<Hotkey<T>> hotkeys, size_t active_index = -1)
+    explicit Hotkeys(std::vector<Hotkey<Q>> hotkeys, size_t active_index = -1)
         : hotkeys_(std::move(hotkeys)),
           active_(active_index) {
-        std::erase_if(hotkeys_, [](const Hotkey<T>& hk) {
+        std::erase_if(hotkeys_, [](const Hotkey<Q>& hk) {
             return hk.keysets.vec().empty() && hk.equipsets.vec().empty();
         });
         if (active_ >= hotkeys_.size()) {
@@ -40,7 +40,7 @@ class Hotkeys final {
         }
     }
 
-    const std::vector<Hotkey<T>>&
+    const std::vector<Hotkey<Q>>&
     vec() const {
         return hotkeys_;
     }
@@ -61,12 +61,12 @@ class Hotkeys final {
     /// Returns the active hotkey's active equipset. Returns nullptr if:
     /// - No hotkey is active.
     /// - The active hotkey has no equipsets.
-    const T*
+    const Q*
     GetActiveEquipset() const {
         if (active_ >= hotkeys_.size()) {
             return nullptr;
         }
-        const Hotkey<T>& hk = hotkeys_[active_];
+        const Hotkey<Q>& hk = hotkeys_[active_];
         return hk.equipsets.GetActive();
     }
 
@@ -80,16 +80,16 @@ class Hotkeys final {
     /// - No hotkey matches `keystrokes`.
     /// - The matched hotkey has no equipsets.
     /// - The matched hotkey's match result is a semihold.
-    /// - This function would have returned E, where E is the most recent non-null equipset returned
+    /// - This function would have returned Q, where Q is the most recent non-null equipset returned
     /// by a prior call of this function.
-    const T*
+    const Q*
     GetNextEquipset(std::span<const Keystroke> keystrokes) {
         if (keystrokes.empty()) {
             return nullptr;
         }
 
         auto match_res = Keysets::MatchResult::kNone;
-        auto it = std::find_if(hotkeys_.begin(), hotkeys_.end(), [&](const Hotkey<T>& hotkey) {
+        auto it = std::find_if(hotkeys_.begin(), hotkeys_.end(), [&](const Hotkey<Q>& hotkey) {
             if (hotkey.equipsets.vec().empty()) {
                 return false;
             }
@@ -100,7 +100,7 @@ class Hotkeys final {
             return nullptr;
         }
 
-        Hotkey<T>& hk = *it;
+        Hotkey<Q>& hk = *it;
         auto orig_active = active_;
         active_ = it - hotkeys_.begin();
 
@@ -121,9 +121,9 @@ class Hotkeys final {
     }
 
   private:
-    std::vector<Hotkey<T>> hotkeys_;
+    std::vector<Hotkey<Q>> hotkeys_;
     size_t active_ = size_t(-1);
-    const T* most_recent_next_equipset_ = nullptr;
+    const Q* most_recent_next_equipset_ = nullptr;
 };
 
 }  // namespace ech

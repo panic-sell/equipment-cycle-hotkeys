@@ -195,11 +195,11 @@ class EquipsetUI final : public std::array<EsItemUI, kGearslots.size()> {
     }
 };
 
-template <typename K, typename E>
+template <typename K, typename Q>
 struct HotkeyIR final {
     std::string name = "Hotkey";
     std::vector<K> keysets;
-    std::vector<E> equipsets;
+    std::vector<Q> equipsets;
     size_t active_equipset = 0;
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(
@@ -207,22 +207,22 @@ struct HotkeyIR final {
     );
 };
 
-template <typename K, typename E>
+template <typename K, typename Q>
 class HotkeysIR;
-template <typename E>
-HotkeysIR(const Hotkeys<E>&) -> HotkeysIR<Keyset, E>;
-template <typename E>
-HotkeysIR(const Hotkeys<E>&, bool) -> HotkeysIR<Keyset, E>;
+template <typename Q>
+HotkeysIR(const Hotkeys<Q>&) -> HotkeysIR<Keyset, Q>;
+template <typename Q>
+HotkeysIR(const Hotkeys<Q>&, bool) -> HotkeysIR<Keyset, Q>;
 
-template <typename K, typename E>
+template <typename K, typename Q>
 class HotkeysIR final {
   public:
-    std::vector<HotkeyIR<K, E>> hotkeys;
+    std::vector<HotkeyIR<K, Q>> hotkeys;
     size_t active_hotkey;
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(HotkeysIR, hotkeys, active_hotkey);
 
-    explicit HotkeysIR(std::vector<HotkeyIR<K, E>> hks = {}, size_t active_hotkey = -1)
+    explicit HotkeysIR(std::vector<HotkeyIR<K, Q>> hks = {}, size_t active_hotkey = -1)
         : hotkeys(std::move(hks)),
           active_hotkey(active_hotkey) {}
 
@@ -231,14 +231,14 @@ class HotkeysIR final {
     ///
     /// Persisting active state is only useful when serializing hotkey data to the SKSE co-save
     /// (i.e. persisting active status across save games).
-    explicit HotkeysIR(const Hotkeys<E>& hks, bool reset_active = true)
+    explicit HotkeysIR(const Hotkeys<Q>& hks, bool reset_active = true)
         : active_hotkey(hks.active()) {
         std::transform(
             hks.vec().cbegin(),
             hks.vec().cend(),
             std::back_inserter(hotkeys),
-            [](const Hotkey<E>& hotkey) {
-                return HotkeyIR<Keyset, E>{
+            [](const Hotkey<Q>& hotkey) {
+                return HotkeyIR<Keyset, Q>{
                     .name = hotkey.name,
                     .keysets = hotkey.keysets.vec(),
                     .equipsets = hotkey.equipsets.vec(),
@@ -252,45 +252,45 @@ class HotkeysIR final {
     }
 
     /// Converts this IR object to a normal hotkeys objects.
-    Hotkeys<E>
+    Hotkeys<Q>
     Into(bool reset_active = true)
     requires(std::is_same_v<K, Keyset>)
     {
         if (reset_active) {
             ResetActive();
         }
-        std::vector<Hotkey<E>> hotkeys_out;
+        std::vector<Hotkey<Q>> hotkeys_out;
         std::transform(
             hotkeys.begin(),
             hotkeys.end(),
             std::back_inserter(hotkeys_out),
-            [](HotkeyIR<Keyset, E>& hotkey_ir) {
-                return Hotkey<E>{
+            [](HotkeyIR<Keyset, Q>& hotkey_ir) {
+                return Hotkey<Q>{
                     .name = std::move(hotkey_ir.name),
                     .keysets = Keysets(std::move(hotkey_ir.keysets)),
-                    .equipsets = Equipsets<E>(
+                    .equipsets = Equipsets<Q>(
                         std::move(hotkey_ir.equipsets), hotkey_ir.active_equipset
                     ),
                 };
             }
         );
-        return Hotkeys<E>(std::move(hotkeys_out), active_hotkey);
+        return Hotkeys<Q>(std::move(hotkeys_out), active_hotkey);
     }
 
-    /// Cannibalizes HotkeysIR<K, E> to produce HotkeysIR<K1, E>.
+    /// Cannibalizes HotkeysIR<K, Q> to produce HotkeysIR<NewK, Q>.
     template <typename F>
     requires(std::is_invocable_v<F, const K&>)
-    HotkeysIR<std::invoke_result_t<F, const K&>, E>
+    HotkeysIR<std::invoke_result_t<F, const K&>, Q>
     ConvertKeyset(F f) {
         using NewK = std::invoke_result_t<F, const K&>;
 
-        auto hotkeys_out = HotkeysIR<NewK, E>({}, active_hotkey);
+        auto hotkeys_out = HotkeysIR<NewK, Q>({}, active_hotkey);
         std::transform(
             hotkeys.begin(),
             hotkeys.end(),
             std::back_inserter(hotkeys_out.hotkeys),
-            [&f](HotkeyIR<K, E>& hotkey) {
-                auto hotkey_out = HotkeyIR<NewK, E>{
+            [&f](HotkeyIR<K, Q>& hotkey) {
+                auto hotkey_out = HotkeyIR<NewK, Q>{
                     .name = std::move(hotkey.name),
                     .equipsets = std::move(hotkey.equipsets),
                 };
@@ -306,20 +306,20 @@ class HotkeysIR final {
         return hotkeys_out;
     }
 
-    /// Cannibalizes HotkeysIR<K, E> to produce HotkeysIR<K, E1>.
+    /// Cannibalizes HotkeysIR<K, Q> to produce HotkeysIR<K, NewQ>.
     template <typename F>
-    requires(std::is_invocable_v<F, const E&>)
-    HotkeysIR<K, std::invoke_result_t<F, const E&>>
+    requires(std::is_invocable_v<F, const Q&>)
+    HotkeysIR<K, std::invoke_result_t<F, const Q&>>
     ConvertEquipset(F f) {
-        using NewE = std::invoke_result_t<F, const E&>;
+        using NewQ = std::invoke_result_t<F, const Q&>;
 
-        auto hotkeys_out = HotkeysIR<K, NewE>({}, active_hotkey);
+        auto hotkeys_out = HotkeysIR<K, NewQ>({}, active_hotkey);
         std::transform(
             hotkeys.begin(),
             hotkeys.end(),
             std::back_inserter(hotkeys_out.hotkeys),
-            [&f](HotkeyIR<K, E>& hotkey) {
-                auto hotkey_out = HotkeyIR<K, NewE>{
+            [&f](HotkeyIR<K, Q>& hotkey) {
+                auto hotkey_out = HotkeyIR<K, NewQ>{
                     .name = std::move(hotkey.name),
                     .keysets = std::move(hotkey.keysets),
                 };
@@ -341,7 +341,7 @@ class HotkeysIR final {
     void
     ResetActive() {
         active_hotkey = size_t(-1);
-        for (HotkeyIR<K, E>& hotkey : hotkeys) {
+        for (HotkeyIR<K, Q>& hotkey : hotkeys) {
             hotkey.active_equipset = 0;
         }
     }

@@ -107,17 +107,17 @@ class Equipset final {
 /// - If `equipsets_.empty()`, then `active_ == 0`.
 /// - If `!equipsets_.empty()`, then `active_ < equipsets.size()`. In other words, there is
 /// always an active equipset.
-template <typename T = Equipset>
+template <typename Q = Equipset>
 class Equipsets final {
   public:
     Equipsets() = default;
 
-    explicit Equipsets(std::vector<T> equipsets, size_t active_index = 0)
+    explicit Equipsets(std::vector<Q> equipsets, size_t active_index = 0)
         : equipsets_(std::move(equipsets)),
           active_(active_index) {
         // Prune empty equipsets. An empty equipset ignores all gear slots, so cycling into one
         // gives no user feedback, which could be confusing.
-        if constexpr (std::is_same_v<T, Equipset>) {
+        if constexpr (std::is_same_v<Q, Equipset>) {
             std::erase_if(equipsets_, [](const Equipset& equipset) {
                 return equipset.vec().empty();
             });
@@ -127,7 +127,7 @@ class Equipsets final {
         }
     }
 
-    const std::vector<T>&
+    const std::vector<Q>&
     vec() const {
         return equipsets_;
     }
@@ -137,7 +137,7 @@ class Equipsets final {
         return active_;
     }
 
-    const T*
+    const Q*
     GetActive() const {
         if (equipsets_.empty()) {
             return nullptr;
@@ -160,7 +160,7 @@ class Equipsets final {
     }
 
   private:
-    std::vector<T> equipsets_;
+    std::vector<Q> equipsets_;
     size_t active_ = 0;
 };
 
