@@ -102,7 +102,7 @@ TEST_CASE("Equipset ctor") {
 }
 
 TEST_CASE("Equipsets empty") {
-    auto es = TestEquipsets{};
+    auto es = TestEquipsets();
     REQUIRE(!es.GetActive());
     es.ActivateNext();
     es.ActivateNext();

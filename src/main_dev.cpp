@@ -14,6 +14,7 @@
 #include "fs.h"
 #include "ir.h"
 #include "keys.h"
+#include "serde.h"
 #include "ui_drawing.h"
 
 // Data
@@ -91,50 +92,74 @@ main() {
     using namespace ech;
 
     json::parse_options opts;
-    opts.allow_infinity_and_nan = true;
     opts.numbers = json::number_precision::precise;
+    opts.allow_comments = true;
+    opts.allow_trailing_commas = true;
+
+    // R"({
+    //         "name": "Hotkey",
+    //         "keysets": [["esc", "", "gamepADRt", "", "TAB"]],
+    //         "equipsets": [2, 3, 4],
+    //         "active_equipset": 1
+    //     })"
 
     json::value j;
     json::error_code ec;
-
-    j = json::parse(json::string_view(R"({"i8": 126.123})"), {}, opts);
-
-    // j = json::value_from<float>(std::numeric_limits<float>::quiet_NaN());
-    // j = json::value_from<uint8_t>(uint16_t(256));
-    // j = json::value_from(A());
-
-    struct B {
-        int i = 91;
-    };
-
-    auto a = json::try_value_to<custom_ns::A<bool>>(j);
-    if (a.has_error()) {
-        std::println("{}", a.error().what());
+    j = json::parse(
+        R"({
+                "active_hotkey": 1,
+                "hotkeys": [
+                    {
+                        "name": "hk0",
+                        "keysets": [
+                            ["0"]
+                        ],
+                        "active_equipset": 0,
+                        "equipsets": [
+                            [
+                                {"slot": 0, "unequip": true},
+                                {"slot": 1, "unequip": true},
+                                {"slot": 2, "unequip": true},
+                                {"slot": 3, "unequip": true},
+                            ],
+                        ],
+                    },
+                    {
+                        "name": "hk1",
+                        "keysets": [
+                            ["LShift", "1"],
+                            ["RShift", "1"],
+                        ],
+                        "active_equipset": 1,
+                        "equipsets": [
+                            [
+                                {"slot": 0, "unequip": true},
+                                {"slot": 1, "unequip": true},
+                            ],
+                            [
+                                {"slot": 2, "unequip": true},
+                                {"slot": 3, "unequip": true},
+                            ],
+                        ],
+                    },
+                ],
+            })",
+        ec,
+        {},
+        opts
+    );
+    if (ec) {
+        std::println("{}", ec.what());
         return 1;
     }
-    std::println("{}", a->i8);
-    std::println("{}", a->f32);
-    fmt::println("{}", fmt::join(a->sv, ", "));
-    std::println("{}", a->t);
-
-    custom_ns::A<bool> x = *a;
-    json::value j2;
-    try {
-        j2 = json::value_from(x);
-    } catch (json::system_error e) {
-        std::println("{}", e.what());
+    std::println("{}\n", json::serialize(j));
+    auto k = json::try_value_to<Hotkeys<>>(j, SerdeContext());
+    if (!k) {
+        std::println("{}", k.error().what());
         return 1;
     }
-    std::println("{}", json::serialize(j2));
-
-    // try {
-    //     j = json::parse(json::string_view(R"(asdf)"));
-    // } catch (json::system_error e) {
-    //     std::println("{}", e.what());
-    //     return 1;
-    // }
-    // auto s = json::serialize(j);
-    // std::println("{}", s);
+    auto j_final = json::value_from(*k, SerdeContext());
+    std::println("{}", json::serialize(j_final));
 }
 #else
 // Main code

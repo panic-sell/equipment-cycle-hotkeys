@@ -465,7 +465,7 @@ class Gear final {
         }
 
         const auto* b = xl.GetByType<RE::ExtraHealth>();
-        auto extra_health = b ? b->health : std::numeric_limits<float>::quiet_NaN();
+        auto extra_health = b ? b->health : kExtraHealthNone;
         if (std::isnan(extra_health) && std::isnan(extra_health_)) {
             return true;
         }

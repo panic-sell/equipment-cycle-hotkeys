@@ -18,6 +18,7 @@ set(headers
     "src/hotkeys.h"
     "src/ir.h"
     "src/keys.h"
+    "src/serde.h"
     "src/tes_util.h"
     "src/ui_drawing.h"
     "src/ui_plumbing.h"
@@ -28,6 +29,7 @@ set(tests
     "tests/hotkey_tests.cpp"
     "tests/ir_tests.cpp"
     "tests/key_tests.cpp"
+    "tests/serde_tests.cpp"
 )
 
 

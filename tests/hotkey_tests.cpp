@@ -12,9 +12,9 @@ using TestHotkeys = Hotkeys<std::string_view>;
 
 TEST_CASE("Hotkeys ctor") {
     auto hotkeys = std::vector<TestHotkey>{
-        {.keysets{}, .equipsets{}},  // empty, gets pruned
-        {.keysets{}, .equipsets = TestEquipsets({"a1"})},
-        {.keysets = Keysets({{1}}), .equipsets{}},
+        {.keysets = {}, .equipsets = {}},  // empty, gets pruned
+        {.keysets = {}, .equipsets = TestEquipsets({"a1"})},
+        {.keysets = Keysets({{1}}), .equipsets = {}},
         {.keysets = Keysets({{2}}), .equipsets = TestEquipsets({"b1"})},
     };
 
@@ -141,20 +141,20 @@ TEST_CASE("Hotkeys no match") {
     auto hotkeys = TestHotkeys(
         {
             // Empty, gets pruned.
-            {.keysets{}, .equipsets{}},
+            {.keysets = {}, .equipsets = {}},
 
             // Empty keysets, won't match any keystroke input.
-            {.keysets{}, .equipsets = TestEquipsets({"a1"})},
+            {.keysets = {}, .equipsets = TestEquipsets({"a1"})},
 
             // Empty equipsets, ignored for matching.
-            {.keysets = Keysets({{1}}), .equipsets{}},
+            {.keysets = Keysets({{1}}), .equipsets = {}},
             {.keysets = Keysets({{1}, {2}}), .equipsets = TestEquipsets({"b1"})},
-            {.keysets = Keysets({{2}}), .equipsets{}},
+            {.keysets = Keysets({{2}}), .equipsets = {}},
         },
         2  // points to b1 after pruning
     );
 
-    auto ks = std::vector<Keystroke>{};
+    auto ks = std::vector<Keystroke>();
     REQUIRE(!hotkeys.GetNextEquipset(ks));
 
     ks = std::vector<Keystroke>{*Keystroke::New(9, 0.f)};

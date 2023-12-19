@@ -3,6 +3,7 @@
 #include "fs.h"
 #include "ir.h"
 #include "keys.h"
+#include "serde.h"
 
 namespace ech {
 namespace ui {

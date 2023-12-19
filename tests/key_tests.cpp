@@ -100,8 +100,8 @@ TEST_CASE("Keysets ctor") {
         },
         Testcase{
             .name = "empty",
-            .input{},
-            .want_inner{},
+            .input = {},
+            .want_inner = {},
         }
     );
 
@@ -125,19 +125,19 @@ TEST_CASE("Keysets match") {
         Testcase{
             .name = "both_empty",
             .want = Keysets::MatchResult::kNone,
-            .keysets{},
-            .keystrokes{},
+            .keysets = {},
+            .keystrokes = {},
         },
         Testcase{
             .name = "empty_keystrokes",
             .want = Keysets::MatchResult::kNone,
             .keysets = Keysets({{1}}),
-            .keystrokes{},
+            .keystrokes = {},
         },
         Testcase{
             .name = "empty_keyset",
             .want = Keysets::MatchResult::kNone,
-            .keysets{},
+            .keysets = {},
             .keystrokes{
                 *Keystroke::New(1, 0.f),
             },
