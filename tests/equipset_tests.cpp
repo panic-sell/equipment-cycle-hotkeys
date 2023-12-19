@@ -34,8 +34,8 @@ operator==(const Gear& a, const Gear& b) {
 
 bool
 operator==(const GearOrSlot& a, const GearOrSlot& b) {
-    auto* ag = a.gear();
-    auto* bg = b.gear();
+    const auto* ag = a.gear();
+    const auto* bg = b.gear();
     if (ag && bg) {
         return *ag == *bg;
     }
@@ -97,7 +97,7 @@ TEST_CASE("Equipset ctor") {
 
     CAPTURE(testcase.name);
     auto es = Equipset(testcase.arg);
-    auto& got = es.vec();
+    const auto& got = es.vec();
     REQUIRE(got == testcase.want);
 }
 

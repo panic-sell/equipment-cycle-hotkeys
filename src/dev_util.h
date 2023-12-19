@@ -181,7 +181,7 @@ EquipSingleItem(
     static std::optional<Gear> equips[4];
     auto unequip = [&](size_t i) { UnequipGear(aem, actor, static_cast<Gearslot>(i)); };
     auto equip = [&](size_t i) {
-        auto& gear = equips[i];
+        const auto& gear = equips[i];
         if (!gear) {
             SKSE::log::trace("no gear in slot {}", i);
             return;

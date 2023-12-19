@@ -55,7 +55,7 @@ class Equipset final {
     void
     Apply(RE::ActorEquipManager& aem, RE::Actor& actor) const {
         for (const auto& item : items_) {
-            auto* gear = item.gear();
+            const auto* gear = item.gear();
             if (gear) {
                 gear->Equip(aem, actor);
             } else {

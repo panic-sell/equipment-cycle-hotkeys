@@ -102,7 +102,7 @@ GetForm(std::string_view modname, RE::FormID local_id) {
 /// If form is a dynamic form (e.g. a custom enchantment), returns `(empty string, full form ID)`.
 inline std::pair<std::string_view, RE::FormID>
 GetNamedFormID(const RE::TESForm& form) {
-    auto* file = form.GetFile(0);
+    const auto* file = form.GetFile(0);
     if (!file) {
         return {"", form.GetFormID()};
     }
@@ -142,14 +142,14 @@ GetExtraListCount(RE::InventoryEntryData* ied) {
 
 inline bool
 IsVoiceEquippable(const RE::TESForm* form) {
-    auto* eqt = form ? form->As<RE::BGSEquipType>() : nullptr;
-    auto* slot = eqt ? eqt->GetEquipSlot() : nullptr;
+    const auto* eqt = form ? form->As<RE::BGSEquipType>() : nullptr;
+    const auto* slot = eqt ? eqt->GetEquipSlot() : nullptr;
     return slot && slot->GetFormID() == kEqupVoice;
 }
 
 inline bool
 IsTwoHandedWeapon(const RE::TESForm* form) {
-    auto* weap = form ? form->As<RE::TESObjectWEAP>() : nullptr;
+    const auto* weap = form ? form->As<RE::TESObjectWEAP>() : nullptr;
     // clang-format off
     return weap && (
         weap->IsTwoHandedAxe()
@@ -162,7 +162,7 @@ IsTwoHandedWeapon(const RE::TESForm* form) {
 
 inline bool
 IsShield(const RE::TESForm* form) {
-    auto* armor = form ? form->As<RE::TESObjectARMO>() : nullptr;
+    const auto* armor = form ? form->As<RE::TESObjectARMO>() : nullptr;
     return armor && armor->HasPartOf(RE::BGSBipedObjectForm::BipedObjectSlot::kShield);
 }
 

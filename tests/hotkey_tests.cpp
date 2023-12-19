@@ -161,7 +161,7 @@ TEST_CASE("Hotkeys no match") {
     REQUIRE(!hotkeys.GetNextEquipset(ks));
 
     ks = std::vector<Keystroke>{*Keystroke::New(1, 0.f)};
-    auto* es = hotkeys.GetNextEquipset(ks);
+    const auto* es = hotkeys.GetNextEquipset(ks);
     REQUIRE(es);
     REQUIRE(*es == "b1");
 

@@ -70,12 +70,12 @@ GetExpectedGearslot(const RE::TESForm* form, bool prefer_left) {
             return tes_util::IsShield(form) ? std::optional(Gearslot::kLeft) : std::nullopt;
     }
 
-    if (auto* weap = form->As<RE::TESObjectWEAP>()) {
+    if (const auto* weap = form->As<RE::TESObjectWEAP>()) {
         return !prefer_left || tes_util::IsTwoHandedWeapon(weap) ? Gearslot::kRight
                                                                  : Gearslot::kLeft;
     }
 
-    if (auto* spell = form->As<RE::SpellItem>()) {
+    if (const auto* spell = form->As<RE::SpellItem>()) {
         if (tes_util::IsVoiceEquippable(spell)) {
             return Gearslot::kShout;
         }
@@ -88,7 +88,7 @@ GetExpectedGearslot(const RE::TESForm* form, bool prefer_left) {
 inline void
 UnequipHand(RE::ActorEquipManager& aem, RE::Actor& actor, bool left_hand) {
     auto equipslot_id = left_hand ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand;
-    auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(equipslot_id);
+    const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(equipslot_id);
     auto* dummy = tes_util::GetForm<RE::TESObjectWEAP>(tes_util::kWeapDummy);
     if (!slot || !dummy) {
         // Swallow the error and do nothing. Players can still unequip via menus.
@@ -121,7 +121,7 @@ UnequipShout(RE::Actor& actor) {
     if (auto* shout = form->As<RE::TESShout>()) {
         // Papyrus function Actor.UnequipShout
         using F = void(RE::BSScript::IVirtualMachine*, RE::VMStackID, RE::Actor*, RE::TESShout*);
-        const auto f = REL::Relocation<F>{REL::RelocationID(53863, 54664)};
+        auto f = REL::Relocation<F>{REL::RelocationID(53863, 54664)};
         f(nullptr, 0, &actor, shout);
         return;
     }
@@ -130,7 +130,7 @@ UnequipShout(RE::Actor& actor) {
         using F = void(
             RE::BSScript::IVirtualMachine*, RE::VMStackID, RE::Actor*, RE::SpellItem*, int32_t
         );
-        const auto f = REL::Relocation<F>{REL::RelocationID(227784, 54669)};
+        auto f = REL::Relocation<F>{REL::RelocationID(227784, 54669)};
         f(nullptr, 0, &actor, spell, 2);
         return;
     }
@@ -274,7 +274,7 @@ class Gear final {
     static std::optional<Gear>
     FromEquippedWeapon(const RE::Actor& actor, bool left_hand) {
         auto* weap = actor.GetEquippedObject(left_hand);
-        auto* ied = actor.GetEquippedEntryData(left_hand);
+        const auto* ied = actor.GetEquippedEntryData(left_hand);
         // `ied` on an equipped weapon is guaranteed to have exactly 1 extra list.
         if (!weap || !weap->IsWeapon() || !ied || !ied->IsWorn()) {
             return std::nullopt;
@@ -289,10 +289,10 @@ class Gear final {
         RE::EnchantmentItem* extra_ench = nullptr;
 
         tes_util::ForEachExtraList(ied, [&](const RE::ExtraDataList& xl) {
-            if (auto* xhealth = xl.GetByType<RE::ExtraHealth>()) {
+            if (const auto* xhealth = xl.GetByType<RE::ExtraHealth>()) {
                 extra_health = xhealth->health;
             }
-            if (auto* xench = xl.GetByType<RE::ExtraEnchantment>()) {
+            if (const auto* xench = xl.GetByType<RE::ExtraEnchantment>()) {
                 extra_ench = xench->enchantment;
             }
             return tes_util::ForEachExtraListControl::kBreak;
@@ -322,7 +322,7 @@ class Gear final {
         }
         auto* shield = it->first;
         auto count = it->second.first;
-        auto* ied = it->second.second.get();
+        const auto* ied = it->second.second.get();
         if (!shield || count <= 0) {
             return std::nullopt;
         }
@@ -336,10 +336,10 @@ class Gear final {
                 return tes_util::ForEachExtraListControl::kContinue;
             }
             equipped = true;
-            if (auto* xhealth = xl.GetByType<RE::ExtraHealth>()) {
+            if (const auto* xhealth = xl.GetByType<RE::ExtraHealth>()) {
                 extra_health = xhealth->health;
             }
-            if (auto* xench = xl.GetByType<RE::ExtraEnchantment>()) {
+            if (const auto* xench = xl.GetByType<RE::ExtraEnchantment>()) {
                 extra_ench = xench->enchantment;
             }
             return tes_util::ForEachExtraListControl::kBreak;
@@ -357,7 +357,7 @@ class Gear final {
         if (!spell || !actor.HasSpell(spell)) {
             return false;
         }
-        auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
+        const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
             slot_ == Gearslot::kLeft ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand
         );
         if (!slot) {
@@ -376,7 +376,7 @@ class Gear final {
         if (count <= 0) {
             return false;
         }
-        auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
+        const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
             slot_ == Gearslot::kLeft ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand
         );
         if (!slot) {
@@ -446,7 +446,7 @@ class Gear final {
             if (!actor.HasSpell(spell)) {
                 return false;
             }
-            auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(tes_util::kEqupVoice);
+            const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(tes_util::kEqupVoice);
             if (!slot) {
                 return false;
             }
@@ -458,13 +458,13 @@ class Gear final {
 
     bool
     MatchesExtraList(const RE::ExtraDataList& xl) const {
-        auto* a = xl.GetByType<RE::ExtraEnchantment>();
+        const auto* a = xl.GetByType<RE::ExtraEnchantment>();
         auto* extra_ench = a ? a->enchantment : nullptr;
         if (extra_ench != extra_ench_) {
             return false;
         }
 
-        auto* b = xl.GetByType<RE::ExtraHealth>();
+        const auto* b = xl.GetByType<RE::ExtraHealth>();
         auto extra_health = b ? b->health : std::numeric_limits<float>::quiet_NaN();
         if (std::isnan(extra_health) && std::isnan(extra_health_)) {
             return true;
@@ -552,7 +552,7 @@ class GearOrSlot final {
         if (gear()) {
             return gear()->slot();
         }
-        if (auto* slot = std::get_if<Gearslot>(&variant_)) {
+        if (const auto* slot = std::get_if<Gearslot>(&variant_)) {
             return *slot;
         }
         return static_cast<Gearslot>(0);

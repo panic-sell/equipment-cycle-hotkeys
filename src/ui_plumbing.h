@@ -406,7 +406,7 @@ CaptureGamepadInput(const RE::ButtonEvent& button) {
 inline void
 CaptureInputs(const RE::InputEvent* events) {
     for (; events; events = events->next) {
-        auto* button = events->AsButtonEvent();
+        const auto* button = events->AsButtonEvent();
         if (!button) {
             continue;
         }

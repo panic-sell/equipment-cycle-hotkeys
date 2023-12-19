@@ -44,7 +44,7 @@ OnMessage(SKSE::MessagingInterface::Message* msg) {
 }  // namespace
 
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
-    auto* plugin_decl = SKSE::PluginDeclaration::GetSingleton();
+    const auto* plugin_decl = SKSE::PluginDeclaration::GetSingleton();
     if (!plugin_decl) {
         SKSE::stl::report_and_fail("failed to get SKSE plugin declaration");
     }
@@ -52,7 +52,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     InitLogging(*plugin_decl);
     SKSE::Init(skse);
 
-    auto* msg_interface = SKSE::GetMessagingInterface();
+    const auto* msg_interface = SKSE::GetMessagingInterface();
     if (!msg_interface || !msg_interface->RegisterListener(OnMessage)) {
         SKSE::stl::report_and_fail("failed to register SKSE message listener");
     }

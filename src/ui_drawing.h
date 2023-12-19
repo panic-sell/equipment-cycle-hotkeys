@@ -166,7 +166,7 @@ struct Table final {
         }
 
         if (ImGui::BeginDragDropTarget()) {
-            if (auto* payload = ImGui::AcceptDragDropPayload(id)) {
+            if (const auto* payload = ImGui::AcceptDragDropPayload(id)) {
                 auto src_row = *static_cast<const size_t*>(payload->Data);
                 a = [&viewmodel = viewmodel, src_row, row]() {
                     auto item = std::move(viewmodel[src_row]);
@@ -275,7 +275,8 @@ DrawExportMenu(Context& ctx) {
         auto in_cache =
             std::find(ctx.profile_cache.cbegin(), ctx.profile_cache.cend(), ctx.export_name_buf)
             == ctx.profile_cache.cend();
-        auto* msg = in_cache ? "Create new profile '%s'?" : "Overwrite existing profile '%s'?";
+        const char* msg = in_cache ? "Create new profile '%s'?"
+                                   : "Overwrite existing profile '%s'?";
         ImGui::Text(msg, ctx.export_name_buf.c_str());
         if (ImGui::Button("Yes")) {
             action = [&ctx]() {
@@ -416,7 +417,7 @@ DrawKeysets(std::vector<Keyset>& keysets) {
         .viewmodel = keysets,
         .draw_cell = [](const Keyset& keyset, size_t, size_t col) -> Action {
             auto keycode = keyset[col];
-            const char* preview = keycode_names[KeycodeNormalize(keycode)];
+            const char* preview = keycode_names[KeycodeNormalized(keycode)];
             constexpr auto combo_flags = ImGuiComboFlags_HeightLarge
                                          | ImGuiComboFlags_NoArrowButton;
             if (!ImGui::BeginCombo("##dropdown", preview, combo_flags)) {
@@ -444,10 +445,10 @@ DrawKeysets(std::vector<Keyset>& keysets) {
         .draw_drag_tooltip =
             [](const Keyset& keyset) {
                 auto names = std::array{
-                    keycode_names[KeycodeNormalize(keyset[0])],
-                    keycode_names[KeycodeNormalize(keyset[1])],
-                    keycode_names[KeycodeNormalize(keyset[2])],
-                    keycode_names[KeycodeNormalize(keyset[3])],
+                    keycode_names[KeycodeNormalized(keyset[0])],
+                    keycode_names[KeycodeNormalized(keyset[1])],
+                    keycode_names[KeycodeNormalized(keyset[2])],
+                    keycode_names[KeycodeNormalized(keyset[3])],
                 };
                 static_assert(std::tuple_size_v<decltype(names)> == std::tuple_size_v<Keyset>);
                 ImGui::Text("%s+%s+%s+%s", names[0], names[1], names[2], names[3]);
@@ -493,7 +494,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
             }
 
             auto opts = opts_template;
-            if (auto* gear = item.gos.gear()) {
+            if (const auto* gear = item.gos.gear()) {
                 opts[static_cast<size_t>(EsItemUI::Choice::kGear)] = gear->form().GetName();
             }
 

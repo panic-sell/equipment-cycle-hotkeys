@@ -316,7 +316,7 @@ KeycodeFromName(std::string_view name) {
 
 /// Normalizes invalid keycodes to 0. Valid keycodes are left as is.
 constexpr uint32_t
-KeycodeNormalize(uint32_t keycode) {
+KeycodeNormalized(uint32_t keycode) {
     return KeycodeIsValid(keycode) ? keycode : 0;
 }
 
@@ -353,7 +353,7 @@ class Keystroke final {
 
     static std::optional<Keystroke>
     FromInputEvent(const RE::InputEvent& event) {
-        auto* button = event.AsButtonEvent();
+        const auto* button = event.AsButtonEvent();
         if (!button || !button->HasIDCode() || !button->IsPressed()) {
             return std::nullopt;
         }
@@ -397,10 +397,10 @@ KeysetIsEmpty(const Keyset& keyset) {
 
 /// Dedupes all valid keycodes, sorts all invalid keycodes to the back, and normalizes invalid
 /// keycodes to 0.
-constexpr void
-KeysetNormalize(Keyset& keyset) {
+constexpr Keyset
+KeysetNormalized(Keyset keyset) {
     for (auto& keycode : keyset) {
-        keycode = KeycodeNormalize(keycode);
+        keycode = KeycodeNormalized(keycode);
     }
 
     std::sort(keyset.begin(), keyset.end(), [](uint32_t a, uint32_t b) {
@@ -413,6 +413,8 @@ KeysetNormalize(Keyset& keyset) {
     for (; it != keyset.end(); it++) {
         *it = 0;
     }
+
+    return keyset;
 }
 
 /// An ordered collection of 0 or more keysets.
@@ -437,7 +439,7 @@ class Keysets final {
     explicit Keysets(std::vector<Keyset> keysets) : keysets_(std::move(keysets)) {
         std::erase_if(keysets_, KeysetIsEmpty);
         for (auto& keyset : keysets_) {
-            KeysetNormalize(keyset);
+            keyset = KeysetNormalized(keyset);
         }
     }
 

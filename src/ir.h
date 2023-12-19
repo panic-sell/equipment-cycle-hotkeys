@@ -27,11 +27,10 @@ class KeysetSer final : public std::vector<std::string> {
         auto keyset = Keyset{0};
         auto sz = std::min(size(), keyset.size());
         for (size_t i = 0; i < sz; i++) {
-            auto& name = (*this)[i];
+            const auto& name = (*this)[i];
             keyset[i] = KeycodeFromName(name);
         }
-        KeysetNormalize(keyset);
-        return keyset;
+        return KeysetNormalized(keyset);
     }
 };
 
@@ -60,7 +59,7 @@ struct EsItemSer final {
         item.modname = std::string(modname);
         item.id = id;
         item.extra_health = gos.gear()->extra_health();
-        if (auto* extra_ench = gos.gear()->extra_ench()) {
+        if (const auto* extra_ench = gos.gear()->extra_ench()) {
             const auto& [ee_modname, ee_id] = tes_util::GetNamedFormID(*extra_ench);
             item.extra_ench_modname = ee_modname;
             item.extra_ench_id = ee_id;
@@ -155,7 +154,7 @@ class EquipsetUI final : public std::array<EsItemUI, kGearslots.size()> {
     From(const Equipset& equipset) {
         EquipsetUI equipset_ui;
         for (auto& item_ui : equipset_ui) {
-            auto* gos = QueryEquipset(equipset, item_ui.gos.slot());
+            const auto* gos = QueryEquipset(equipset, item_ui.gos.slot());
             if (!gos) {
                 continue;
             }
@@ -187,7 +186,7 @@ class EquipsetUI final : public std::array<EsItemUI, kGearslots.size()> {
     /// Finds the first item in `equipset` with the given slot.
     static const GearOrSlot*
     QueryEquipset(const Equipset& equipset, Gearslot slot) {
-        auto& v = equipset.vec();
+        const auto& v = equipset.vec();
         auto it = std::find_if(v.cbegin(), v.cend(), [=](const GearOrSlot& item) {
             return item.slot() == slot;
         });

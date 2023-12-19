@@ -80,7 +80,9 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
             return;
         }
 
-        auto* equipset = dev_util::input_handlers::UseHotkeys(hotkeys_, keystroke_buf_, *player);
+        const auto* equipset = dev_util::input_handlers::UseHotkeys(
+            hotkeys_, keystroke_buf_, *player
+        );
         if (equipset) {
             // Note the ordering here. Most-recent-equip-time must be reset prior to equipset-apply
             // because the latter will trigger equip events.
@@ -94,7 +96,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         if (!event || !event->actor || !event->actor->IsPlayerRef()) {
             return;
         }
-        auto* form = RE::TESForm::LookupByID(event->baseObject);
+        const auto* form = RE::TESForm::LookupByID(event->baseObject);
         if (!form) {
             return;
         }
