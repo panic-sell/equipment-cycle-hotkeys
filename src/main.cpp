@@ -1,8 +1,12 @@
 // SKSE plugin entry point.
 #include "event_handler.h"
+#include "fs.h"
+#include "settings.h"
 #include "ui_plumbing.h"
 
 namespace {
+
+using namespace ech;
 
 void
 InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
@@ -24,19 +28,33 @@ InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
 }
 
 void
+InitSettings() {
+    auto settings = fs::Read(fs::kSettingsPath).and_then([](std::string&& s) {
+        return Deserialize<Settings>(s);
+    });
+    if (!settings) {
+        SKSE::log::warn(
+            "failed to parse settings file '{}', falling back to defaults", fs::kSettingsPath
+        );
+        return;
+    }
+    Settings::GetSingleton(&*settings);
+}
+
+void
 OnMessage(SKSE::MessagingInterface::Message* msg) {
     if (!msg || msg->type != SKSE::MessagingInterface::kInputLoaded) {
         return;
     }
 
     // UI context and input handler.
-    if (auto res = ech::ui::Init(); !res.has_value()) {
+    if (auto res = ui::Init(); !res.has_value()) {
         SKSE::stl::report_and_fail(res.error());
     }
-    ech::ui::InstallHooks();
+    ui::InstallHooks();
 
     // General event handler.
-    if (auto res = ech::EventHandler::Register(); !res.has_value()) {
+    if (auto res = EventHandler::Register(); !res.has_value()) {
         SKSE::stl::report_and_fail(res.error());
     }
 }
@@ -50,6 +68,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     }
 
     InitLogging(*plugin_decl);
+    InitSettings();
     SKSE::Init(skse);
 
     const auto* msg_interface = SKSE::GetMessagingInterface();

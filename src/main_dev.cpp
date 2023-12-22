@@ -10,13 +10,15 @@
 #include <imgui_internal.h>
 #include <tchar.h>
 
-#define ECH_UI_DEV_MODE
+#define ECH_UI_DEV
 #include "fs.h"
 #include "keys.h"
 #include "serde.h"
 #include "ui_drawing.h"
 #include "ui_plumbing.h"
 #include "ui_viewmodels.h"
+
+using namespace ech;
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -212,7 +214,13 @@ main(int, char**) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    ech::ui::internal::InitStyle();
+    auto settings = fs::Read(fs::kSettingsPath).and_then([](std::string&& s) {
+        return Deserialize<Settings>(s);
+    });
+    if (settings) {
+        Settings::GetSingleton(&*settings);
+    }
+    ui::internal::Configure();
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);

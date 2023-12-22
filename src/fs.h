@@ -4,12 +4,14 @@
 namespace ech {
 namespace fs {
 
-#ifdef ECH_UI_DEV_MODE
-inline constexpr const char* kUiIniPath = ".ech/ech_imgui.ini";
-inline const std::filesystem::path kProfileDir = ".ech/profiles";
+#ifndef ECH_UI_DEV
+inline constexpr const char* kSettingsPath = "Data/SKSE/Plugins/EquipmentCycleHotkeys.json";
+inline constexpr const char* kImGuiIniPath = "Data/SKSE/Plugins/EquipmentCycleHotkeys_imgui.ini";
+inline constexpr const char* kProfileDir = "Data/SKSE/Plugins/EquipmentCycleHotkeys";
 #else
-inline constexpr const char* kUiIniPath = "Data/SKSE/Plugins/EquipmentCycleHotkeys_imgui.ini";
-inline const std::filesystem::path kProfileDir = "Data/SKSE/Plugins/EquipmentCycleHotkeys";
+inline constexpr const char* kSettingsPath = ".ech/EquipmentCycleHotkeys.json";
+inline constexpr const char* kImGuiIniPath = ".ech/EquipmentCycleHotkeys_imgui.ini";
+inline constexpr const char* kProfileDir = ".ech/EquipmentCycleHotkeys";
 #endif
 
 /// Returns nullopt on failure.

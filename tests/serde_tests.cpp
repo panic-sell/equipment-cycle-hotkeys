@@ -345,4 +345,43 @@ TEST_CASE("Equipset serde") {
     REQUIRE(got_jv == *want_jv);
 }
 
+TEST_CASE("Settings de") {
+    struct Testcase {
+        std::string_view name;
+        std::string_view src_str;
+        Settings want;
+    };
+
+    auto testcase = GENERATE(
+        Testcase{
+            .name = "normal",
+            .src_str = R"({
+                "font_scale": 123,
+                "color_style": 5,
+                "menu_toggle_keysets": [["LCtrl", "4"], ["5"]],
+            })",
+            .want{
+                .font_scale = 123,
+                .color_style = 5,
+                .menu_toggle_keysets = Keysets({
+                    {KeycodeFromName("LCtrl"), KeycodeFromName("4")},
+                    {KeycodeFromName("5")},
+                }),
+            },
+        },
+        Testcase{
+            .name = "default",
+            .src_str = "{}",
+            .want = {},
+        }
+    );
+
+    CAPTURE(testcase.name);
+    auto settings = Deserialize<Settings>(testcase.src_str);
+    REQUIRE(settings);
+    REQUIRE(settings->font_scale == testcase.want.font_scale);
+    REQUIRE(settings->color_style == testcase.want.color_style);
+    REQUIRE(settings->menu_toggle_keysets.vec() == testcase.want.menu_toggle_keysets.vec());
+}
+
 }  // namespace ech

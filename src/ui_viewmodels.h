@@ -1,5 +1,4 @@
-// Intermediate representations for data structures, enabling serialization/deserialization and
-// UI-triggered mutations.
+// Intermediate representations for data structures, enabling UI-triggered mutations.
 #pragma once
 
 #include "equipsets.h"

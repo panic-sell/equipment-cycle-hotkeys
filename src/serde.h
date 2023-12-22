@@ -3,6 +3,7 @@
 #include "equipsets.h"
 #include "hotkeys.h"
 #include "keys.h"
+#include "settings.h"
 #include "tes_util.h"
 
 namespace ech {
@@ -293,6 +294,30 @@ tag_invoke(
     auto hotkeys = internal::GetSerObjField<std::vector<Hotkey<Q>>>(jo, "hotkeys", ctx)
                        .value_or(std::vector<Hotkey<Q>>());
     return Hotkeys<Q>(std::move(hotkeys), active_hotkey);
+}
+
+/// Note that there's no `value_from` tag_invoke. Settings are only every configured through JSON
+/// files, so there's no need to serialize settings to JSON.
+inline boost::json::result<Settings>
+tag_invoke(
+    const boost::json::try_value_to_tag<Settings>&,
+    const boost::json::value& jv,
+    const SerdeContext& ctx
+) {
+    auto settings = Settings();
+    if (!jv.is_object()) {
+        return settings;
+    }
+    auto jo = jv.get_object();
+
+    settings.font_scale =
+        internal::GetSerObjField<float>(jo, "font_scale", ctx).value_or(settings.font_scale);
+    settings.color_style =
+        internal::GetSerObjField<uint8_t>(jo, "color_style", ctx).value_or(settings.color_style);
+    settings.menu_toggle_keysets =
+        Keysets(internal::GetSerObjField<std::vector<Keyset>>(jo, "menu_toggle_keysets", ctx)
+                    .value_or(settings.menu_toggle_keysets.vec()));
+    return settings;
 }
 
 }  // namespace ech

@@ -184,21 +184,11 @@ struct Table final {
 };
 
 struct Context final {
-    std::filesystem::path profile_dir;
+    std::filesystem::path profile_dir = fs::kProfileDir;
     std::vector<std::string> profile_cache;
     std::string export_name_buf;
     HotkeysUI<EquipsetUI> hotkeys_ui;
-    /// What's selected in UI. Has nothing to do with whether a hotkey is "active" during gameplay.
     size_t selected_hotkey_index = 0;
-
-    /// Returns nullptr if `selected_hotkey_index` is out of bounds.
-    HotkeyUI<EquipsetUI>*
-    selected_hotkey() {
-        if (selected_hotkey_index >= hotkeys_ui.size()) {
-            return nullptr;
-        }
-        return &hotkeys_ui[selected_hotkey_index];
-    }
 
     void
     ReloadProfileCache() {
@@ -515,15 +505,15 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
     if (ImGui::Button("Add Currently Equipped", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         auto& equipset_mut = const_cast<std::vector<EquipsetUI>&>(equipsets);
         action = [&equipset_mut]() {
-#ifdef ECH_UI_DEV_MODE
-            equipset_mut.emplace_back();
-#else
+    #ifndef ECH_UI_DEV
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (!player) {
                 return;
             }
             equipset_mut.push_back(EquipsetUI::From(Equipset::FromEquipped(*player)));
-#endif
+    #else
+            equipset_mut.emplace_back();
+    #endif
         };
     }
     return action;
@@ -532,28 +522,25 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
 inline void
 Draw() {
     static auto ctx = []() {
-        auto c = Context{
-            .profile_dir = fs::kProfileDir,
-            .hotkeys_ui{
-                {
-                    .name = "asdf",
-                    .keysets{
-                        {1, 2, 3, 4},
-                        {5, 0, 45, 104},
-                        {7, 0, 0, 0},
-                        {4, 3, 2, 1},
-                        {0, 20, 19, 18},
-                        {0},
-                    },
-                    .equipsets{
-                        {},
-                        {},
-                        {},
-                        {},
-                    },
+        auto c = Context{.hotkeys_ui{
+            {
+                .name = "asdf",
+                .keysets{
+                    {1, 2, 3, 4},
+                    {5, 0, 45, 104},
+                    {7, 0, 0, 0},
+                    {4, 3, 2, 1},
+                    {0, 20, 19, 18},
+                    {0},
                 },
-            }
-        };
+                .equipsets{
+                    {},
+                    {},
+                    {},
+                    {},
+                },
+            },
+        }};
         c.ReloadProfileCache();
         return c;
     }();
