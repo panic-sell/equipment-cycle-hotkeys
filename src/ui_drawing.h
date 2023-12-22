@@ -1,9 +1,9 @@
 #pragma once
 
 #include "fs.h"
-#include "ir.h"
 #include "keys.h"
 #include "serde.h"
+#include "ui_viewmodels.h"
 
 namespace ech {
 namespace ui {
@@ -187,17 +187,17 @@ struct Context final {
     std::filesystem::path profile_dir;
     std::vector<std::string> profile_cache;
     std::string export_name_buf;
-    HotkeysUI<Keyset, EquipsetUI> hotkeys_ui;
+    HotkeysUI<EquipsetUI> hotkeys_ui;
     /// What's selected in UI. Has nothing to do with whether a hotkey is "active" during gameplay.
     size_t selected_hotkey_index = 0;
 
     /// Returns nullptr if `selected_hotkey_index` is out of bounds.
-    HotkeyUI<Keyset, EquipsetUI>*
+    HotkeyUI<EquipsetUI>*
     selected_hotkey() {
-        if (selected_hotkey_index >= hotkeys_ui.hotkeys.size()) {
+        if (selected_hotkey_index >= hotkeys_ui.size()) {
             return nullptr;
         }
-        return &hotkeys_ui.hotkeys[selected_hotkey_index];
+        return &hotkeys_ui[selected_hotkey_index];
     }
 
     void
@@ -212,7 +212,7 @@ struct Context final {
 inline Action
 DrawImportMenu(Context& ctx) {
     constexpr auto try_parse_profile =
-        [](const std::filesystem::path&) -> std::optional<HotkeysUI<Keyset, EquipsetUI>> {
+        [](const std::filesystem::path&) -> std::optional<HotkeysUI<EquipsetUI>> {
         // TODO: implement
         return std::nullopt;
     };
@@ -265,8 +265,8 @@ DrawExportMenu(Context& ctx) {
         auto in_cache =
             std::find(ctx.profile_cache.cbegin(), ctx.profile_cache.cend(), ctx.export_name_buf)
             == ctx.profile_cache.cend();
-        const char* msg = in_cache ? "Create new profile '%s'?"
-                                   : "Overwrite existing profile '%s'?";
+        const char* msg =
+            in_cache ? "Create new profile '%s'?" : "Overwrite existing profile '%s'?";
         ImGui::Text(msg, ctx.export_name_buf.c_str());
         if (ImGui::Button("Yes")) {
             action = [&ctx]() {
@@ -332,28 +332,27 @@ DrawSettingsMenu() {
 
 inline Action
 DrawHotkeyList(Context& ctx) {
-    auto table = Table<HotkeyUI<Keyset, EquipsetUI>, 1>{
+    auto table = Table<HotkeyUI<EquipsetUI>, 1>{
         .id = "hotkeys_list",
         .headers = std::array{""},
-        .viewmodel = ctx.hotkeys_ui.hotkeys,
-        .draw_cell =
-            [&ctx](const HotkeyUI<Keyset, EquipsetUI>& hotkey, size_t row, size_t) -> Action {
+        .viewmodel = ctx.hotkeys_ui,
+        .draw_cell = [&ctx](const HotkeyUI<EquipsetUI>& hotkey, size_t row, size_t) -> Action {
             const char* label = hotkey.name.empty() ? "(Unnamed)" : hotkey.name.c_str();
             if (!ImGui::RadioButton(label, row == ctx.selected_hotkey_index)) {
                 return {};
             }
             return [&ctx, row]() { ctx.selected_hotkey_index = row; };
         },
-        .draw_drag_tooltip = [](const HotkeyUI<Keyset, EquipsetUI>& hotkey
+        .draw_drag_tooltip = [](const HotkeyUI<EquipsetUI>& hotkey
                              ) { ImGui::Text("%s", hotkey.name.c_str()); },
     };
 
     auto atrc = table.Draw();
     if (ImGui::Button("New", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         auto a = [&ctx]() {
-            ctx.hotkeys_ui.hotkeys.emplace_back();
+            ctx.hotkeys_ui.emplace_back();
             // Adding a new hotkey selects that hotkey.
-            ctx.selected_hotkey_index = ctx.hotkeys_ui.hotkeys.size() - 1;
+            ctx.selected_hotkey_index = ctx.hotkeys_ui.size() - 1;
         };
         atrc = {std::move(a), {}};
     }
@@ -363,28 +362,24 @@ DrawHotkeyList(Context& ctx) {
 
     return [atrc, &ctx]() {
         const auto& [a, trc] = atrc;
-        if (trc.remove < ctx.hotkeys_ui.hotkeys.size()) {
+        if (trc.remove < ctx.hotkeys_ui.size()) {
             // If the selected hotkey is below the removed hotkey, then move selection upward.
             if (trc.remove < ctx.selected_hotkey_index) {
                 ctx.selected_hotkey_index--;
             }
-        } else if (
-            trc.drag_source < ctx.hotkeys_ui.hotkeys.size()
-            && trc.drag_target < ctx.hotkeys_ui.hotkeys.size()
-        ) {
+        } else if (trc.drag_source < ctx.hotkeys_ui.size() && trc.drag_target < ctx.hotkeys_ui.size()) {
             // Select the row that was dragged.
             ctx.selected_hotkey_index = trc.drag_target;
         }
         a();
-        if (ctx.selected_hotkey_index >= ctx.hotkeys_ui.hotkeys.size()
-            && ctx.selected_hotkey_index > 0) {
+        if (ctx.selected_hotkey_index >= ctx.hotkeys_ui.size() && ctx.selected_hotkey_index > 0) {
             ctx.selected_hotkey_index--;
         }
     };
 }
 
 inline void
-DrawName(HotkeyUI<Keyset, EquipsetUI>& hotkey) {
+DrawName(HotkeyUI<EquipsetUI>& hotkey) {
     ImGui::InputTextWithHint("Hotkey Name", "Enter hotkey name...", &hotkey.name);
 }
 
@@ -403,8 +398,8 @@ DrawKeysets(std::vector<Keyset>& keysets) {
         .draw_cell = [](const Keyset& keyset, size_t, size_t col) -> Action {
             auto keycode = keyset[col];
             const char* preview = keycode_names[KeycodeNormalized(keycode)];
-            constexpr auto combo_flags = ImGuiComboFlags_HeightLarge
-                                         | ImGuiComboFlags_NoArrowButton;
+            constexpr auto combo_flags =
+                ImGuiComboFlags_HeightLarge | ImGuiComboFlags_NoArrowButton;
             if (!ImGui::BeginCombo("##dropdown", preview, combo_flags)) {
                 return {};
             }
@@ -472,8 +467,8 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
         .draw_cell = [](const EquipsetUI& equipset, size_t, size_t col) -> Action {
             const auto& item = equipset[col];
             const char* preview = item_to_str(item);
-            constexpr auto combo_flags = ImGuiComboFlags_HeightLarge
-                                         | ImGuiComboFlags_NoArrowButton;
+            constexpr auto combo_flags =
+                ImGuiComboFlags_HeightLarge | ImGuiComboFlags_NoArrowButton;
             if (!ImGui::BeginCombo("##dropdown", preview, combo_flags)) {
                 return {};
             }
@@ -539,7 +534,7 @@ Draw() {
     static auto ctx = []() {
         auto c = Context{
             .profile_dir = fs::kProfileDir,
-            .hotkeys_ui = HotkeysUI(std::vector<HotkeyUI<Keyset, EquipsetUI>>{
+            .hotkeys_ui{
                 {
                     .name = "asdf",
                     .keysets{
@@ -557,7 +552,7 @@ Draw() {
                         {},
                     },
                 },
-            })
+            }
         };
         c.ReloadProfileCache();
         return c;
@@ -624,8 +619,8 @@ Draw() {
 
     // Hotkey details.
     ImGui::BeginChild("selected_hotkey", ImVec2(0, 0));
-    if (ctx.selected_hotkey_index < ctx.hotkeys_ui.hotkeys.size()) {
-        auto& hotkey = ctx.hotkeys_ui.hotkeys[ctx.selected_hotkey_index];
+    if (ctx.selected_hotkey_index < ctx.hotkeys_ui.size()) {
+        auto& hotkey = ctx.hotkeys_ui[ctx.selected_hotkey_index];
         DrawName(hotkey);
 
         ImGui::Dummy(ImVec2(0, ImGui::GetTextLineHeight()));

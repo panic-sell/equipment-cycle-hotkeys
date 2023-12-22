@@ -472,6 +472,17 @@ RenderHook(uint32_t x) {
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
+inline void
+InitStyle() {
+    auto& io = ImGui::GetIO();
+    io.IniFilename = fs::kUiIniPath;
+    io.ConfigWindowsMoveFromTitleBarOnly = true;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+    ImGui::StyleColorsDark();
+}
+
 }  // namespace internal
 
 [[nodiscard]] inline std::expected<void, std::string_view>
@@ -492,11 +503,7 @@ Init() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    ImGui::StyleColorsDark();
-    auto& io = ImGui::GetIO();
-    io.IniFilename = fs::kUiIniPath;
-    io.ConfigWindowsMoveFromTitleBarOnly = true;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    internal::InitStyle();
 
     if (!ImGui_ImplWin32_Init(sd.OutputWindow) || !ImGui_ImplDX11_Init(device, ctx)) {
         return std::unexpected("failed to initialize Dear ImGui");

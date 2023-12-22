@@ -3,7 +3,7 @@
 #include "dev_util.h"
 #include "equipsets.h"
 #include "hotkeys.h"
-#include "ir.h"
+#include "ui_viewmodels.h"
 #include "keys.h"
 #include "tes_util.h"
 
@@ -80,9 +80,8 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
             return;
         }
 
-        const auto* equipset = dev_util::input_handlers::UseHotkeys(
-            hotkeys_, keystroke_buf_, *player
-        );
+        const auto* equipset =
+            dev_util::input_handlers::UseHotkeys(hotkeys_, keystroke_buf_, *player);
         if (equipset) {
             // Note the ordering here. Most-recent-equip-time must be reset prior to equipset-apply
             // because the latter will trigger equip events.
@@ -133,26 +132,27 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
     std::vector<Keystroke> keystroke_buf_;
     /// In milliseconds since application start.
     uint32_t most_recent_hotkey_equip_time_ = 0;
-    Hotkeys<> hotkeys_ = HotkeysUI(std::vector{
-                                       HotkeyUI<Keyset, EquipsetUI>{
-                                           .name = "1",
-                                           .keysets = {{2}},
-                                       },
-                                       HotkeyUI<Keyset, EquipsetUI>{
-                                           .name = "2",
-                                           .keysets = {{3}},
-                                       },
-                                       HotkeyUI<Keyset, EquipsetUI>{
-                                           .name = "3",
-                                           .keysets = {{4}},
-                                       },
-                                       HotkeyUI<Keyset, EquipsetUI>{
-                                           .name = "4",
-                                           .keysets = {{5}},
-                                       },
-                                   })
-                             .ConvertEquipset(std::mem_fn(&EquipsetUI::To))
-                             .Into();
+    Hotkeys<> hotkeys_ =
+        HotkeysUI<EquipsetUI>{
+            HotkeyUI<EquipsetUI>{
+                .name = "1",
+                .keysets = {{2}},
+            },
+            HotkeyUI<EquipsetUI>{
+                .name = "2",
+                .keysets = {{3}},
+            },
+            HotkeyUI<EquipsetUI>{
+                .name = "3",
+                .keysets = {{4}},
+            },
+            HotkeyUI<EquipsetUI>{
+                .name = "4",
+                .keysets = {{5}},
+            },
+        }
+            .ConvertEquipset(std::mem_fn(&EquipsetUI::To))
+            .Into();
 };
 
 }  // namespace ech

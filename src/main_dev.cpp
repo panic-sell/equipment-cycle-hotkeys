@@ -12,10 +12,11 @@
 
 #define ECH_UI_DEV_MODE
 #include "fs.h"
-#include "ir.h"
 #include "keys.h"
 #include "serde.h"
 #include "ui_drawing.h"
+#include "ui_plumbing.h"
+#include "ui_viewmodels.h"
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -31,7 +32,7 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-#if 1
+#if 0
 namespace json = boost::json;
 
 namespace custom_ns {
@@ -210,14 +211,8 @@ main(int, char**) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = ech::fs::kUiIniPath;
-    io.ConfigWindowsMoveFromTitleBarOnly = true;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
 
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
+    ech::ui::internal::InitStyle();
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
