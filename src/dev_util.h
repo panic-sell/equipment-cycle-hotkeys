@@ -120,7 +120,7 @@ InspectEquipped(std::span<const Keystroke> keystrokes, RE::Actor& actor) {
 const Equipset*
 UseHotkeys(Hotkeys<>& hotkeys, std::span<const Keystroke> keystrokes, RE::Actor& actor) {
     auto set = [&](size_t i) {
-        auto hotkeys_ir = HotkeysIR(hotkeys).ConvertEquipset(EquipsetUI::From);
+        auto hotkeys_ir = HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
         hotkeys_ir.hotkeys[i].equipsets.push_back(
             EquipsetUI::From(Equipset::FromEquipped(actor, true))
         );
@@ -128,7 +128,7 @@ UseHotkeys(Hotkeys<>& hotkeys, std::span<const Keystroke> keystrokes, RE::Actor&
         SKSE::log::info("added equipset to hotkey {}", i + 1);
     };
     auto remove = [&](size_t i) {
-        auto hotkeys_ir = HotkeysIR(hotkeys).ConvertEquipset(EquipsetUI::From);
+        auto hotkeys_ir = HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
         auto& equipset_ui = hotkeys_ir.hotkeys[i].equipsets;
         if (equipset_ui.empty()) {
             return;

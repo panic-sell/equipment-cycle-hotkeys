@@ -26,12 +26,12 @@ CompareHotkeys(const Hotkeys<Q>& a, const Hotkeys<Q>& b) {
 
 template <typename K, typename Q>
 void
-CompareHotkeysIR(const HotkeysIR<K, Q>& a, const HotkeysIR<K, Q>& b) {
+CompareHotkeysIR(const HotkeysUI<K, Q>& a, const HotkeysUI<K, Q>& b) {
     auto sz = std::min(a.hotkeys.size(), b.hotkeys.size());
     for (size_t i = 0; i < sz; i++) {
         CAPTURE(i);
-        const HotkeyIR<K, Q>& ah = a.hotkeys[i];
-        const HotkeyIR<K, Q>& bh = b.hotkeys[i];
+        const HotkeyUI<K, Q>& ah = a.hotkeys[i];
+        const HotkeyUI<K, Q>& bh = b.hotkeys[i];
         REQUIRE(ah.name == bh.name);
         REQUIRE(ah.keysets == bh.keysets);
         REQUIRE(ah.equipsets == bh.equipsets);
@@ -44,7 +44,7 @@ CompareHotkeysIR(const HotkeysIR<K, Q>& a, const HotkeysIR<K, Q>& b) {
 template <typename K, typename Q>
 requires(std::equality_comparable<K> && std::equality_comparable<Q>)
 bool
-operator==(const HotkeyIR<K, Q>& a, const HotkeyIR<K, Q>& b) {
+operator==(const HotkeyUI<K, Q>& a, const HotkeyUI<K, Q>& b) {
     return a.name == b.name && a.keysets == b.keysets && a.equipsets == b.equipsets
            && a.active_equipset == b.active_equipset;
 }
@@ -52,45 +52,11 @@ operator==(const HotkeyIR<K, Q>& a, const HotkeyIR<K, Q>& b) {
 template <typename K, typename Q>
 requires(std::equality_comparable<K> && std::equality_comparable<Q>)
 bool
-operator==(const HotkeysIR<K, Q>& a, const HotkeysIR<K, Q>& b) {
+operator==(const HotkeysUI<K, Q>& a, const HotkeysUI<K, Q>& b) {
     return a.hotkeys == b.hotkeys && a.active_hotkey == b.active_hotkey;
 }
 
-TEST_CASE("KeysetSer serialize") {
-    struct Testcase {
-        Keyset input;
-        KeysetSer want;
-    };
-
-    auto testcase = GENERATE(
-        Testcase{.input = {}, .want = {}},
-        Testcase{.input = {{1, 2, 3, 4}}, .want = {{"Esc", "1", "2", "3"}}},
-        Testcase{.input = {{1, 0, 1, 4}}, .want = {{"Esc", "Esc", "3"}}}
-    );
-    CAPTURE(testcase.input);
-    auto got = KeysetSer::From(testcase.input);
-    REQUIRE(got == testcase.want);
-}
-
-TEST_CASE("KeysetSer deserialize") {
-    struct Testcase {
-        KeysetSer input;
-        Keyset want;
-    };
-
-    auto testcase = GENERATE(
-        Testcase{.input = {}, .want = {}},
-        Testcase{.input = {{"3", "2", "1", "Esc"}}, .want = {{1, 2, 3, 4}}},
-        Testcase{.input = {{"-", "Esc", "-"}}, .want = {{1, 12}}},
-        // Only the first 4 items are considered, even if some of them are invalid.
-        Testcase{.input = {{"Esc", "asdfasdf", "", "1", "2", "3"}}, .want = {{1, 2}}}
-    );
-    CAPTURE(testcase.input);
-    auto got = testcase.input.To();
-    REQUIRE(got == testcase.want);
-}
-
-TEST_CASE("HotkeysIR serialize") {
+TEST_CASE("HotkeysUI serialize") {
     auto hotkeys = Hotkeys(
         std::vector<Hotkey<std::string_view>>{
             {
@@ -113,9 +79,9 @@ TEST_CASE("HotkeysIR serialize") {
     );
 
     SECTION("discard active status") {
-        auto got = HotkeysIR(hotkeys);
-        auto want = HotkeysIR(
-            std::vector<HotkeyIR<Keyset, std::string_view>>{
+        auto got = HotkeysUI(hotkeys);
+        auto want = HotkeysUI(
+            std::vector<HotkeyUI<Keyset, std::string_view>>{
                 {
                     .name = "",
                     .keysets = {},
@@ -141,9 +107,9 @@ TEST_CASE("HotkeysIR serialize") {
     }
 
     SECTION("persist active status") {
-        auto got = HotkeysIR(hotkeys, false);
-        auto want = HotkeysIR(
-            std::vector<HotkeyIR<Keyset, std::string_view>>{
+        auto got = HotkeysUI(hotkeys, false);
+        auto want = HotkeysUI(
+            std::vector<HotkeyUI<Keyset, std::string_view>>{
                 {
                     .name = "",
                     .keysets = {},
@@ -169,9 +135,9 @@ TEST_CASE("HotkeysIR serialize") {
     }
 }
 
-TEST_CASE("HotkeysIR deserialize") {
-    auto ir = HotkeysIR(
-        std::vector<HotkeyIR<Keyset, std::string_view>>{
+TEST_CASE("HotkeysUI deserialize") {
+    auto ir = HotkeysUI(
+        std::vector<HotkeyUI<Keyset, std::string_view>>{
             {
                 .name = "",
                 .keysets = {},
@@ -252,8 +218,8 @@ TEST_CASE("HotkeysIR deserialize") {
     }
 }
 
-TEST_CASE("HotkeysIR keyset/equipset conversions") {
-    auto ir = HotkeysIR(std::vector<HotkeyIR<uint32_t, std::string_view>>{
+TEST_CASE("HotkeysUI keyset/equipset conversions") {
+    auto ir = HotkeysUI(std::vector<HotkeyUI<uint32_t, std::string_view>>{
         {
             .keysets = {},
             .equipsets = {"a"},
@@ -266,7 +232,7 @@ TEST_CASE("HotkeysIR keyset/equipset conversions") {
 
     SECTION("convert keyset") {
         auto got = ir.ConvertKeyset(KeycodeName);
-        auto want = HotkeysIR(std::vector<HotkeyIR<std::string_view, std::string_view>>{
+        auto want = HotkeysUI(std::vector<HotkeyUI<std::string_view, std::string_view>>{
             {
                 .keysets = {},
                 .equipsets = {"a"},
@@ -281,7 +247,7 @@ TEST_CASE("HotkeysIR keyset/equipset conversions") {
 
     SECTION("convert equipset") {
         auto got = ir.ConvertEquipset(std::mem_fn(&std::string_view::size));
-        auto want = HotkeysIR(std::vector<HotkeyIR<uint32_t, size_t>>{
+        auto want = HotkeysUI(std::vector<HotkeyUI<uint32_t, size_t>>{
             {
                 .keysets = {},
                 .equipsets = {1},
@@ -293,42 +259,6 @@ TEST_CASE("HotkeysIR keyset/equipset conversions") {
         });
         CompareHotkeysIR(got, want);
     }
-}
-
-TEST_CASE("HotkeysIR json") {
-    using K = std::vector<int>;
-    using Q = std::vector<std::string_view>;
-    auto initial_ir = HotkeysIR(
-        std::vector<HotkeyIR<K, Q>>{
-            {
-                .name = "a hotkey",
-                .keysets = {{}, {1}, {2, 3, 4}},
-                .equipsets = {{"a"}, {"bc", "def"}, {}},
-                .active_equipset = 1,
-            },
-            {},
-            {
-                .name = "empty hotkey",
-                .keysets = {},
-                .equipsets = {},
-                .active_equipset = 2,
-            },
-        },
-        123  // will be clamped to vec.size()
-    );
-
-    // TODO: test
-
-    // auto final_ir = j.template get<HotkeysIR<K, Q>>();
-    // CompareHotkeysIR(final_ir, initial_ir);
-
-    // auto s = nlohmann::json(initial_ir).dump(/*indent=*/1, /*indent_char=*/'\t');
-    // CAPTURE(s);
-    // auto j = nlohmann::json::parse(s, nullptr, false);
-    // REQUIRE(!j.is_discarded());
-
-    // auto final_ir = j.template get<HotkeysIR<K, E>>();
-    // CompareHotkeysIR(final_ir, initial_ir);
 }
 
 }  // namespace ech

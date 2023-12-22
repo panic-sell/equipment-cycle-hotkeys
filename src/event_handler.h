@@ -133,20 +133,20 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
     std::vector<Keystroke> keystroke_buf_;
     /// In milliseconds since application start.
     uint32_t most_recent_hotkey_equip_time_ = 0;
-    Hotkeys<> hotkeys_ = HotkeysIR(std::vector{
-                                       HotkeyIR<Keyset, EquipsetUI>{
+    Hotkeys<> hotkeys_ = HotkeysUI(std::vector{
+                                       HotkeyUI<Keyset, EquipsetUI>{
                                            .name = "1",
                                            .keysets = {{2}},
                                        },
-                                       HotkeyIR<Keyset, EquipsetUI>{
+                                       HotkeyUI<Keyset, EquipsetUI>{
                                            .name = "2",
                                            .keysets = {{3}},
                                        },
-                                       HotkeyIR<Keyset, EquipsetUI>{
+                                       HotkeyUI<Keyset, EquipsetUI>{
                                            .name = "3",
                                            .keysets = {{4}},
                                        },
-                                       HotkeyIR<Keyset, EquipsetUI>{
+                                       HotkeyUI<Keyset, EquipsetUI>{
                                            .name = "4",
                                            .keysets = {{5}},
                                        },

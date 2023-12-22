@@ -187,12 +187,12 @@ struct Context final {
     std::filesystem::path profile_dir;
     std::vector<std::string> profile_cache;
     std::string export_name_buf;
-    HotkeysIR<Keyset, EquipsetUI> hotkeys_ui;
+    HotkeysUI<Keyset, EquipsetUI> hotkeys_ui;
     /// What's selected in UI. Has nothing to do with whether a hotkey is "active" during gameplay.
     size_t selected_hotkey_index = 0;
 
     /// Returns nullptr if `selected_hotkey_index` is out of bounds.
-    HotkeyIR<Keyset, EquipsetUI>*
+    HotkeyUI<Keyset, EquipsetUI>*
     selected_hotkey() {
         if (selected_hotkey_index >= hotkeys_ui.hotkeys.size()) {
             return nullptr;
@@ -212,7 +212,7 @@ struct Context final {
 inline Action
 DrawImportMenu(Context& ctx) {
     constexpr auto try_parse_profile =
-        [](const std::filesystem::path&) -> std::optional<HotkeysIR<Keyset, EquipsetUI>> {
+        [](const std::filesystem::path&) -> std::optional<HotkeysUI<Keyset, EquipsetUI>> {
         // TODO: implement
         return std::nullopt;
     };
@@ -271,7 +271,7 @@ DrawExportMenu(Context& ctx) {
         if (ImGui::Button("Yes")) {
             action = [&ctx]() {
                 auto hotkeys_real =
-                    HotkeysIR(ctx.hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
+                    HotkeysUI(ctx.hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
                 // TODO: convert to json
                 std::error_code ec;
                 std::filesystem::create_directories(ctx.profile_dir, ec);
@@ -332,19 +332,19 @@ DrawSettingsMenu() {
 
 inline Action
 DrawHotkeyList(Context& ctx) {
-    auto table = Table<HotkeyIR<Keyset, EquipsetUI>, 1>{
+    auto table = Table<HotkeyUI<Keyset, EquipsetUI>, 1>{
         .id = "hotkeys_list",
         .headers = std::array{""},
         .viewmodel = ctx.hotkeys_ui.hotkeys,
         .draw_cell =
-            [&ctx](const HotkeyIR<Keyset, EquipsetUI>& hotkey, size_t row, size_t) -> Action {
+            [&ctx](const HotkeyUI<Keyset, EquipsetUI>& hotkey, size_t row, size_t) -> Action {
             const char* label = hotkey.name.empty() ? "(Unnamed)" : hotkey.name.c_str();
             if (!ImGui::RadioButton(label, row == ctx.selected_hotkey_index)) {
                 return {};
             }
             return [&ctx, row]() { ctx.selected_hotkey_index = row; };
         },
-        .draw_drag_tooltip = [](const HotkeyIR<Keyset, EquipsetUI>& hotkey
+        .draw_drag_tooltip = [](const HotkeyUI<Keyset, EquipsetUI>& hotkey
                              ) { ImGui::Text("%s", hotkey.name.c_str()); },
     };
 
@@ -384,7 +384,7 @@ DrawHotkeyList(Context& ctx) {
 }
 
 inline void
-DrawName(HotkeyIR<Keyset, EquipsetUI>& hotkey) {
+DrawName(HotkeyUI<Keyset, EquipsetUI>& hotkey) {
     ImGui::InputTextWithHint("Hotkey Name", "Enter hotkey name...", &hotkey.name);
 }
 
@@ -539,7 +539,7 @@ Draw() {
     static auto ctx = []() {
         auto c = Context{
             .profile_dir = fs::kProfileDir,
-            .hotkeys_ui = HotkeysIR(std::vector<HotkeyIR<Keyset, EquipsetUI>>{
+            .hotkeys_ui = HotkeysUI(std::vector<HotkeyUI<Keyset, EquipsetUI>>{
                 {
                     .name = "asdf",
                     .keysets{
