@@ -51,7 +51,6 @@ OnMessage(SKSE::MessagingInterface::Message* msg) {
     if (auto res = ui::Init(); !res.has_value()) {
         SKSE::stl::report_and_fail(res.error());
     }
-    ui::InstallHooks();
 
     // General event handler.
     if (auto res = EventHandler::Register(); !res.has_value()) {

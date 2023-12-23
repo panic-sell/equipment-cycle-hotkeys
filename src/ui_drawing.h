@@ -183,7 +183,7 @@ struct Table final {
     }
 };
 
-struct Context final {
+struct DrawContext final {
     std::filesystem::path profile_dir = fs::kProfileDir;
     std::vector<std::string> profile_cache;
     std::string export_name_buf;
@@ -200,7 +200,7 @@ struct Context final {
 };
 
 inline Action
-DrawImportMenu(Context& ctx) {
+DrawImportMenu(DrawContext& ctx) {
     constexpr auto try_parse_profile =
         [](const std::filesystem::path&) -> std::optional<HotkeysUI<EquipsetUI>> {
         // TODO: implement
@@ -237,7 +237,7 @@ DrawImportMenu(Context& ctx) {
 }
 
 inline Action
-DrawExportMenu(Context& ctx) {
+DrawExportMenu(DrawContext& ctx) {
     auto confirm_export = false;
     if (ImGui::BeginMenu("Export")) {
         ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ctx.export_name_buf);
@@ -285,43 +285,7 @@ DrawExportMenu(Context& ctx) {
 }
 
 inline Action
-DrawSettingsMenu() {
-    if (!ImGui::BeginMenu("Settings")) {
-        return {};
-    }
-
-    ImGui::SeparatorText("Font Scale");
-    ImGui::DragFloat(
-        "##font_scale",
-        &ImGui::GetIO().FontGlobalScale,
-        /*v_speed=*/.01f,
-        /*v_min=*/.5f,
-        /*v_max=*/2.f,
-        /*format=*/"%.2f",
-        ImGuiSliderFlags_AlwaysClamp
-    );
-
-    static int color = 0;
-    ImGui::SeparatorText("Colors");
-    if (ImGui::MenuItem("Dark", nullptr, color == 0)) {
-        ImGui::StyleColorsDark();
-        color = 0;
-    }
-    if (ImGui::MenuItem("Light", nullptr, color == 1)) {
-        ImGui::StyleColorsLight();
-        color = 1;
-    }
-    if (ImGui::MenuItem("Classic", nullptr, color == 2)) {
-        ImGui::StyleColorsClassic();
-        color = 2;
-    }
-
-    ImGui::EndMenu();
-    return {};
-}
-
-inline Action
-DrawHotkeyList(Context& ctx) {
+DrawHotkeyList(DrawContext& ctx) {
     auto table = Table<HotkeyUI<EquipsetUI>, 1>{
         .id = "hotkeys_list",
         .headers = std::array{""},
@@ -505,15 +469,16 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
     if (ImGui::Button("Add Currently Equipped", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         auto& equipset_mut = const_cast<std::vector<EquipsetUI>&>(equipsets);
         action = [&equipset_mut]() {
-    #ifndef ECH_UI_DEV
+#ifndef ECH_UI_DEV
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (!player) {
+                SKSE::log::error("cannot get RE::PlayerCharacter instance");
                 return;
             }
             equipset_mut.push_back(EquipsetUI::From(Equipset::FromEquipped(*player)));
-    #else
+#else
             equipset_mut.emplace_back();
-    #endif
+#endif
         };
     }
     return action;
@@ -522,7 +487,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
 inline void
 Draw() {
     static auto ctx = []() {
-        auto c = Context{.hotkeys_ui{
+        auto c = DrawContext{.hotkeys_ui{
             {
                 .name = "asdf",
                 .keysets{
@@ -584,9 +549,6 @@ Draw() {
             action = a;
         }
         if (auto a = DrawExportMenu(ctx)) {
-            action = a;
-        }
-        if (auto a = DrawSettingsMenu()) {
             action = a;
         }
         ImGui::EndMenuBar();
