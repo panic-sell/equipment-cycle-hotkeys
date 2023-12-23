@@ -13,13 +13,16 @@ namespace ech {
 namespace ui {
 namespace internal {
 
-/// This only contains keys that should be fed into `io.AddKeyEvent()`. I.e. Mouse keys are not
-/// mapped.
 /// Whether the UI is visible. Equivalently, whether the UI is capturing all input.
 inline std::atomic<bool> gIsActive = false;
 
+inline std::optional<DrawContext> gDrawContext;
+inline std::mutex gDrawContextMutex;
+
 class RenderHook final {
   public:
+    RenderHook() = delete;
+
     static inline void
     Install() {
         SKSE::AllocTrampoline(14);
@@ -31,6 +34,8 @@ class RenderHook final {
     static inline void
     Render(uint32_t x) {
         orig_render_(x);
+
+        auto lg = std::lock_guard(gDrawContextMutex);
         if (!gIsActive.load()) {
             return;
         }
@@ -39,8 +44,8 @@ class RenderHook final {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        Draw();
-        // ImGui::ShowDemoWindow();
+        // Draw();
+        ImGui::ShowDemoWindow();
 
         ImGui::Render();
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -51,6 +56,8 @@ class RenderHook final {
 
 class InputHook final {
   public:
+    InputHook() = delete;
+
     static inline void
     Install() {
         SKSE::AllocTrampoline(14);
@@ -61,30 +68,27 @@ class InputHook final {
   private:
     static inline void
     Input(RE::BSTEventSource<RE::InputEvent*>* event_src, RE::InputEvent* const* events) {
-        if (!events) {
+        if (events && (ToggleUI(*events) || CaptureInputs(*events))) {
+            constexpr auto dummy_events = std::array{static_cast<RE::InputEvent*>(nullptr)};
+            orig_input_(event_src, &dummy_events[0]);
+        } else {
             orig_input_(event_src, events);
-            return;
         }
-
-        constexpr auto dummy = std::array{static_cast<RE::InputEvent*>(nullptr)};
-        MaybeToggleActiveState(*events);
-        if (gIsActive.load()) {
-            CaptureInputs(*events);
-            events = &dummy[0];
-        }
-        orig_input_(event_src, events);
     }
 
-    /// Checks if UI toggle keys were pressed, and activates/deactivates the UI accordingly.
-    static inline void
-    MaybeToggleActiveState(const RE::InputEvent* events) {
-        static std::vector<Keystroke> keybuf;
-        keybuf.clear();
-        Keystroke::InputEventsToBuffer(events, keybuf);
-        if (Settings::GetSingleton().menu_toggle_keysets.Match(keybuf)
+    /// Checks if UI toggle keys were pressed, and activates/deactivates the UI accordingly. Returns
+    /// false if UI was not toggled.
+    static inline bool
+    ToggleUI(const RE::InputEvent* events) {
+        static std::vector<Keystroke> keystroke_buf;
+        keystroke_buf.clear();
+        Keystroke::InputEventsToBuffer(events, keystroke_buf);
+        if (Settings::GetSingleton().menu_toggle_keysets.Match(keystroke_buf)
             != Keysets::MatchResult::kPress) {
-            return;
+            return false;
         }
+
+        auto lg = std::lock_guard(gDrawContextMutex);
         auto& io = ImGui::GetIO();
         if (gIsActive.load()) {
             // Immediately disable state, then perform cleanup.
@@ -95,11 +99,16 @@ class InputHook final {
             io.MouseDrawCursor = true;
             gIsActive.store(true);
         }
+        return true;
     }
 
-    /// Forwards inputs to ImGui.
-    static inline void
+    /// Forwards inputs to ImGui. Returns false if UI is not active.
+    static inline bool
     CaptureInputs(const RE::InputEvent* events) {
+        auto lg = std::lock_guard(gDrawContextMutex);
+        if (!gIsActive.load()) {
+            return false;
+        }
         for (; events; events = events->next) {
             const auto* button = events->AsButtonEvent();
             if (!button) {
@@ -108,6 +117,7 @@ class InputHook final {
             CaptureMouseInput(*button) || CaptureKeyboardInput(*button)
                 || CaptureGamepadInput(*button);
         }
+        return true;
     }
 
     static inline bool
@@ -206,6 +216,8 @@ class InputHook final {
 
     static inline constexpr ImGuiKey
     ImGuiKeyFromKeycode(uint32_t keycode) {
+        /// This only contains keys that should be fed into `io.AddKeyEvent()`. I.e. Mouse keys are
+        /// not mapped.
         constexpr auto keys = std::array{
             ImGuiKey_None,              // 0
             ImGuiKey_Escape,            // 1

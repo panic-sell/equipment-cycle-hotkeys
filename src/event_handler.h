@@ -3,33 +3,22 @@
 #include "dev_util.h"
 #include "equipsets.h"
 #include "hotkeys.h"
-#include "ui_viewmodels.h"
 #include "keys.h"
 #include "tes_util.h"
+#include "ui_viewmodels.h"
 
 namespace ech {
-namespace internal {
-
-inline bool
-GameIsAcceptingInput() {
-    auto* ui = RE::UI::GetSingleton();
-    auto* control_map = RE::ControlMap::GetSingleton();
-    // clang-format off
-    return ui
-        && !ui->GameIsPaused()
-        && !ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)
-        && !ui->IsMenuOpen(RE::CraftingMenu::MENU_NAME)
-        && control_map
-        && control_map->IsMovementControlsEnabled();
-    // clang-format on
-}
-
-}  // namespace internal
 
 class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
                            public RE::BSTEventSink<RE::TESEquipEvent> {
   public:
-    static std::expected<void, std::string_view>
+    static EventHandler&
+    GetSingleton() {
+        static EventHandler h;
+        return h;
+    }
+
+    std::expected<void, std::string_view>
     Register() {
         auto* idm = RE::BSInputDeviceManager::GetSingleton();
         auto* sesh = RE::ScriptEventSourceHolder::GetSingleton();
@@ -37,9 +26,8 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
             return std::unexpected("failed to get event sources");
         }
 
-        static EventHandler h;
-        idm->AddEventSink<RE::InputEvent*>(&h);
-        sesh->AddEventSink<RE::TESEquipEvent>(&h);
+        idm->AddEventSink<RE::InputEvent*>(this);
+        sesh->AddEventSink<RE::TESEquipEvent>(this);
         return {};
     }
 
@@ -60,11 +48,20 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
   private:
     void
     HandleInputEvents(RE::InputEvent* const* events) {
-        if (!events || !internal::GameIsAcceptingInput()) {
+        if (!events) {
             return;
         }
+
+        auto* ui = RE::UI::GetSingleton();
         auto* control_map = RE::ControlMap::GetSingleton();
-        if (!control_map || !control_map->IsMovementControlsEnabled()) {
+        if ( // clang-format off
+            !ui
+            || ui->GameIsPaused()
+            || ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)
+            || ui->IsMenuOpen(RE::CraftingMenu::MENU_NAME)
+            || !control_map
+            || !control_map->IsMovementControlsEnabled()
+        ) {  // clang-format on
             return;
         }
 

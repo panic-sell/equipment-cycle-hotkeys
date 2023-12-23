@@ -53,7 +53,7 @@ OnMessage(SKSE::MessagingInterface::Message* msg) {
     }
 
     // General event handler.
-    if (auto res = EventHandler::Register(); !res.has_value()) {
+    if (auto res = EventHandler::GetSingleton().Register(); !res.has_value()) {
         SKSE::stl::report_and_fail(res.error());
     }
 }
