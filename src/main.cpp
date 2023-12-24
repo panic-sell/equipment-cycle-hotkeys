@@ -48,12 +48,12 @@ OnMessage(SKSE::MessagingInterface::Message* msg) {
     }
 
     // UI context and input handler.
-    if (auto res = ui::Init(); !res.has_value()) {
+    if (auto res = ui::Init(Settings::GetSingleton()); !res.has_value()) {
         SKSE::stl::report_and_fail(res.error());
     }
 
     // General event handler.
-    if (auto res = EventHandler::GetSingleton().Register(); !res.has_value()) {
+    if (auto res = EventHandler::Register(); !res.has_value()) {
         SKSE::stl::report_and_fail(res.error());
     }
 }

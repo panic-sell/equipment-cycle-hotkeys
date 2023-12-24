@@ -21,19 +21,27 @@ inline std::mutex gDrawContextMutex;
 
 class RenderHook final {
   public:
-    RenderHook() = delete;
+    static void
+    Init() {
+        static RenderHook instance;
 
-    static inline void
-    Install() {
-        SKSE::AllocTrampoline(14);
         auto loc = REL::Relocation<uintptr_t>(REL::RelocationID(75461, 77246), REL::Offset(0x9));
-        orig_render_ = SKSE::GetTrampoline().write_call<5>(loc.address(), Render);
+        static constexpr auto hook = [](uint32_t n) { instance.Render(n); };
+        SKSE::AllocTrampoline(14);
+        instance.orig_render_ =
+            SKSE::GetTrampoline().write_call<5>(loc.address(), (void (*)(uint32_t))hook);
     }
 
   private:
-    static inline void
-    Render(uint32_t x) {
-        orig_render_(x);
+    RenderHook() = default;
+    RenderHook(const RenderHook&) = delete;
+    RenderHook& operator=(const RenderHook&) = delete;
+    RenderHook(RenderHook&&) = delete;
+    RenderHook& operator=(RenderHook&&) = delete;
+
+    void
+    Render(uint32_t n) {
+        orig_render_(n);
 
         auto lg = std::lock_guard(gDrawContextMutex);
         if (!gIsActive.load()) {
@@ -51,22 +59,37 @@ class RenderHook final {
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     }
 
-    static inline REL::Relocation<void(uint32_t)> orig_render_;
+    REL::Relocation<void(uint32_t)> orig_render_;
 };
 
 class InputHook final {
   public:
-    InputHook() = delete;
+    static void
+    Init(std::reference_wrapper<const Settings> settings) {
+        static InputHook instance;
 
-    static inline void
-    Install() {
-        SKSE::AllocTrampoline(14);
+        instance.settings_ = &settings.get();
+
         auto loc = REL::Relocation<uintptr_t>(REL::RelocationID(67315, 68617), REL::Offset(0x7b));
-        orig_input_ = SKSE::GetTrampoline().write_call<5>(loc.address(), Input);
+        static constexpr auto hook = [](RE::BSTEventSource<RE::InputEvent*>* event_src,
+                                        RE::InputEvent* const* events) {
+            instance.Input(event_src, events);
+        };
+        SKSE::AllocTrampoline(14);
+        instance.orig_input_ = SKSE::GetTrampoline().write_call<5>(
+            loc.address(),
+            (void (*)(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent* const*))hook
+        );
     }
 
   private:
-    static inline void
+    InputHook() = default;
+    InputHook(const InputHook&) = delete;
+    InputHook& operator=(const InputHook&) = delete;
+    InputHook(InputHook&&) = delete;
+    InputHook& operator=(InputHook&&) = delete;
+
+    void
     Input(RE::BSTEventSource<RE::InputEvent*>* event_src, RE::InputEvent* const* events) {
         if (events && (ToggleUI(*events) || CaptureInputs(*events))) {
             constexpr auto dummy_events = std::array{static_cast<RE::InputEvent*>(nullptr)};
@@ -78,13 +101,11 @@ class InputHook final {
 
     /// Checks if UI toggle keys were pressed, and activates/deactivates the UI accordingly. Returns
     /// false if UI was not toggled.
-    static inline bool
+    bool
     ToggleUI(const RE::InputEvent* events) {
-        static std::vector<Keystroke> keystroke_buf;
-        keystroke_buf.clear();
-        Keystroke::InputEventsToBuffer(events, keystroke_buf);
-        if (Settings::GetSingleton().menu_toggle_keysets.Match(keystroke_buf)
-            != Keysets::MatchResult::kPress) {
+        keystroke_buf_.clear();
+        Keystroke::InputEventsToBuffer(events, keystroke_buf_);
+        if (settings_->menu_toggle_keysets.Match(keystroke_buf_) != Keysets::MatchResult::kPress) {
             return false;
         }
 
@@ -103,7 +124,7 @@ class InputHook final {
     }
 
     /// Forwards inputs to ImGui. Returns false if UI is not active.
-    static inline bool
+    bool
     CaptureInputs(const RE::InputEvent* events) {
         auto lg = std::lock_guard(gDrawContextMutex);
         if (!gIsActive.load()) {
@@ -120,7 +141,7 @@ class InputHook final {
         return true;
     }
 
-    static inline bool
+    static bool
     CaptureMouseInput(const RE::ButtonEvent& button) {
         if (button.GetDevice() != RE::INPUT_DEVICE::kMouse) {
             return false;
@@ -140,7 +161,7 @@ class InputHook final {
         return true;
     }
 
-    static inline bool
+    static bool
     CaptureGamepadInput(const RE::ButtonEvent& button) {
         if (button.GetDevice() != RE::INPUT_DEVICE::kGamepad) {
             return false;
@@ -149,7 +170,7 @@ class InputHook final {
         return true;
     }
 
-    static inline bool
+    static bool
     CaptureKeyboardInput(const RE::ButtonEvent& button) {
         if (button.GetDevice() != RE::INPUT_DEVICE::kKeyboard) {
             return false;
@@ -214,7 +235,7 @@ class InputHook final {
         return true;
     }
 
-    static inline constexpr ImGuiKey
+    static constexpr ImGuiKey
     ImGuiKeyFromKeycode(uint32_t keycode) {
         /// This only contains keys that should be fed into `io.AddKeyEvent()`. I.e. Mouse keys are
         /// not mapped.
@@ -506,20 +527,19 @@ class InputHook final {
         return keycode < keys.size() ? keys[keycode] : ImGuiKey_None;
     }
 
-    static inline REL::Relocation<
-        void(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent* const*)>
-        orig_input_;
+    const Settings* settings_ = nullptr;
+    std::vector<Keystroke> keystroke_buf_;
+    REL::Relocation<void(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent* const*)> orig_input_;
 };
 
 inline void
-Configure() {
+Configure(const Settings& settings) {
     auto& io = ImGui::GetIO();
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
     io.IniFilename = fs::kImGuiIniPath;
 
-    const auto& settings = Settings::GetSingleton();
     io.FontGlobalScale = settings.font_scale;
     switch (settings.color_style) {
         case 0:
@@ -541,7 +561,7 @@ Configure() {
 
 /// Must complete before `InstallHooks()`.
 [[nodiscard]] inline std::expected<void, std::string_view>
-Init() {
+Init(std::reference_wrapper<const Settings> settings) {
     auto* renderer = RE::BSGraphics::Renderer::GetSingleton();
     auto* device = renderer ? renderer->data.forwarder : nullptr;
     auto* ctx = renderer ? renderer->data.context : nullptr;
@@ -558,14 +578,14 @@ Init() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    internal::Configure();
+    internal::Configure(settings);
 
     if (!ImGui_ImplWin32_Init(sd.OutputWindow) || !ImGui_ImplDX11_Init(device, ctx)) {
         return std::unexpected("failed to initialize Dear ImGui components");
     }
 
-    internal::RenderHook::Install();
-    internal::InputHook::Install();
+    internal::RenderHook::Init();
+    internal::InputHook::Init(settings);
 
     SKSE::log::info("UI initialized");
     return {};

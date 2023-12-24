@@ -220,7 +220,7 @@ main(int, char**) {
     if (settings) {
         Settings::GetSingleton(&*settings);
     }
-    ui::internal::Configure();
+    ui::internal::Configure(Settings::GetSingleton());
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);

@@ -12,13 +12,7 @@ namespace ech {
 class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
                            public RE::BSTEventSink<RE::TESEquipEvent> {
   public:
-    static EventHandler&
-    GetSingleton() {
-        static EventHandler h;
-        return h;
-    }
-
-    std::expected<void, std::string_view>
+    static std::expected<void, std::string_view>
     Register() {
         auto* idm = RE::BSInputDeviceManager::GetSingleton();
         auto* sesh = RE::ScriptEventSourceHolder::GetSingleton();
@@ -26,8 +20,9 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
             return std::unexpected("failed to get event sources");
         }
 
-        idm->AddEventSink<RE::InputEvent*>(this);
-        sesh->AddEventSink<RE::TESEquipEvent>(this);
+        static EventHandler instance;
+        idm->AddEventSink<RE::InputEvent*>(&instance);
+        sesh->AddEventSink<RE::TESEquipEvent>(&instance);
         return {};
     }
 
@@ -46,6 +41,12 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
     }
 
   private:
+    EventHandler() = default;
+    EventHandler(const EventHandler&) = delete;
+    EventHandler& operator=(const EventHandler&) = delete;
+    EventHandler(EventHandler&&) = delete;
+    EventHandler& operator=(EventHandler&&) = delete;
+
     void
     HandleInputEvents(RE::InputEvent* const* events) {
         if (!events) {
@@ -118,12 +119,6 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
             hotkeys_.Deactivate();
         }
     }
-
-    EventHandler() = default;
-    EventHandler(const EventHandler&) = delete;
-    EventHandler& operator=(const EventHandler&) = delete;
-    EventHandler(EventHandler&&) = delete;
-    EventHandler& operator=(EventHandler&&) = delete;
 
     /// Reusable buffer for storing input keystrokes and avoiding per-input-event allocations.
     std::vector<Keystroke> keystroke_buf_;
