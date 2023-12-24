@@ -13,7 +13,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
                            public RE::BSTEventSink<RE::TESEquipEvent> {
   public:
     static std::expected<void, std::string_view>
-    Register() {
+    Register(Hotkeys<>& hotkeys) {
         auto* idm = RE::BSInputDeviceManager::GetSingleton();
         auto* sesh = RE::ScriptEventSourceHolder::GetSingleton();
         if (!idm || !sesh) {
@@ -21,6 +21,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         }
 
         static EventHandler instance;
+        instance.hotkeys_ = &hotkeys;
         idm->AddEventSink<RE::InputEvent*>(&instance);
         sesh->AddEventSink<RE::TESEquipEvent>(&instance);
         return {};
@@ -79,7 +80,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         }
 
         const auto* equipset =
-            dev_util::input_handlers::UseHotkeys(hotkeys_, keystroke_buf_, *player);
+            dev_util::input_handlers::UseHotkeys(*hotkeys_, keystroke_buf_, *player);
         if (equipset) {
             // Note the ordering here. Most-recent-equip-time must be reset prior to equipset-apply
             // because the latter will trigger equip events.
@@ -116,35 +117,15 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
 
         auto now = RE::GetDurationOfApplicationRunTime();
         if (now >= most_recent_hotkey_equip_time_ + 500) {
-            hotkeys_.Deactivate();
+            hotkeys_->Deactivate();
         }
     }
 
+    Hotkeys<>* hotkeys_ = nullptr;
     /// Reusable buffer for storing input keystrokes and avoiding per-input-event allocations.
     std::vector<Keystroke> keystroke_buf_;
     /// In milliseconds since application start.
     uint32_t most_recent_hotkey_equip_time_ = 0;
-    Hotkeys<> hotkeys_ =
-        HotkeysUI<EquipsetUI>{
-            HotkeyUI<EquipsetUI>{
-                .name = "1",
-                .keysets = {{2}},
-            },
-            HotkeyUI<EquipsetUI>{
-                .name = "2",
-                .keysets = {{3}},
-            },
-            HotkeyUI<EquipsetUI>{
-                .name = "3",
-                .keysets = {{4}},
-            },
-            HotkeyUI<EquipsetUI>{
-                .name = "4",
-                .keysets = {{5}},
-            },
-        }
-            .ConvertEquipset(std::mem_fn(&EquipsetUI::To))
-            .Into();
 };
 
 }  // namespace ech

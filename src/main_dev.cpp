@@ -217,10 +217,7 @@ main(int, char**) {
     auto settings = fs::Read(fs::kSettingsPath).and_then([](std::string&& s) {
         return Deserialize<Settings>(s);
     });
-    if (settings) {
-        Settings::GetSingleton(&*settings);
-    }
-    ui::internal::Configure(Settings::GetSingleton());
+    ui::internal::Configure(settings ? *settings : Settings());
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
@@ -284,7 +281,30 @@ main(int, char**) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        ech::ui::Draw();
+        static auto ctx = []() {
+            auto c = ui::Context{.hotkeys_ui{
+                {
+                    .name = "asdf",
+                    .keysets{
+                        {1, 2, 3, 4},
+                        {5, 0, 45, 104},
+                        {7, 0, 0, 0},
+                        {4, 3, 2, 1},
+                        {0, 20, 19, 18},
+                        {0},
+                    },
+                    .equipsets{
+                        {},
+                        {},
+                        {},
+                        {},
+                    },
+                },
+            }};
+            c.ReloadProfileCache();
+            return c;
+        }();
+        ui::Draw(ctx);
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()!
         // You can browse its code to learn more about Dear ImGui!).

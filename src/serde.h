@@ -310,10 +310,10 @@ tag_invoke(
     }
     auto jo = jv.get_object();
 
-    settings.font_scale =
-        internal::GetSerObjField<float>(jo, "font_scale", ctx).value_or(settings.font_scale);
-    settings.color_style =
-        internal::GetSerObjField<uint8_t>(jo, "color_style", ctx).value_or(settings.color_style);
+    settings.menu_font_scale = internal::GetSerObjField<float>(jo, "menu_font_scale", ctx)
+                                   .value_or(settings.menu_font_scale);
+    settings.menu_color_style = internal::GetSerObjField<uint8_t>(jo, "menu_color_style", ctx)
+                                    .value_or(settings.menu_color_style);
     settings.menu_toggle_keysets =
         Keysets(internal::GetSerObjField<std::vector<Keyset>>(jo, "menu_toggle_keysets", ctx)
                     .value_or(settings.menu_toggle_keysets.vec()));

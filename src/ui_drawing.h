@@ -2,11 +2,11 @@
 
 #include "fs.h"
 #include "keys.h"
-#include "serde.h"
 #include "ui_viewmodels.h"
 
 namespace ech {
 namespace ui {
+namespace internal {
 
 using Action = std::function<void()>;
 
@@ -183,7 +183,7 @@ struct Table final {
     }
 };
 
-struct DrawContext final {
+struct Context final {
     std::filesystem::path profile_dir = fs::kProfileDir;
     std::vector<std::string> profile_cache;
     std::string export_name_buf;
@@ -200,7 +200,7 @@ struct DrawContext final {
 };
 
 inline Action
-DrawImportMenu(DrawContext& ctx) {
+DrawImportMenu(Context& ctx) {
     constexpr auto try_parse_profile =
         [](const std::filesystem::path&) -> std::optional<HotkeysUI<EquipsetUI>> {
         // TODO: implement
@@ -237,7 +237,7 @@ DrawImportMenu(DrawContext& ctx) {
 }
 
 inline Action
-DrawExportMenu(DrawContext& ctx) {
+DrawExportMenu(Context& ctx) {
     auto confirm_export = false;
     if (ImGui::BeginMenu("Export")) {
         ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ctx.export_name_buf);
@@ -285,7 +285,7 @@ DrawExportMenu(DrawContext& ctx) {
 }
 
 inline Action
-DrawHotkeyList(DrawContext& ctx) {
+DrawHotkeyList(Context& ctx) {
     auto table = Table<HotkeyUI<EquipsetUI>, 1>{
         .id = "hotkeys_list",
         .headers = std::array{""},
@@ -484,80 +484,51 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
     return action;
 }
 
+}  // namespace internal
+
+using Context = internal::Context;
+
 inline void
-Draw() {
-    static auto ctx = []() {
-        auto c = DrawContext{.hotkeys_ui{
-            {
-                .name = "asdf",
-                .keysets{
-                    {1, 2, 3, 4},
-                    {5, 0, 45, 104},
-                    {7, 0, 0, 0},
-                    {4, 3, 2, 1},
-                    {0, 20, 19, 18},
-                    {0},
-                },
-                .equipsets{
-                    {},
-                    {},
-                    {},
-                    {},
-                },
-            },
-        }};
-        c.ReloadProfileCache();
-        return c;
-    }();
-
-    struct Dims {
-        ImVec2 max_size = {FLT_MAX, FLT_MAX};
-        ImVec2 window_initial_pos = {.1f, .1f};
-        ImVec2 window_initial_size = {.5f, .8f};
-        ImVec2 window_min_size = {.25f, .25f};
-        ImVec2 hklist_initial_size = {.15f, 0};
-        ImVec2 hklist_min_size = {.15f, 0};
-
-        explicit Dims(const ImVec2& viewport_size) {
-            window_initial_pos *= viewport_size;
-            window_initial_size *= viewport_size;
-            window_min_size *= viewport_size;
-            hklist_initial_size *= viewport_size;
-            hklist_min_size *= viewport_size;
-        }
-    };
-
+Draw(Context& ctx) {
     const auto* main_viewport = ImGui::GetMainViewport();
     if (!main_viewport) {
         return;
     }
-    const auto dims = Dims(main_viewport->WorkSize);
+    auto viewport_size = main_viewport->WorkSize;
+
+    auto window_initial_pos = viewport_size * ImVec2(.1f, .1f);
+    auto window_initial_size = viewport_size * ImVec2(.5f, .8f);
+    auto window_min_size = viewport_size * ImVec2(.25f, .25f);
+    auto hotkeylist_initial_size = viewport_size * ImVec2(.15f, .0f);
+    auto hotkeylist_min_size = viewport_size * ImVec2(.15f, .0f);
+    constexpr auto max_size =
+        ImVec2(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 
     // Set up main window.
-    ImGui::SetNextWindowPos(dims.window_initial_pos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(dims.window_initial_size, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(dims.window_min_size, dims.max_size);
+    ImGui::SetNextWindowPos(window_initial_pos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(window_initial_size, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(window_min_size, max_size);
     ImGui::Begin(
         "Equipment Cycle Hotkeys", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
     );
 
-    Action action;
+    internal::Action action;
 
     // Menu bar.
     if (ImGui::BeginMenuBar()) {
-        if (auto a = DrawImportMenu(ctx)) {
+        if (auto a = internal::DrawImportMenu(ctx)) {
             action = a;
         }
-        if (auto a = DrawExportMenu(ctx)) {
+        if (auto a = internal::DrawExportMenu(ctx)) {
             action = a;
         }
         ImGui::EndMenuBar();
     }
 
     // List of hotkeys.
-    ImGui::SetNextWindowSizeConstraints(dims.hklist_min_size, dims.max_size);
+    ImGui::SetNextWindowSizeConstraints(hotkeylist_min_size, max_size);
     ImGui::BeginChild(
-        "hotkey_list", dims.hklist_initial_size, ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX
+        "hotkey_list", hotkeylist_initial_size, ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX
     );
     if (auto a = DrawHotkeyList(ctx)) {
         action = a;
@@ -567,18 +538,18 @@ Draw() {
     ImGui::SameLine();
 
     // Hotkey details.
-    ImGui::BeginChild("selected_hotkey", ImVec2(0, 0));
+    ImGui::BeginChild("selected_hotkey", ImVec2(.0f, .0f));
     if (ctx.selected_hotkey_index < ctx.hotkeys_ui.size()) {
         auto& hotkey = ctx.hotkeys_ui[ctx.selected_hotkey_index];
-        DrawName(hotkey);
+        internal::DrawName(hotkey);
 
-        ImGui::Dummy(ImVec2(0, ImGui::GetTextLineHeight()));
-        if (auto a = DrawKeysets(hotkey.keysets)) {
+        ImGui::Dummy(ImVec2(.0f, ImGui::GetTextLineHeight()));
+        if (auto a = internal::DrawKeysets(hotkey.keysets)) {
             action = a;
         }
 
-        ImGui::Dummy(ImVec2(0, ImGui::GetTextLineHeight()));
-        if (auto a = DrawEquipsets(hotkey.equipsets)) {
+        ImGui::Dummy(ImVec2(.0f, ImGui::GetTextLineHeight()));
+        if (auto a = internal::DrawEquipsets(hotkey.equipsets)) {
             action = a;
         }
     }

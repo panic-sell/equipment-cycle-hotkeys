@@ -1,7 +1,9 @@
 // SKSE plugin entry point.
 #include "event_handler.h"
 #include "fs.h"
+#include "serde.h"
 #include "settings.h"
+#include "ui_drawing.h"
 #include "ui_plumbing.h"
 
 namespace {
@@ -28,33 +30,50 @@ InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
 }
 
 void
-InitSettings() {
-    auto settings = fs::Read(fs::kSettingsPath).and_then([](std::string&& s) {
-        return Deserialize<Settings>(s);
+InitState() {
+    static std::optional<ui::Context> ui_ctx;
+    static std::mutex ui_mutex;
+    static Hotkeys<> hotkeys = Hotkeys({
+        {
+            .name = "1",
+            .keysets = Keysets({{KeycodeFromName("1")}}),
+        },
+        {
+            .name = "2",
+            .keysets = Keysets({{KeycodeFromName("2")}}),
+        },
+        {
+            .name = "3",
+            .keysets = Keysets({{KeycodeFromName("3")}}),
+        },
+        {
+            .name = "4",
+            .keysets = Keysets({{KeycodeFromName("4")}}),
+        },
     });
-    if (!settings) {
-        SKSE::log::warn(
-            "failed to parse settings file '{}', falling back to defaults", fs::kSettingsPath
-        );
-        return;
-    }
-    Settings::GetSingleton(&*settings);
-}
 
-void
-OnMessage(SKSE::MessagingInterface::Message* msg) {
-    if (!msg || msg->type != SKSE::MessagingInterface::kInputLoaded) {
-        return;
-    }
-
-    // UI context and input handler.
-    if (auto res = ui::Init(Settings::GetSingleton()); !res.has_value()) {
-        SKSE::stl::report_and_fail(res.error());
+    {
+        auto settings = fs::Read(fs::kSettingsPath)
+                            .and_then([](std::string&& s) { return Deserialize<Settings>(s); })
+                            .or_else([]() {
+                                SKSE::log::warn(
+                                    "failed to parse settings file '{}', falling back to defaults",
+                                    fs::kSettingsPath
+                                );
+                                return std::optional(Settings());
+                            })
+                            .value();
+        auto res = ui::Init(ui_ctx, ui_mutex, hotkeys, std::move(settings));
+        if (!res) {
+            SKSE::stl::report_and_fail(res.error());
+        }
     }
 
-    // General event handler.
-    if (auto res = EventHandler::Register(); !res.has_value()) {
-        SKSE::stl::report_and_fail(res.error());
+    {
+        auto res = EventHandler::Register(hotkeys);
+        if (!res) {
+            SKSE::stl::report_and_fail(res.error());
+        }
     }
 }
 
@@ -67,11 +86,15 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     }
 
     InitLogging(*plugin_decl);
-    InitSettings();
     SKSE::Init(skse);
 
     const auto* msg_interface = SKSE::GetMessagingInterface();
-    if (!msg_interface || !msg_interface->RegisterListener(OnMessage)) {
+    constexpr auto on_msg = [](SKSE::MessagingInterface::Message* msg) {
+        if (msg && msg->type == SKSE::MessagingInterface::kInputLoaded) {
+            InitState();
+        }
+    };
+    if (!msg_interface || !msg_interface->RegisterListener(on_msg)) {
         SKSE::stl::report_and_fail("failed to register SKSE message listener");
     }
 

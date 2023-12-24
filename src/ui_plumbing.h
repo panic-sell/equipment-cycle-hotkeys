@@ -1,29 +1,23 @@
 /// UI-related function hooks and input handlers.
 #pragma once
 
-#include "dev_util.h"
 #include "fs.h"
+#include "hotkeys.h"
 #include "keys.h"
-#include "serde.h"
 #include "settings.h"
 #include "ui_drawing.h"
-#include "ui_viewmodels.h"
 
 namespace ech {
 namespace ui {
 namespace internal {
 
-/// Whether the UI is visible. Equivalently, whether the UI is capturing all input.
-inline std::atomic<bool> gIsActive = false;
-
-inline std::optional<DrawContext> gDrawContext;
-inline std::mutex gDrawContextMutex;
-
 class RenderHook final {
   public:
     static void
-    Init() {
+    Init(std::optional<Context>& ctx, std::mutex& mutex) {
         static RenderHook instance;
+        instance.ctx_ = &ctx;
+        instance.mutex_ = &mutex;
 
         auto loc = REL::Relocation<uintptr_t>(REL::RelocationID(75461, 77246), REL::Offset(0x9));
         static constexpr auto hook = [](uint32_t n) { instance.Render(n); };
@@ -43,8 +37,8 @@ class RenderHook final {
     Render(uint32_t n) {
         orig_render_(n);
 
-        auto lg = std::lock_guard(gDrawContextMutex);
-        if (!gIsActive.load()) {
+        auto lg = std::lock_guard(*mutex_);
+        if (!*ctx_) {
             return;
         }
 
@@ -52,23 +46,29 @@ class RenderHook final {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        // Draw();
-        ImGui::ShowDemoWindow();
+        Draw(**ctx_);
+        // ImGui::ShowDemoWindow();
 
         ImGui::Render();
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     }
 
+    std::optional<Context>* ctx_ = nullptr;
+    std::mutex* mutex_ = nullptr;
     REL::Relocation<void(uint32_t)> orig_render_;
 };
 
 class InputHook final {
   public:
     static void
-    Init(std::reference_wrapper<const Settings> settings) {
+    Init(
+        std::optional<Context>& ctx, std::mutex& mutex, Hotkeys<>& hotkeys, Keysets toggle_keysets
+    ) {
         static InputHook instance;
-
-        instance.settings_ = &settings.get();
+        instance.ctx_ = &ctx;
+        instance.mutex_ = &mutex;
+        instance.hotkeys_ = &hotkeys;
+        instance.toggle_keysets_ = std::move(toggle_keysets);
 
         auto loc = REL::Relocation<uintptr_t>(REL::RelocationID(67315, 68617), REL::Offset(0x7b));
         static constexpr auto hook = [](RE::BSTEventSource<RE::InputEvent*>* event_src,
@@ -105,20 +105,18 @@ class InputHook final {
     ToggleUI(const RE::InputEvent* events) {
         keystroke_buf_.clear();
         Keystroke::InputEventsToBuffer(events, keystroke_buf_);
-        if (settings_->menu_toggle_keysets.Match(keystroke_buf_) != Keysets::MatchResult::kPress) {
+        if (toggle_keysets_.Match(keystroke_buf_) != Keysets::MatchResult::kPress) {
             return false;
         }
 
-        auto lg = std::lock_guard(gDrawContextMutex);
+        auto lg = std::lock_guard(*mutex_);
         auto& io = ImGui::GetIO();
-        if (gIsActive.load()) {
-            // Immediately disable state, then perform cleanup.
-            gIsActive.store(false);
+        if (*ctx_) {
+            ctx_->reset();
             io.MouseDrawCursor = false;
         } else {
-            // Set things up before enabling state.
+            ctx_->emplace();
             io.MouseDrawCursor = true;
-            gIsActive.store(true);
         }
         return true;
     }
@@ -126,8 +124,8 @@ class InputHook final {
     /// Forwards inputs to ImGui. Returns false if UI is not active.
     bool
     CaptureInputs(const RE::InputEvent* events) {
-        auto lg = std::lock_guard(gDrawContextMutex);
-        if (!gIsActive.load()) {
+        auto lg = std::lock_guard(*mutex_);
+        if (!*ctx_) {
             return false;
         }
         for (; events; events = events->next) {
@@ -527,7 +525,10 @@ class InputHook final {
         return keycode < keys.size() ? keys[keycode] : ImGuiKey_None;
     }
 
-    const Settings* settings_ = nullptr;
+    std::optional<Context>* ctx_ = nullptr;
+    std::mutex* mutex_ = nullptr;
+    Hotkeys<>* hotkeys_ = nullptr;
+    Keysets toggle_keysets_;
     std::vector<Keystroke> keystroke_buf_;
     REL::Relocation<void(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent* const*)> orig_input_;
 };
@@ -540,8 +541,8 @@ Configure(const Settings& settings) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
     io.IniFilename = fs::kImGuiIniPath;
 
-    io.FontGlobalScale = settings.font_scale;
-    switch (settings.color_style) {
+    io.FontGlobalScale = settings.menu_font_scale;
+    switch (settings.menu_color_style) {
         case 0:
             ImGui::StyleColorsDark();
             break;
@@ -559,14 +560,23 @@ Configure(const Settings& settings) {
 
 }  // namespace internal
 
-/// Must complete before `InstallHooks()`.
 [[nodiscard]] inline std::expected<void, std::string_view>
-Init(std::reference_wrapper<const Settings> settings) {
+Init(
+    /// UI context. Nullopt means menu is not active. Likewise, non-nullopt means menu is active.
+    std::optional<Context>& ctx,
+    /// Mutex for guarding ImGui calls (since draw commands and input commands will be sent from
+    /// different threads).
+    std::mutex& mutex,
+    /// The Hotkeys object that EventHandler uses. On closing menu, InputHook will sync this with
+    /// ctx before destroying ctx.
+    Hotkeys<>& hotkeys,
+    Settings settings
+) {
     auto* renderer = RE::BSGraphics::Renderer::GetSingleton();
     auto* device = renderer ? renderer->data.forwarder : nullptr;
-    auto* ctx = renderer ? renderer->data.context : nullptr;
+    auto* render_ctx = renderer ? renderer->data.context : nullptr;
     auto* swapchain = renderer ? renderer->data.renderWindows[0].swapChain : nullptr;
-    if (!device || !ctx || !swapchain) {
+    if (!device || !render_ctx || !swapchain) {
         return std::unexpected("failed to get renderer");
     }
 
@@ -577,15 +587,13 @@ Init(std::reference_wrapper<const Settings> settings) {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-
     internal::Configure(settings);
-
-    if (!ImGui_ImplWin32_Init(sd.OutputWindow) || !ImGui_ImplDX11_Init(device, ctx)) {
+    if (!ImGui_ImplWin32_Init(sd.OutputWindow) || !ImGui_ImplDX11_Init(device, render_ctx)) {
         return std::unexpected("failed to initialize Dear ImGui components");
     }
 
-    internal::RenderHook::Init();
-    internal::InputHook::Init(settings);
+    internal::RenderHook::Init(ctx, mutex);
+    internal::InputHook::Init(ctx, mutex, hotkeys, std::move(settings.menu_toggle_keysets));
 
     SKSE::log::info("UI initialized");
     return {};
