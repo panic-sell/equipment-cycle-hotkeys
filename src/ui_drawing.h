@@ -183,20 +183,69 @@ struct Table final {
     }
 };
 
-struct Context final {
-    std::filesystem::path profile_dir = fs::kProfileDir;
+class Context final {
+  public:
+    // Created/destroyed through activation state changes.
     std::vector<std::string> profile_cache;
-    std::string export_name_buf;
     HotkeysUI<EquipsetUI> hotkeys_ui;
-    size_t selected_hotkey_index = 0;
+
+    // Persists between activation state changes.
+    size_t selected_hotkey = 0;
+    std::string export_filename;
+
+    Context(std::filesystem::path profile_dir = fs::kProfileDir)
+        : profile_dir_(std::move(profile_dir)) {}
+
+    /// Intent for UI visibility. Something else has to realize this intent.
+    bool
+    IsActive() const {
+        return active_;
+    }
+
+    const std::filesystem::path&
+    profile_dir() const {
+        return profile_dir_;
+    }
+
+    /// For different threads that may concurrently modify UI data. `Draw*` functions in this file
+    /// do not call `Acquire()` since they assume their callers take on that responsibility.
+    std::lock_guard<std::mutex>
+    Acquire() {
+        return std::lock_guard(mutex_);
+    }
+
+    /// `hotkeys` is used to populates UI data.
+    void
+    Activate(const Hotkeys<>& hotkeys) {
+        ReloadProfileCache();
+        hotkeys_ui = HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
+        if (selected_hotkey >= hotkeys_ui.size()) {
+            selected_hotkey = 0;
+        }
+        active_ = true;
+    }
+
+    /// Syncs `hotkeys` with UI data, then destroys UI data.
+    void
+    Deactivate(Hotkeys<>& hotkeys) {
+        profile_cache.clear();
+        hotkeys = hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
+        hotkeys_ui = {};
+        active_ = false;
+    }
 
     void
     ReloadProfileCache() {
         profile_cache.clear();
-        if (!fs::ListDirectoryToBuffer(profile_dir, profile_cache)) {
+        if (!fs::ListDirectoryToBuffer(profile_dir_, profile_cache)) {
             // TODO: log
         }
     }
+
+  private:
+    bool active_ = false;
+    std::mutex mutex_;
+    std::filesystem::path profile_dir_ = fs::kProfileDir;
 };
 
 inline Action
@@ -220,14 +269,14 @@ DrawImportMenu(Context& ctx) {
                 continue;
             }
             action = [&ctx, &profile]() {
-                auto hotkeys_ui = try_parse_profile(ctx.profile_dir / profile);
+                auto hotkeys_ui = try_parse_profile(ctx.profile_dir() / profile);
                 ctx.ReloadProfileCache();
                 if (!hotkeys_ui) {
                     // TODO: log
                     return;
                 }
                 ctx.hotkeys_ui = std::move(*hotkeys_ui);
-                ctx.selected_hotkey_index = 0;
+                ctx.selected_hotkey = 0;
             };
         }
     }
@@ -240,9 +289,9 @@ inline Action
 DrawExportMenu(Context& ctx) {
     auto confirm_export = false;
     if (ImGui::BeginMenu("Export")) {
-        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ctx.export_name_buf);
+        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ctx.export_filename);
         if (ImGui::Button("Export Profile")) {
-            confirm_export = !ctx.export_name_buf.empty();
+            confirm_export = !ctx.export_filename.empty();
         }
         ImGui::EndMenu();
     }
@@ -253,18 +302,18 @@ DrawExportMenu(Context& ctx) {
     }
     if (ImGui::BeginPopup("confirm_export")) {
         auto in_cache =
-            std::find(ctx.profile_cache.cbegin(), ctx.profile_cache.cend(), ctx.export_name_buf)
+            std::find(ctx.profile_cache.cbegin(), ctx.profile_cache.cend(), ctx.export_filename)
             == ctx.profile_cache.cend();
         const char* msg =
             in_cache ? "Create new profile '%s'?" : "Overwrite existing profile '%s'?";
-        ImGui::Text(msg, ctx.export_name_buf.c_str());
+        ImGui::Text(msg, ctx.export_filename.c_str());
         if (ImGui::Button("Yes")) {
             action = [&ctx]() {
                 auto hotkeys_real =
                     HotkeysUI(ctx.hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
                 // TODO: convert to json
                 std::error_code ec;
-                std::filesystem::create_directories(ctx.profile_dir, ec);
+                std::filesystem::create_directories(ctx.profile_dir(), ec);
                 if (ec) {
                     // TODO: log error
                     return;
@@ -292,10 +341,10 @@ DrawHotkeyList(Context& ctx) {
         .viewmodel = ctx.hotkeys_ui,
         .draw_cell = [&ctx](const HotkeyUI<EquipsetUI>& hotkey, size_t row, size_t) -> Action {
             const char* label = hotkey.name.empty() ? "(Unnamed)" : hotkey.name.c_str();
-            if (!ImGui::RadioButton(label, row == ctx.selected_hotkey_index)) {
+            if (!ImGui::RadioButton(label, row == ctx.selected_hotkey)) {
                 return {};
             }
-            return [&ctx, row]() { ctx.selected_hotkey_index = row; };
+            return [&ctx, row]() { ctx.selected_hotkey = row; };
         },
         .draw_drag_tooltip = [](const HotkeyUI<EquipsetUI>& hotkey
                              ) { ImGui::Text("%s", hotkey.name.c_str()); },
@@ -306,7 +355,7 @@ DrawHotkeyList(Context& ctx) {
         auto a = [&ctx]() {
             ctx.hotkeys_ui.emplace_back();
             // Adding a new hotkey selects that hotkey.
-            ctx.selected_hotkey_index = ctx.hotkeys_ui.size() - 1;
+            ctx.selected_hotkey = ctx.hotkeys_ui.size() - 1;
         };
         atrc = {std::move(a), {}};
     }
@@ -318,16 +367,16 @@ DrawHotkeyList(Context& ctx) {
         const auto& [a, trc] = atrc;
         if (trc.remove < ctx.hotkeys_ui.size()) {
             // If the selected hotkey is below the removed hotkey, then move selection upward.
-            if (trc.remove < ctx.selected_hotkey_index) {
-                ctx.selected_hotkey_index--;
+            if (trc.remove < ctx.selected_hotkey) {
+                ctx.selected_hotkey--;
             }
         } else if (trc.drag_source < ctx.hotkeys_ui.size() && trc.drag_target < ctx.hotkeys_ui.size()) {
             // Select the row that was dragged.
-            ctx.selected_hotkey_index = trc.drag_target;
+            ctx.selected_hotkey = trc.drag_target;
         }
         a();
-        if (ctx.selected_hotkey_index >= ctx.hotkeys_ui.size() && ctx.selected_hotkey_index > 0) {
-            ctx.selected_hotkey_index--;
+        if (ctx.selected_hotkey >= ctx.hotkeys_ui.size() && ctx.selected_hotkey > 0) {
+            ctx.selected_hotkey--;
         }
     };
 }
@@ -539,8 +588,8 @@ Draw(Context& ctx) {
 
     // Hotkey details.
     ImGui::BeginChild("selected_hotkey", ImVec2(.0f, .0f));
-    if (ctx.selected_hotkey_index < ctx.hotkeys_ui.size()) {
-        auto& hotkey = ctx.hotkeys_ui[ctx.selected_hotkey_index];
+    if (ctx.selected_hotkey < ctx.hotkeys_ui.size()) {
+        auto& hotkey = ctx.hotkeys_ui[ctx.selected_hotkey];
         internal::DrawName(hotkey);
 
         ImGui::Dummy(ImVec2(.0f, ImGui::GetTextLineHeight()));

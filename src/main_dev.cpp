@@ -251,6 +251,28 @@ main(int, char**) {
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+    ui::Context ui_ctx = ui::Context();
+    ui_ctx.hotkeys_ui = {
+        {
+            .name = "asdf",
+            .keysets{
+                {1, 2, 3, 4},
+                {5, 0, 45, 104},
+                {7, 0, 0, 0},
+                {4, 3, 2, 1},
+                {0, 20, 19, 18},
+                {0},
+            },
+            .equipsets{
+                {},
+                {},
+                {},
+                {},
+            },
+        },
+    };
+    ui_ctx.ReloadProfileCache();
+
     // Main loop
     bool done = false;
     while (!done) {
@@ -281,30 +303,7 @@ main(int, char**) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        static auto ctx = []() {
-            auto c = ui::Context{.hotkeys_ui{
-                {
-                    .name = "asdf",
-                    .keysets{
-                        {1, 2, 3, 4},
-                        {5, 0, 45, 104},
-                        {7, 0, 0, 0},
-                        {4, 3, 2, 1},
-                        {0, 20, 19, 18},
-                        {0},
-                    },
-                    .equipsets{
-                        {},
-                        {},
-                        {},
-                        {},
-                    },
-                },
-            }};
-            c.ReloadProfileCache();
-            return c;
-        }();
-        ui::Draw(ctx);
+        ui::Draw(ui_ctx);
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()!
         // You can browse its code to learn more about Dear ImGui!).

@@ -10,6 +10,26 @@ namespace {
 
 using namespace ech;
 
+ui::Context gUICtx;
+Hotkeys<> gHotkeys = Hotkeys({
+    {
+        .name = "1",
+        .keysets = Keysets({{KeycodeFromName("1")}}),
+    },
+    {
+        .name = "2",
+        .keysets = Keysets({{KeycodeFromName("2")}}),
+    },
+    {
+        .name = "3",
+        .keysets = Keysets({{KeycodeFromName("3")}}),
+    },
+    {
+        .name = "4",
+        .keysets = Keysets({{KeycodeFromName("4")}}),
+    },
+});
+
 void
 InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
     auto log_dir = SKSE::log::log_directory();
@@ -31,49 +51,22 @@ InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
 
 void
 InitState() {
-    static std::optional<ui::Context> ui_ctx;
-    static std::mutex ui_mutex;
-    static Hotkeys<> hotkeys = Hotkeys({
-        {
-            .name = "1",
-            .keysets = Keysets({{KeycodeFromName("1")}}),
-        },
-        {
-            .name = "2",
-            .keysets = Keysets({{KeycodeFromName("2")}}),
-        },
-        {
-            .name = "3",
-            .keysets = Keysets({{KeycodeFromName("3")}}),
-        },
-        {
-            .name = "4",
-            .keysets = Keysets({{KeycodeFromName("4")}}),
-        },
-    });
+    auto settings = fs::Read(fs::kSettingsPath)
+                        .and_then([](std::string&& s) { return Deserialize<Settings>(s); })
+                        .or_else([]() {
+                            SKSE::log::warn(
+                                "failed to parse settings file '{}', falling back to defaults",
+                                fs::kSettingsPath
+                            );
+                            return std::optional(Settings());
+                        });
 
-    {
-        auto settings = fs::Read(fs::kSettingsPath)
-                            .and_then([](std::string&& s) { return Deserialize<Settings>(s); })
-                            .or_else([]() {
-                                SKSE::log::warn(
-                                    "failed to parse settings file '{}', falling back to defaults",
-                                    fs::kSettingsPath
-                                );
-                                return std::optional(Settings());
-                            })
-                            .value();
-        auto res = ui::Init(ui_ctx, ui_mutex, hotkeys, std::move(settings));
-        if (!res) {
-            SKSE::stl::report_and_fail(res.error());
-        }
+    if (auto res = ui::Init(gUICtx, gHotkeys, std::move(*settings)); !res) {
+        SKSE::stl::report_and_fail(res.error());
     }
 
-    {
-        auto res = EventHandler::Register(hotkeys);
-        if (!res) {
-            SKSE::stl::report_and_fail(res.error());
-        }
+    if (auto res = EventHandler::Register(gHotkeys); !res) {
+        SKSE::stl::report_and_fail(res.error());
     }
 }
 

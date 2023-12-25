@@ -14,10 +14,9 @@ namespace internal {
 class RenderHook final {
   public:
     static void
-    Init(std::optional<Context>& ctx, std::mutex& mutex) {
+    Init(Context& ctx) {
         static RenderHook instance;
         instance.ctx_ = &ctx;
-        instance.mutex_ = &mutex;
 
         auto loc = REL::Relocation<uintptr_t>(REL::RelocationID(75461, 77246), REL::Offset(0x9));
         static constexpr auto hook = [](uint32_t n) { instance.Render(n); };
@@ -37,8 +36,8 @@ class RenderHook final {
     Render(uint32_t n) {
         orig_render_(n);
 
-        auto lg = std::lock_guard(*mutex_);
-        if (!*ctx_) {
+        auto lock = ctx_->Acquire();
+        if (!ctx_->IsActive()) {
             return;
         }
 
@@ -46,27 +45,23 @@ class RenderHook final {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        Draw(**ctx_);
+        Draw(*ctx_);
         // ImGui::ShowDemoWindow();
 
         ImGui::Render();
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     }
 
-    std::optional<Context>* ctx_ = nullptr;
-    std::mutex* mutex_ = nullptr;
+    Context* ctx_ = nullptr;
     REL::Relocation<void(uint32_t)> orig_render_;
 };
 
 class InputHook final {
   public:
     static void
-    Init(
-        std::optional<Context>& ctx, std::mutex& mutex, Hotkeys<>& hotkeys, Keysets toggle_keysets
-    ) {
+    Init(Context& ctx, Hotkeys<>& hotkeys, Keysets toggle_keysets) {
         static InputHook instance;
         instance.ctx_ = &ctx;
-        instance.mutex_ = &mutex;
         instance.hotkeys_ = &hotkeys;
         instance.toggle_keysets_ = std::move(toggle_keysets);
 
@@ -109,13 +104,13 @@ class InputHook final {
             return false;
         }
 
-        auto lg = std::lock_guard(*mutex_);
+        auto lock = ctx_->Acquire();
         auto& io = ImGui::GetIO();
-        if (*ctx_) {
-            ctx_->reset();
+        if (ctx_->IsActive()) {
+            ctx_->Deactivate(*hotkeys_);
             io.MouseDrawCursor = false;
         } else {
-            ctx_->emplace();
+            ctx_->Activate(*hotkeys_);
             io.MouseDrawCursor = true;
         }
         return true;
@@ -124,8 +119,8 @@ class InputHook final {
     /// Forwards inputs to ImGui. Returns false if UI is not active.
     bool
     CaptureInputs(const RE::InputEvent* events) {
-        auto lg = std::lock_guard(*mutex_);
-        if (!*ctx_) {
+        auto lock = ctx_->Acquire();
+        if (!ctx_->IsActive()) {
             return false;
         }
         for (; events; events = events->next) {
@@ -525,8 +520,7 @@ class InputHook final {
         return keycode < keys.size() ? keys[keycode] : ImGuiKey_None;
     }
 
-    std::optional<Context>* ctx_ = nullptr;
-    std::mutex* mutex_ = nullptr;
+    Context* ctx_ = nullptr;
     Hotkeys<>* hotkeys_ = nullptr;
     Keysets toggle_keysets_;
     std::vector<Keystroke> keystroke_buf_;
@@ -563,10 +557,7 @@ Configure(const Settings& settings) {
 [[nodiscard]] inline std::expected<void, std::string_view>
 Init(
     /// UI context. Nullopt means menu is not active. Likewise, non-nullopt means menu is active.
-    std::optional<Context>& ctx,
-    /// Mutex for guarding ImGui calls (since draw commands and input commands will be sent from
-    /// different threads).
-    std::mutex& mutex,
+    Context& ctx,
     /// The Hotkeys object that EventHandler uses. On closing menu, InputHook will sync this with
     /// ctx before destroying ctx.
     Hotkeys<>& hotkeys,
@@ -592,8 +583,8 @@ Init(
         return std::unexpected("failed to initialize Dear ImGui components");
     }
 
-    internal::RenderHook::Init(ctx, mutex);
-    internal::InputHook::Init(ctx, mutex, hotkeys, std::move(settings.menu_toggle_keysets));
+    internal::RenderHook::Init(ctx);
+    internal::InputHook::Init(ctx, hotkeys, std::move(settings.menu_toggle_keysets));
 
     SKSE::log::info("UI initialized");
     return {};
