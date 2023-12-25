@@ -50,11 +50,15 @@ Remove(const std::filesystem::path& fp) {
     return std::filesystem::remove(fp, ec);
 }
 
-/// Lists filenames inside `dir` and pushes them to `buf`. Returns false on failure.
+/// For all items inside `dir`, puts their names into `buf`. A nonexistent `dir` is treated like an
+/// empty directory. Returns false on failure.
 inline bool
 ListDirectoryToBuffer(const std::filesystem::path& dir, std::vector<std::string>& buf) {
     std::error_code ec;
     auto it = std::filesystem::directory_iterator(dir, ec);
+    if (ec.value() == ERROR_PATH_NOT_FOUND) {
+        return true;
+    }
     if (ec) {
         return false;
     }

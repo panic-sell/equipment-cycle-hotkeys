@@ -75,5 +75,20 @@ TEST_CASE("ListDirectory") {
     REQUIRE(got == want);
 }
 
+TEST_CASE("ListDirectory file") {
+    Tempdir td;
+
+    Write(td.path() / ".a_file", "");
+
+    std::vector<std::string> v;
+    REQUIRE(!ListDirectoryToBuffer(td.path() / ".a_file", v));
+}
+
+TEST_CASE("ListDirectory nonexistent") {
+    std::vector<std::string> v;
+    REQUIRE(ListDirectoryToBuffer("lkjahghalu1g193ubfouhojdsbg31801g", v));
+    REQUIRE(v.empty());
+}
+
 }  // namespace fs
 }  // namespace ech
