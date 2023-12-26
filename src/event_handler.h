@@ -5,7 +5,6 @@
 #include "hotkeys.h"
 #include "keys.h"
 #include "tes_util.h"
-#include "ui_viewmodels.h"
 
 namespace ech {
 

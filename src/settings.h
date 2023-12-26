@@ -1,8 +1,6 @@
 #pragma once
 
-#include "hotkeys.h"
 #include "keys.h"
-#include "ui_drawing.h"
 
 namespace ech {
 

@@ -2,6 +2,7 @@
 
 #include "fs.h"
 #include "keys.h"
+#include "serde.h"
 #include "ui_viewmodels.h"
 
 namespace ech {
@@ -191,7 +192,7 @@ class Context final {
 
     // Persists between activation state changes.
     size_t selected_hotkey = 0;
-    std::string export_filename;
+    std::string export_profile;
 
     Context(std::filesystem::path profile_dir = fs::kProfileDir)
         : profile_dir_(std::move(profile_dir)) {}
@@ -202,16 +203,66 @@ class Context final {
         return active_;
     }
 
-    const std::filesystem::path&
-    profile_dir() const {
-        return profile_dir_;
-    }
-
     /// For different threads that may concurrently modify UI data. `Draw*` functions in this file
     /// do not call `Acquire()` since they assume their callers take on that responsibility.
     std::lock_guard<std::mutex>
     Acquire() {
         return std::lock_guard(mutex_);
+    }
+
+    void
+    ReloadProfileCache() {
+        profile_cache.clear();
+        if (!fs::ListDirectoryToBuffer(profile_dir_, profile_cache)) {
+            SKSE::log::error("failed to iterate '{}'", profile_dir_.string());
+        }
+        constexpr std::string_view ext = ".json";
+        std::erase_if(profile_cache, [](std::string_view s) {
+            return s == ext || !s.ends_with(ext);
+        });
+        for (auto& s : profile_cache) {
+            s.erase(s.end() - ext.size(), s.end());
+        }
+    }
+
+    /// 1. Removes all chars that are not `a-z`, `A-Z`, `0-9`, `-`, `_`, or ASCII 32 space.
+    /// 1. Removes all leading/trailing spaces.
+    /// 1. Truncates whatever is left to 32 bytes.
+    void
+    NormalizeExportProfile() {
+        constexpr auto rm_invalid_chars = [](std::string& s) {
+            std::erase_if(s, [](char c) {
+                auto valid = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')
+                             || (c >= 'a' && c <= 'z') || c == ' ' || c == '_' || c == '-';
+                return !valid;
+            });
+        };
+
+        constexpr auto trim_space = [](std::string& s) {
+            auto last = s.find_last_not_of(' ');
+            if (last == std::string::npos) {
+                s.clear();
+                return;
+            }
+            s.erase(s.begin() + last + 1, s.end());
+
+            auto first = s.find_first_not_of(' ');
+            if (first == std::string::npos) {
+                s.clear();
+                return;
+            }
+            s.erase(s.begin(), s.begin() + first);
+        };
+
+        constexpr auto truncate_to_size = [](std::string& s, size_t size) {
+            if (s.size() > size) {
+                s.erase(s.begin() + size, s.end());
+            }
+        };
+
+        rm_invalid_chars(export_profile);
+        trim_space(export_profile);
+        truncate_to_size(export_profile, 32);
     }
 
     /// `hotkeys` is used to populates UI data.
@@ -235,14 +286,45 @@ class Context final {
     }
 
     void
-    ReloadProfileCache() {
-        profile_cache.clear();
-        if (!fs::ListDirectoryToBuffer(profile_dir_, profile_cache)) {
-            // TODO: log
+    ImportProfile(std::string_view profile) {
+        auto p = GetProfileFilepath(profile);
+        // clang-format off
+        auto hksui = fs::Read(p)
+            .and_then([](std::string&& s) { return Deserialize<Hotkeys<>>(s); })
+            .transform([](Hotkeys<>&& hotkeys) {
+                return HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
+            });
+        // clang-format on
+        if (!hksui) {
+            SKSE::log::error("failed to read '{}'", p.string());
+            return;
         }
+        hotkeys_ui = std::move(*hksui);
+        ReloadProfileCache();
+        selected_hotkey = 0;
+    }
+
+    void
+    ExportProfile() {
+        auto hotkeys = HotkeysUI(hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
+        auto s = Serialize<Hotkeys<>>(hotkeys);
+        NormalizeExportProfile();
+        auto p = GetProfileFilepath(export_profile);
+        if (!fs::Write(p, s)) {
+            SKSE::log::error("failed to write '{}'", p.string());
+            return;
+        }
+        ReloadProfileCache();
     }
 
   private:
+    std::filesystem::path
+    GetProfileFilepath(std::string_view profile) const {
+        auto p = profile_dir_ / profile;
+        p.replace_extension("json");
+        return p;
+    }
+
     bool active_ = false;
     std::mutex mutex_;
     std::filesystem::path profile_dir_ = fs::kProfileDir;
@@ -250,12 +332,6 @@ class Context final {
 
 inline Action
 DrawImportMenu(Context& ctx) {
-    constexpr auto try_parse_profile =
-        [](const std::filesystem::path&) -> std::optional<HotkeysUI<EquipsetUI>> {
-        // TODO: implement
-        return std::nullopt;
-    };
-
     if (!ImGui::BeginMenu("Import")) {
         return {};
     }
@@ -268,16 +344,7 @@ DrawImportMenu(Context& ctx) {
             if (!ImGui::MenuItem(profile.c_str())) {
                 continue;
             }
-            action = [&ctx, &profile]() {
-                auto hotkeys_ui = try_parse_profile(ctx.profile_dir() / profile);
-                ctx.ReloadProfileCache();
-                if (!hotkeys_ui) {
-                    // TODO: log
-                    return;
-                }
-                ctx.hotkeys_ui = std::move(*hotkeys_ui);
-                ctx.selected_hotkey = 0;
-            };
+            action = [&ctx, profile]() { ctx.ImportProfile(profile); };
         }
     }
 
@@ -287,40 +354,26 @@ DrawImportMenu(Context& ctx) {
 
 inline Action
 DrawExportMenu(Context& ctx) {
+    Action action;
     auto confirm_export = false;
     if (ImGui::BeginMenu("Export")) {
-        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ctx.export_filename);
+        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ctx.export_profile);
+        if (ImGui::IsItemDeactivated()) {
+            action = [&ctx]() { ctx.NormalizeExportProfile(); };
+        }
         if (ImGui::Button("Export Profile")) {
-            confirm_export = !ctx.export_filename.empty();
+            confirm_export = !ctx.export_profile.empty();
         }
         ImGui::EndMenu();
     }
 
-    Action action;
     if (confirm_export) {
         ImGui::OpenPopup("confirm_export");
     }
     if (ImGui::BeginPopup("confirm_export")) {
-        auto in_cache =
-            std::find(ctx.profile_cache.cbegin(), ctx.profile_cache.cend(), ctx.export_filename)
-            == ctx.profile_cache.cend();
-        const char* msg =
-            in_cache ? "Create new profile '%s'?" : "Overwrite existing profile '%s'?";
-        ImGui::Text(msg, ctx.export_filename.c_str());
+        ImGui::Text("Save as profile '%s'?", ctx.export_profile.c_str());
         if (ImGui::Button("Yes")) {
-            action = [&ctx]() {
-                auto hotkeys_real =
-                    HotkeysUI(ctx.hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
-                // TODO: convert to json
-                std::error_code ec;
-                std::filesystem::create_directories(ctx.profile_dir(), ec);
-                if (ec) {
-                    // TODO: log error
-                    return;
-                }
-                // TODO: implement export
-                ctx.ReloadProfileCache();
-            };
+            action = [&ctx]() { ctx.ExportProfile(); };
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();

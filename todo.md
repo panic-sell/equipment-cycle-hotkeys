@@ -1,6 +1,5 @@
-1. serde tests
-1. ui settings + positions serialization
-1. disk / co-save serialization
+1. co-save serialization
+1. test in game
 1. imgui gamepad support
 1. log inside hotkey and equipset
 
