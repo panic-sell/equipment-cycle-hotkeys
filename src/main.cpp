@@ -50,24 +50,104 @@ InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
 }
 
 void
-InitState() {
-    auto settings = fs::Read(fs::kSettingsPath)
-                        .and_then([](std::string&& s) { return Deserialize<Settings>(s); })
-                        .or_else([]() {
-                            SKSE::log::warn(
-                                "failed to parse settings file '{}', falling back to defaults",
-                                fs::kSettingsPath
-                            );
-                            return std::optional(Settings());
-                        });
+InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
+    constexpr auto listener = [](SKSE::MessagingInterface::Message* msg) {
+        if (!msg || msg->type != SKSE::MessagingInterface::kInputLoaded) {
+            return;
+        }
 
-    if (auto res = ui::Init(gUICtx, gHotkeys, std::move(*settings)); !res) {
-        SKSE::stl::report_and_fail(res.error());
-    }
+        auto settings = fs::Read(fs::kSettingsPath)
+                            .and_then([](std::string&& s) { return Deserialize<Settings>(s); })
+                            .or_else([]() {
+                                SKSE::log::warn(
+                                    "failed to parse settings file '{}', falling back to defaults",
+                                    fs::kSettingsPath
+                                );
+                                return std::optional(Settings());
+                            });
+        if (auto res = ui::Init(gUICtx, gHotkeys, std::move(*settings)); !res) {
+            SKSE::stl::report_and_fail(res.error());
+        }
 
-    if (auto res = EventHandler::Register(gHotkeys); !res) {
-        SKSE::stl::report_and_fail(res.error());
+        if (auto res = EventHandler::Register(gHotkeys); !res) {
+            SKSE::stl::report_and_fail(res.error());
+        }
+    };
+
+    if (!mi.RegisterListener(listener)) {
+        SKSE::stl::report_and_fail("failed to register SKSE message listener");
     }
+}
+
+void
+InitSKSESerialization(const SKSE::SerializationInterface& si) {
+    static constexpr auto on_save = [](SKSE::SerializationInterface* si) {
+        SKSE::log::trace("saving hotkeys data to SKSE cosave...");
+        if (!si) {
+            SKSE::log::error("SerializationInterface save callback called with null pointer");
+            return;
+        }
+
+        auto s = Serialize(gHotkeys);
+        if (!si->WriteRecord('DATA', 1, s.c_str(), static_cast<uint32_t>(s.size()))) {
+            SKSE::log::error("failed to serialize hotkeys data to SKSE cosave");
+        }
+    };
+
+    static constexpr auto on_load = [](SKSE::SerializationInterface* si) {
+        SKSE::log::trace("loading hotkeys data from SKSE cosave...");
+        if (!si) {
+            SKSE::log::error("SerializationInterface load callback called with null pointer");
+            return;
+        }
+
+        gHotkeys = {};
+        uint32_t type;
+        uint32_t version;  // unused
+        uint32_t length;
+        while (si->GetNextRecordInfo(type, version, length)) {
+            if (type != 'DATA') {
+                SKSE::log::warn("unknown record type '{}' in SKSE cosave", type);
+                continue;
+            }
+
+            std::string s;
+            s.reserve(length);
+            for (uint32_t i = 0; i < length; i++) {
+                char c;
+                si->ReadRecordData(&c, 1);
+                s.push_back(c);
+            }
+            auto hotkeys = Deserialize<Hotkeys<>>(s);
+            if (!hotkeys) {
+                SKSE::log::error("failed to deserialize hotkeys data from SKSE cosave");
+                continue;
+            }
+            gHotkeys = std::move(*hotkeys);
+        }
+
+        auto lock = gUICtx.Acquire();
+        gUICtx.Deactivate();
+        gUICtx.selected_hotkey = 0;
+    };
+
+    static constexpr auto on_revert = [](SKSE::SerializationInterface* si) {
+        SKSE::log::trace("reverting hotkeys data from SKSE cosave...");
+        if (!si) {
+            SKSE::log::error("SerializationInterface revert callback called with null pointer");
+            return;
+        }
+
+        gHotkeys = {};
+        auto lock = gUICtx.Acquire();
+        gUICtx.Deactivate();
+        gUICtx.selected_hotkey = 0;
+    };
+
+    si.SetUniqueID('ECH?');
+    si.SetSaveCallback(on_save);
+    si.SetLoadCallback(on_load);
+    si.SetRevertCallback(on_revert);
 }
 
 }  // namespace
@@ -81,15 +161,17 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     InitLogging(*plugin_decl);
     SKSE::Init(skse);
 
-    const auto* msg_interface = SKSE::GetMessagingInterface();
-    constexpr auto on_msg = [](SKSE::MessagingInterface::Message* msg) {
-        if (msg && msg->type == SKSE::MessagingInterface::kInputLoaded) {
-            InitState();
-        }
-    };
-    if (!msg_interface || !msg_interface->RegisterListener(on_msg)) {
-        SKSE::stl::report_and_fail("failed to register SKSE message listener");
+    const auto* mi = SKSE::GetMessagingInterface();
+    const auto* si = SKSE::GetSerializationInterface();
+    if (!mi) {
+        SKSE::stl::report_and_fail("failed to get SKSE messaging interface");
     }
+    if (!si) {
+        SKSE::stl::report_and_fail("failed to get SKSE serialization interface");
+    }
+
+    InitSKSEMessaging(*mi);
+    InitSKSESerialization(*si);
 
     SKSE::log::info("{} loaded", plugin_decl->GetName());
     return true;

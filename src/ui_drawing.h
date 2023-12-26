@@ -7,6 +7,159 @@
 
 namespace ech {
 namespace ui {
+
+class Context final {
+  public:
+    // Created/destroyed through activation state changes.
+    std::vector<std::string> profile_cache;
+    HotkeysUI<EquipsetUI> hotkeys_ui;
+
+    // Persists between activation state changes.
+    size_t selected_hotkey = 0;
+    std::string export_profile;
+
+    Context(std::filesystem::path profile_dir = fs::kProfileDir)
+        : profile_dir_(std::move(profile_dir)) {}
+
+    /// Intent for UI visibility. Something else has to realize this intent.
+    bool
+    IsActive() const {
+        return active_;
+    }
+
+    /// For different threads that may concurrently modify UI data. `Draw*` functions in this file
+    /// do not call `Acquire()` since they assume their callers take on that responsibility.
+    std::lock_guard<std::mutex>
+    Acquire() {
+        return std::lock_guard(mutex_);
+    }
+
+    void
+    ReloadProfileCache() {
+        profile_cache.clear();
+        if (!fs::ListDirectoryToBuffer(profile_dir_, profile_cache)) {
+            SKSE::log::error("failed to iterate '{}'", profile_dir_.string());
+        }
+        constexpr std::string_view ext = ".json";
+        std::erase_if(profile_cache, [](std::string_view s) {
+            return s == ext || !s.ends_with(ext);
+        });
+        for (auto& s : profile_cache) {
+            s.erase(s.end() - ext.size(), s.end());
+        }
+    }
+
+    /// 1. Removes all chars that are not `a-z`, `A-Z`, `0-9`, `-`, `_`, or ASCII 32 space.
+    /// 1. Removes all leading/trailing spaces.
+    /// 1. Truncates whatever is left to 32 bytes.
+    void
+    NormalizeExportProfile() {
+        constexpr auto rm_invalid_chars = [](std::string& s) {
+            std::erase_if(s, [](char c) {
+                auto valid = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')
+                             || (c >= 'a' && c <= 'z') || c == ' ' || c == '_' || c == '-';
+                return !valid;
+            });
+        };
+
+        constexpr auto trim_space = [](std::string& s) {
+            auto last = s.find_last_not_of(' ');
+            if (last == std::string::npos) {
+                s.clear();
+                return;
+            }
+            s.erase(s.begin() + last + 1, s.end());
+
+            auto first = s.find_first_not_of(' ');
+            if (first == std::string::npos) {
+                s.clear();
+                return;
+            }
+            s.erase(s.begin(), s.begin() + first);
+        };
+
+        constexpr auto truncate_to_size = [](std::string& s, size_t size) {
+            if (s.size() > size) {
+                s.erase(s.begin() + size, s.end());
+            }
+        };
+
+        rm_invalid_chars(export_profile);
+        trim_space(export_profile);
+        truncate_to_size(export_profile, 32);
+    }
+
+    /// `hotkeys` is used to populates UI data.
+    void
+    Activate(const Hotkeys<>& hotkeys) {
+        ReloadProfileCache();
+        hotkeys_ui = HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
+        if (selected_hotkey >= hotkeys_ui.size()) {
+            selected_hotkey = 0;
+        }
+        active_ = true;
+    }
+
+    /// Discards UI data.
+    void
+    Deactivate() {
+        profile_cache.clear();
+        hotkeys_ui = {};
+        active_ = false;
+    }
+
+    /// Syncs `hotkeys` with UI data prior to discarding that data.
+    void
+    Deactivate(Hotkeys<>& hotkeys) {
+        hotkeys = hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
+        Deactivate();
+    }
+
+    void
+    ImportProfile(std::string_view profile) {
+        auto p = GetProfileFilepath(profile);
+        // clang-format off
+        auto hksui = fs::Read(p)
+            .and_then([](std::string&& s) { return Deserialize<Hotkeys<>>(s); })
+            .transform([](Hotkeys<>&& hotkeys) {
+                return HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
+            });
+        // clang-format on
+        if (!hksui) {
+            SKSE::log::error("failed to read '{}'", p.string());
+            return;
+        }
+        hotkeys_ui = std::move(*hksui);
+        ReloadProfileCache();
+        selected_hotkey = 0;
+    }
+
+    void
+    ExportProfile() {
+        auto hotkeys = HotkeysUI(hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
+        auto s = Serialize<Hotkeys<>>(hotkeys);
+        NormalizeExportProfile();
+        auto p = GetProfileFilepath(export_profile);
+        if (!fs::Write(p, s)) {
+            SKSE::log::error("failed to write '{}'", p.string());
+            return;
+        }
+        ReloadProfileCache();
+    }
+
+  private:
+    std::filesystem::path
+    GetProfileFilepath(std::string_view profile) const {
+        auto p = profile_dir_ / profile;
+        p.replace_extension("json");
+        return p;
+    }
+
+    bool active_ = false;
+    std::mutex mutex_;
+    std::filesystem::path profile_dir_ = fs::kProfileDir;
+};
+
 namespace internal {
 
 using Action = std::function<void()>;
@@ -182,152 +335,6 @@ struct Table final {
 
         return {a, trc};
     }
-};
-
-class Context final {
-  public:
-    // Created/destroyed through activation state changes.
-    std::vector<std::string> profile_cache;
-    HotkeysUI<EquipsetUI> hotkeys_ui;
-
-    // Persists between activation state changes.
-    size_t selected_hotkey = 0;
-    std::string export_profile;
-
-    Context(std::filesystem::path profile_dir = fs::kProfileDir)
-        : profile_dir_(std::move(profile_dir)) {}
-
-    /// Intent for UI visibility. Something else has to realize this intent.
-    bool
-    IsActive() const {
-        return active_;
-    }
-
-    /// For different threads that may concurrently modify UI data. `Draw*` functions in this file
-    /// do not call `Acquire()` since they assume their callers take on that responsibility.
-    std::lock_guard<std::mutex>
-    Acquire() {
-        return std::lock_guard(mutex_);
-    }
-
-    void
-    ReloadProfileCache() {
-        profile_cache.clear();
-        if (!fs::ListDirectoryToBuffer(profile_dir_, profile_cache)) {
-            SKSE::log::error("failed to iterate '{}'", profile_dir_.string());
-        }
-        constexpr std::string_view ext = ".json";
-        std::erase_if(profile_cache, [](std::string_view s) {
-            return s == ext || !s.ends_with(ext);
-        });
-        for (auto& s : profile_cache) {
-            s.erase(s.end() - ext.size(), s.end());
-        }
-    }
-
-    /// 1. Removes all chars that are not `a-z`, `A-Z`, `0-9`, `-`, `_`, or ASCII 32 space.
-    /// 1. Removes all leading/trailing spaces.
-    /// 1. Truncates whatever is left to 32 bytes.
-    void
-    NormalizeExportProfile() {
-        constexpr auto rm_invalid_chars = [](std::string& s) {
-            std::erase_if(s, [](char c) {
-                auto valid = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')
-                             || (c >= 'a' && c <= 'z') || c == ' ' || c == '_' || c == '-';
-                return !valid;
-            });
-        };
-
-        constexpr auto trim_space = [](std::string& s) {
-            auto last = s.find_last_not_of(' ');
-            if (last == std::string::npos) {
-                s.clear();
-                return;
-            }
-            s.erase(s.begin() + last + 1, s.end());
-
-            auto first = s.find_first_not_of(' ');
-            if (first == std::string::npos) {
-                s.clear();
-                return;
-            }
-            s.erase(s.begin(), s.begin() + first);
-        };
-
-        constexpr auto truncate_to_size = [](std::string& s, size_t size) {
-            if (s.size() > size) {
-                s.erase(s.begin() + size, s.end());
-            }
-        };
-
-        rm_invalid_chars(export_profile);
-        trim_space(export_profile);
-        truncate_to_size(export_profile, 32);
-    }
-
-    /// `hotkeys` is used to populates UI data.
-    void
-    Activate(const Hotkeys<>& hotkeys) {
-        ReloadProfileCache();
-        hotkeys_ui = HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
-        if (selected_hotkey >= hotkeys_ui.size()) {
-            selected_hotkey = 0;
-        }
-        active_ = true;
-    }
-
-    /// Syncs `hotkeys` with UI data, then destroys UI data.
-    void
-    Deactivate(Hotkeys<>& hotkeys) {
-        profile_cache.clear();
-        hotkeys = hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
-        hotkeys_ui = {};
-        active_ = false;
-    }
-
-    void
-    ImportProfile(std::string_view profile) {
-        auto p = GetProfileFilepath(profile);
-        // clang-format off
-        auto hksui = fs::Read(p)
-            .and_then([](std::string&& s) { return Deserialize<Hotkeys<>>(s); })
-            .transform([](Hotkeys<>&& hotkeys) {
-                return HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
-            });
-        // clang-format on
-        if (!hksui) {
-            SKSE::log::error("failed to read '{}'", p.string());
-            return;
-        }
-        hotkeys_ui = std::move(*hksui);
-        ReloadProfileCache();
-        selected_hotkey = 0;
-    }
-
-    void
-    ExportProfile() {
-        auto hotkeys = HotkeysUI(hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
-        auto s = Serialize<Hotkeys<>>(hotkeys);
-        NormalizeExportProfile();
-        auto p = GetProfileFilepath(export_profile);
-        if (!fs::Write(p, s)) {
-            SKSE::log::error("failed to write '{}'", p.string());
-            return;
-        }
-        ReloadProfileCache();
-    }
-
-  private:
-    std::filesystem::path
-    GetProfileFilepath(std::string_view profile) const {
-        auto p = profile_dir_ / profile;
-        p.replace_extension("json");
-        return p;
-    }
-
-    bool active_ = false;
-    std::mutex mutex_;
-    std::filesystem::path profile_dir_ = fs::kProfileDir;
 };
 
 inline Action
@@ -588,8 +595,6 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
 
 }  // namespace internal
 
-using Context = internal::Context;
-
 inline void
 Draw(Context& ctx) {
     const auto* main_viewport = ImGui::GetMainViewport();
@@ -632,7 +637,7 @@ Draw(Context& ctx) {
     ImGui::BeginChild(
         "hotkey_list", hotkeylist_initial_size, ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX
     );
-    if (auto a = DrawHotkeyList(ctx)) {
+    if (auto a = internal::DrawHotkeyList(ctx)) {
         action = a;
     }
     ImGui::EndChild();
