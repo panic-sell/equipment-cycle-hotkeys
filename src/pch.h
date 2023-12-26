@@ -123,6 +123,8 @@
 #include <boost/json.hpp>
 
 // UI
+#define UNICODE
+#define _UNICODE
 #include <Windows.h>
 #include <d3d11.h>
 #include <dxgi.h>
