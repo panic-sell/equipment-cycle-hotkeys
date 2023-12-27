@@ -13,8 +13,6 @@ enum class Gearslot : uint8_t {
     kAmmo,
     /// Shouts or other voice-equipped spells.
     kShout,
-
-    MAX = kShout,
 };
 
 /// `kGearslots[i] == static_cast<Gearslot>(i)` for all `0 <= i < kGearslots.size()`

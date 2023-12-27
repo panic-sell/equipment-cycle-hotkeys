@@ -157,10 +157,8 @@ tag_invoke(
         }
         const auto& jo = jv.get_object();
 
-        using slot_ut = std::underlying_type_t<Gearslot>;
-        auto slot = internal::GetSerObjField<slot_ut>(jo, "slot", ctx).and_then([](slot_ut n) {
-            return n <= std::to_underlying(Gearslot::MAX) ? std::optional(static_cast<Gearslot>(n))
-                                                          : std::nullopt;
+        auto slot = internal::GetSerObjField<size_t>(jo, "slot", ctx).and_then([](size_t n) {
+            return n < kGearslots.size() ? std::optional(static_cast<Gearslot>(n)) : std::nullopt;
         });
         if (!slot) {
             return std::nullopt;
