@@ -310,6 +310,8 @@ tag_invoke(
     }
     auto jo = jv.get_object();
 
+    settings.log_level =
+        internal::GetSerObjField<std::string>(jo, "log_level", ctx).value_or(settings.log_level);
     settings.menu_font_scale = internal::GetSerObjField<float>(jo, "menu_font_scale", ctx)
                                    .value_or(settings.menu_font_scale);
     settings.menu_color_style = internal::GetSerObjField<std::string>(jo, "menu_color_style", ctx)

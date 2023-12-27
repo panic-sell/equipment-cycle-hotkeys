@@ -1,6 +1,5 @@
 #pragma once
 
-#include "dev_util.h"
 #include "equipsets.h"
 #include "hotkeys.h"
 #include "keys.h"
@@ -78,11 +77,10 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
             return;
         }
 
-        const auto* equipset =
-            dev_util::input_handlers::UseHotkeys(*hotkeys_, keystroke_buf_, *player);
+        const auto* equipset = hotkeys_->GetNextEquipset(keystroke_buf_);
         if (equipset) {
-            // Note the ordering here. Most-recent-equip-time must be reset prior to equipset-apply
-            // because the latter will trigger equip events.
+            // Most-recent-equip-time must be reset prior to equipset-apply because the latter will
+            // trigger equip events.
             most_recent_hotkey_equip_time_ = RE::GetDurationOfApplicationRunTime();
             equipset->Apply(*aem, *player);
         }

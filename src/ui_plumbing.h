@@ -536,11 +536,11 @@ Configure(const Settings& settings) {
     io.IniFilename = fs::kImGuiIniPath;
 
     io.FontGlobalScale = settings.menu_font_scale;
-    if (settings.menu_color_style == "Dark") {
+    if (settings.menu_color_style == "dark") {
         ImGui::StyleColorsDark();
-    } else if (settings.menu_color_style == "Light") {
+    } else if (settings.menu_color_style == "light") {
         ImGui::StyleColorsLight();
-    } else if (settings.menu_color_style == "Classic") {
+    } else if (settings.menu_color_style == "classic") {
         ImGui::StyleColorsClassic();
     } else {
         ImGui::StyleColorsDark();

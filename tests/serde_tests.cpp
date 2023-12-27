@@ -356,11 +356,13 @@ TEST_CASE("Settings de") {
         Testcase{
             .name = "normal",
             .src_str = R"({
+                "log_level": "qwerty",
                 "menu_font_scale": 123,
                 "menu_color_style": "asdf",
                 "menu_toggle_keysets": [["LCtrl", "4"], ["5"]],
             })",
             .want{
+                .log_level = "qwerty",
                 .menu_font_scale = 123,
                 .menu_color_style = "asdf",
                 .menu_toggle_keysets = Keysets({

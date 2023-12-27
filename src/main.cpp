@@ -56,8 +56,12 @@ InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
     auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_dir->string(), true);
     auto logger = std::make_shared<spdlog::logger>("logger", std::move(sink));
 
-    logger->flush_on(spdlog::level::level_enum::trace);
-    logger->set_level(spdlog::level::level_enum::trace);
+    auto level = spdlog::level::from_str(gSettings.log_level);
+    if (level == spdlog::level::off && gSettings.log_level != "off") {
+        level = spdlog::level::info;
+    }
+    logger->flush_on(level);
+    logger->set_level(level);
     // https://github.com/gabime/spdlog/wiki/3.-Custom-formatting#pattern-flags
     logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s:%#] %v");
 
@@ -70,11 +74,9 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
         if (!msg || msg->type != SKSE::MessagingInterface::kInputLoaded) {
             return;
         }
-
         if (auto res = ui::Init(gUICtx, gHotkeys, gSettings); !res) {
             SKSE::stl::report_and_fail(res.error());
         }
-
         if (auto res = EventHandler::Register(gHotkeys); !res) {
             SKSE::stl::report_and_fail(res.error());
         }
