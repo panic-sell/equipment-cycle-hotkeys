@@ -157,18 +157,18 @@ tag_invoke(
         }
         const auto& jo = jv.get_object();
 
-        auto slot_num = internal::GetSerObjField<std::underlying_type_t<Gearslot>>(jo, "slot", ctx);
-        if (!slot_num || *slot_num > std::to_underlying(Gearslot::MAX)) {
+        using slot_ut = std::underlying_type_t<Gearslot>;
+        auto slot = internal::GetSerObjField<slot_ut>(jo, "slot", ctx).and_then([](slot_ut n) {
+            return n <= std::to_underlying(Gearslot::MAX) ? std::optional(static_cast<Gearslot>(n))
+                                                          : std::nullopt;
+        });
+        if (!slot) {
             return std::nullopt;
         }
-        auto slot = static_cast<Gearslot>(*slot_num);
 
-        auto unequip = internal::GetSerObjField<bool>(jo, "unequip", ctx);
-        if (!unequip) {
-            return std::nullopt;
-        }
-        if (*unequip) {
-            return GearOrSlot(static_cast<Gearslot>(*slot_num));
+        auto unequip = internal::GetSerObjField<bool>(jo, "unequip", ctx).value_or(false);
+        if (unequip) {
+            return GearOrSlot(*slot);
         }
 
         auto mod = internal::GetSerObjField<std::string>(jo, "mod", ctx).value_or(""s);

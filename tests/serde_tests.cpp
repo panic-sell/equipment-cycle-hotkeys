@@ -327,11 +327,6 @@ TEST_CASE("Equipset serde") {
             .name = "slot_wrong_type",
             .src_str = R"([{"slot": 1, "unequip": true}, {"slot": false, "unequip": true}])",
             .jv_str = "[]",
-        },
-        Testcase{
-            .name = "unequip_wrong_type",
-            .src_str = R"([{"slot": 1, "unequip": true}, {"slot": 2, "unequip": "str"}])",
-            .jv_str = "[]",
         }
     );
 
