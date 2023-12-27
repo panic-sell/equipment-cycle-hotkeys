@@ -76,21 +76,25 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
 void
 InitSKSESerialization(const SKSE::SerializationInterface& si) {
     static constexpr auto on_save = [](SKSE::SerializationInterface* si) {
-        SKSE::log::trace("saving hotkeys data to SKSE cosave...");
         if (!si) {
             SKSE::log::error("SerializationInterface save callback called with null pointer");
             return;
         }
 
         auto lock = std::lock_guard(gHotkeysMutex);
+        if (gHotkeys.vec().empty()) {
+            return;
+        }
         auto s = Serialize(gHotkeys);
         if (!si->WriteRecord('DATA', 1, s.c_str(), static_cast<uint32_t>(s.size()))) {
             SKSE::log::error("failed to serialize hotkeys data to SKSE cosave");
+            return;
         }
+
+        SKSE::log::debug("saved hotkeys data to SKSE cosave");
     };
 
     static constexpr auto on_load = [](SKSE::SerializationInterface* si) {
-        SKSE::log::trace("loading hotkeys data from SKSE cosave...");
         if (!si) {
             SKSE::log::error("SerializationInterface load callback called with null pointer");
             return;
@@ -120,6 +124,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
                 continue;
             }
             gHotkeys = std::move(*hotkeys);
+            SKSE::log::debug("loaded hotkeys data from SKSE cosave");
         }
 
         gUIContext.Deactivate();
@@ -127,7 +132,6 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
     };
 
     static constexpr auto on_revert = [](SKSE::SerializationInterface* si) {
-        SKSE::log::trace("reverting hotkeys data from SKSE cosave...");
         if (!si) {
             SKSE::log::error("SerializationInterface revert callback called with null pointer");
             return;
@@ -137,6 +141,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
         gHotkeys = {};
         gUIContext.Deactivate();
         gUIContext.selected_hotkey = 0;
+        SKSE::log::debug("reset current hotkeys data");
     };
 
     si.SetUniqueID('ECH?');

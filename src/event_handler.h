@@ -80,12 +80,21 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
 
         auto lock = std::lock_guard(*hotkeys_mutex_);
         const auto* equipset = hotkeys_->GetNextEquipset(keystroke_buf_);
-        if (equipset) {
-            // Most-recent-equip-time must be reset prior to equipset-apply because the latter
-            // triggers equip events.
-            most_recent_hotkey_equip_time_.store(RE::GetDurationOfApplicationRunTime());
-            equipset->Apply(*aem, *player);
+        if (!equipset) {
+            return;
         }
+
+        // Most-recent-equip-time must be reset prior to equipset-apply because the latter
+        // triggers equip events.
+        auto now = RE::GetDurationOfApplicationRunTime();
+        most_recent_hotkey_equip_time_.store(now);
+        equipset->Apply(*aem, *player);
+        SKSE::log::debug(
+            "activated hotkey {} ({}), equipset {}",
+            hotkeys_->active() + 1,
+            hotkeys_->vec()[hotkeys_->active()].name,
+            hotkeys_->vec()[hotkeys_->active()].equipsets.active() + 1
+        );
     }
 
     void
@@ -117,10 +126,12 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         // Assume any equip event within 0.5 s of a hotkey activation is the result of that hotkey
         // activation.
         auto now = RE::GetDurationOfApplicationRunTime();
-        if (now >= most_recent_hotkey_equip_time_.load() + 500) {
-            auto lock = std::lock_guard(*hotkeys_mutex_);
-            hotkeys_->Deactivate();
+        if (now <= most_recent_hotkey_equip_time_.load() + 500) {
+            return;
         }
+        auto lock = std::lock_guard(*hotkeys_mutex_);
+        hotkeys_->Deactivate();
+        SKSE::log::debug("deactivated hotkeys");
     }
 
     Hotkeys<>* hotkeys_ = nullptr;
