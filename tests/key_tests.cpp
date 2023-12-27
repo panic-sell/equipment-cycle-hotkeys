@@ -14,8 +14,10 @@ TEST_CASE("Keycode from name") {
     auto testcase = GENERATE(
         Testcase{.name = "", .want = 0},
         Testcase{.name = "081i3nof09", .want = 0},
-        Testcase{.name = "lshift", .want = 42},
-        Testcase{.name = "GamEPADrt", .want = 281}
+        Testcase{.name = "LShift", .want = 42},
+        Testcase{.name = "lshift", .want = 0},
+        Testcase{.name = "GamepadRT", .want = 281},
+        Testcase{.name = "GamEPADrt", .want = 0}
     );
 
     auto got = KeycodeFromName(testcase.name);

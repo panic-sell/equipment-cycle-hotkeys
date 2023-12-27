@@ -299,19 +299,15 @@ KeycodeIsValid(uint32_t keycode) {
     return !KeycodeName(keycode).empty();
 }
 
-/// `name` is checked case-insensitively. If name is unknown, returns 0.
+/// If name is unknown, returns 0.
 constexpr uint32_t
 KeycodeFromName(std::string_view name) {
-    auto it = std::find_if(kKeycodeNames.cbegin(), kKeycodeNames.cend(), [=](std::string_view s) {
-        // Only correct for ASCII strings, which is fine because all keycode names are ASCII.
-        return std::equal(name.cbegin(), name.cend(), s.cbegin(), s.cend(), [](char a, char b) {
-            return (a | (1 << 5)) == (b | (1 << 5));
-        });
-    });
-    if (it == kKeycodeNames.cend() || !**it) {
-        return 0;
+    for (uint32_t i = 0; i < kKeycodeNames.size(); i++) {
+        if (name == kKeycodeNames[i]) {
+            return i;
+        }
     }
-    return static_cast<uint32_t>(it - kKeycodeNames.cbegin());
+    return 0;
 }
 
 /// Normalizes invalid keycodes to 0. Valid keycodes are left as is.
