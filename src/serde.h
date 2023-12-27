@@ -312,7 +312,7 @@ tag_invoke(
 
     settings.menu_font_scale = internal::GetSerObjField<float>(jo, "menu_font_scale", ctx)
                                    .value_or(settings.menu_font_scale);
-    settings.menu_color_style = internal::GetSerObjField<uint8_t>(jo, "menu_color_style", ctx)
+    settings.menu_color_style = internal::GetSerObjField<std::string>(jo, "menu_color_style", ctx)
                                     .value_or(settings.menu_color_style);
     settings.menu_toggle_keysets =
         Keysets(internal::GetSerObjField<std::vector<Keyset>>(jo, "menu_toggle_keysets", ctx)

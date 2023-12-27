@@ -357,12 +357,12 @@ TEST_CASE("Settings de") {
             .name = "normal",
             .src_str = R"({
                 "menu_font_scale": 123,
-                "menu_color_style": 5,
+                "menu_color_style": "asdf",
                 "menu_toggle_keysets": [["LCtrl", "4"], ["5"]],
             })",
             .want{
                 .menu_font_scale = 123,
-                .menu_color_style = 5,
+                .menu_color_style = "asdf",
                 .menu_toggle_keysets = Keysets({
                     {KeycodeFromName("LCtrl"), KeycodeFromName("4")},
                     {KeycodeFromName("5")},

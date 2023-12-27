@@ -10,6 +10,7 @@ namespace {
 
 using namespace ech;
 
+Settings gSettings;
 ui::Context gUICtx;
 Hotkeys<> gHotkeys = Hotkeys({
     {
@@ -29,6 +30,20 @@ Hotkeys<> gHotkeys = Hotkeys({
         .keysets = Keysets({{KeycodeFromName("4")}}),
     },
 });
+
+void
+InitSettings() {
+    auto settings = fs::Read(fs::kSettingsPath).and_then([](std::string&& s) {
+        return Deserialize<Settings>(s);
+    });
+    if (!settings) {
+        SKSE::log::warn(
+            "failed to parse settings file '{}', falling back to defaults", fs::kSettingsPath
+        );
+        return;
+    }
+    gSettings = std::move(*settings);
+}
 
 void
 InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
@@ -56,16 +71,7 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
             return;
         }
 
-        auto settings = fs::Read(fs::kSettingsPath)
-                            .and_then([](std::string&& s) { return Deserialize<Settings>(s); })
-                            .or_else([]() {
-                                SKSE::log::warn(
-                                    "failed to parse settings file '{}', falling back to defaults",
-                                    fs::kSettingsPath
-                                );
-                                return std::optional(Settings());
-                            });
-        if (auto res = ui::Init(gUICtx, gHotkeys, std::move(*settings)); !res) {
+        if (auto res = ui::Init(gUICtx, gHotkeys, gSettings); !res) {
             SKSE::stl::report_and_fail(res.error());
         }
 
@@ -158,6 +164,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
         SKSE::stl::report_and_fail("failed to get SKSE plugin declaration");
     }
 
+    InitSettings();
     InitLogging(*plugin_decl);
     SKSE::Init(skse);
 

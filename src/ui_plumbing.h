@@ -59,11 +59,11 @@ class RenderHook final {
 class InputHook final {
   public:
     static void
-    Init(Context& ctx, Hotkeys<>& hotkeys, Keysets toggle_keysets) {
+    Init(Context& ctx, Hotkeys<>& hotkeys, const Settings& settings) {
         static InputHook instance;
         instance.ctx_ = &ctx;
         instance.hotkeys_ = &hotkeys;
-        instance.toggle_keysets_ = std::move(toggle_keysets);
+        instance.toggle_keysets_ = settings.menu_toggle_keysets;
 
         auto loc = REL::Relocation<uintptr_t>(REL::RelocationID(67315, 68617), REL::Offset(0x7b));
         static constexpr auto hook = [](RE::BSTEventSource<RE::InputEvent*>* event_src,
@@ -536,19 +536,14 @@ Configure(const Settings& settings) {
     io.IniFilename = fs::kImGuiIniPath;
 
     io.FontGlobalScale = settings.menu_font_scale;
-    switch (settings.menu_color_style) {
-        case 0:
-            ImGui::StyleColorsDark();
-            break;
-        case 1:
-            ImGui::StyleColorsLight();
-            break;
-        case 2:
-            ImGui::StyleColorsClassic();
-            break;
-        default:
-            ImGui::StyleColorsDark();
-            break;
+    if (settings.menu_color_style == "Dark") {
+        ImGui::StyleColorsDark();
+    } else if (settings.menu_color_style == "Light") {
+        ImGui::StyleColorsLight();
+    } else if (settings.menu_color_style == "Classic") {
+        ImGui::StyleColorsClassic();
+    } else {
+        ImGui::StyleColorsDark();
     }
 }
 
@@ -561,7 +556,7 @@ Init(
     /// The Hotkeys object that EventHandler uses. On closing menu, InputHook will sync this with
     /// ctx before destroying ctx.
     Hotkeys<>& hotkeys,
-    Settings settings
+    const Settings& settings
 ) {
     auto* renderer = RE::BSGraphics::Renderer::GetSingleton();
     auto* device = renderer ? renderer->data.forwarder : nullptr;
@@ -584,7 +579,7 @@ Init(
     }
 
     internal::RenderHook::Init(ctx);
-    internal::InputHook::Init(ctx, hotkeys, std::move(settings.menu_toggle_keysets));
+    internal::InputHook::Init(ctx, hotkeys, settings);
 
     SKSE::log::info("UI initialized");
     return {};
