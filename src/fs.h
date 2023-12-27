@@ -27,7 +27,7 @@ Read(const std::filesystem::path& fp) {
 }
 
 /// Will create intermediate directories as needed. Returns false on failure.
-inline bool
+[[nodiscard]] inline bool
 Write(const std::filesystem::path& fp, std::string_view contents) {
     std::error_code ec;
     std::filesystem::create_directories(fp.parent_path(), ec);
@@ -44,7 +44,7 @@ Write(const std::filesystem::path& fp, std::string_view contents) {
 }
 
 /// Returns false on failure (including file-does-not-exist).
-inline bool
+[[nodiscard]] inline bool
 Remove(const std::filesystem::path& fp) {
     std::error_code ec;
     return std::filesystem::remove(fp, ec);
@@ -52,7 +52,7 @@ Remove(const std::filesystem::path& fp) {
 
 /// For all items inside `dir`, puts their names into `buf`. A nonexistent `dir` is treated like an
 /// empty directory. Returns false on failure.
-inline bool
+[[nodiscard]] inline bool
 ListDirectoryToBuffer(const std::filesystem::path& dir, std::vector<std::string>& buf) {
     std::error_code ec;
     auto it = std::filesystem::directory_iterator(dir, ec);

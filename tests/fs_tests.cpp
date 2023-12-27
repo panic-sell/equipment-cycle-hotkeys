@@ -49,7 +49,7 @@ TEST_CASE("Read/Write") {
 TEST_CASE("Remove") {
     Tempdir td;
 
-    Write(td.path() / "file.txt", "");
+    REQUIRE(Write(td.path() / "file.txt", ""));
     REQUIRE(Remove(td.path() / "file.txt"));
 
     std::filesystem::create_directories(td.path() / "unnested_dir");
@@ -62,8 +62,8 @@ TEST_CASE("Remove") {
 TEST_CASE("ListDirectory") {
     Tempdir td;
 
-    Write(td.path() / ".a_file", "");
-    Write(td.path() / "ano.ther..file", "");
+    REQUIRE(Write(td.path() / ".a_file", ""));
+    REQUIRE(Write(td.path() / "ano.ther..file", ""));
     std::filesystem::create_directories(td.path() / "a_dir");
     std::filesystem::create_directories(td.path() / "a.nested.dir");
 
@@ -78,7 +78,7 @@ TEST_CASE("ListDirectory") {
 TEST_CASE("ListDirectory file") {
     Tempdir td;
 
-    Write(td.path() / ".a_file", "");
+    REQUIRE(Write(td.path() / ".a_file", ""));
 
     std::vector<std::string> v;
     REQUIRE(!ListDirectoryToBuffer(td.path() / ".a_file", v));

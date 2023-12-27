@@ -10,7 +10,7 @@ namespace ech {
 class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
                            public RE::BSTEventSink<RE::TESEquipEvent> {
   public:
-    static std::expected<void, std::string_view>
+    [[nodiscard]] static std::expected<void, std::string_view>
     Init(Hotkeys<>& hotkeys, std::mutex& hotkeys_mutex) {
         auto* idm = RE::BSInputDeviceManager::GetSingleton();
         auto* sesh = RE::ScriptEventSourceHolder::GetSingleton();
