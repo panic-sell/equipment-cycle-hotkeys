@@ -27,13 +27,6 @@ class Context final {
         return active_;
     }
 
-    /// For different threads that may concurrently modify UI data. `Draw*` functions in this file
-    /// do not call `Acquire()` since they assume their callers take on that responsibility.
-    std::lock_guard<std::mutex>
-    Acquire() {
-        return std::lock_guard(mutex_);
-    }
-
     void
     ReloadProfileCache() {
         profile_cache.clear();
@@ -156,7 +149,6 @@ class Context final {
     }
 
     bool active_ = false;
-    std::mutex mutex_;
     std::filesystem::path profile_dir_ = fs::kProfileDir;
 };
 

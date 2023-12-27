@@ -11,7 +11,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
                            public RE::BSTEventSink<RE::TESEquipEvent> {
   public:
     static std::expected<void, std::string_view>
-    Register(Hotkeys<>& hotkeys) {
+    Init(Hotkeys<>& hotkeys, std::mutex& hotkeys_mutex) {
         auto* idm = RE::BSInputDeviceManager::GetSingleton();
         auto* sesh = RE::ScriptEventSourceHolder::GetSingleton();
         if (!idm || !sesh) {
@@ -20,6 +20,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
 
         static EventHandler instance;
         instance.hotkeys_ = &hotkeys;
+        instance.hotkeys_mutex_ = &hotkeys_mutex;
         idm->AddEventSink<RE::InputEvent*>(&instance);
         sesh->AddEventSink<RE::TESEquipEvent>(&instance);
         return {};
@@ -77,11 +78,12 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
             return;
         }
 
+        auto lock = std::lock_guard(*hotkeys_mutex_);
         const auto* equipset = hotkeys_->GetNextEquipset(keystroke_buf_);
         if (equipset) {
-            // Most-recent-equip-time must be reset prior to equipset-apply because the latter will
-            // trigger equip events.
-            most_recent_hotkey_equip_time_ = RE::GetDurationOfApplicationRunTime();
+            // Most-recent-equip-time must be reset prior to equipset-apply because the latter
+            // triggers equip events.
+            most_recent_hotkey_equip_time_.store(RE::GetDurationOfApplicationRunTime());
             equipset->Apply(*aem, *player);
         }
     }
@@ -112,17 +114,22 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
                 return;
         }
 
+        // Assume any equip event within 0.5 s of a hotkey activation is the result of that hotkey
+        // activation.
         auto now = RE::GetDurationOfApplicationRunTime();
-        if (now >= most_recent_hotkey_equip_time_ + 500) {
+        if (now >= most_recent_hotkey_equip_time_.load() + 500) {
+            auto lock = std::lock_guard(*hotkeys_mutex_);
             hotkeys_->Deactivate();
         }
     }
 
     Hotkeys<>* hotkeys_ = nullptr;
-    /// Reusable buffer for storing input keystrokes and avoiding per-input-event allocations.
+    std::mutex* hotkeys_mutex_ = nullptr;
+    /// Reusable buffer for storing input keystrokes and avoiding per-input-event allocations. We
+    /// assume `HandleInputEvents()` will only be called from one thread at a time.
     std::vector<Keystroke> keystroke_buf_;
     /// In milliseconds since application start.
-    uint32_t most_recent_hotkey_equip_time_ = 0;
+    std::atomic<uint32_t> most_recent_hotkey_equip_time_ = 0;
 };
 
 }  // namespace ech

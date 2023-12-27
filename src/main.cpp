@@ -10,26 +10,11 @@ namespace {
 
 using namespace ech;
 
-Settings gSettings;
-ui::Context gUICtx;
-Hotkeys<> gHotkeys = Hotkeys({
-    {
-        .name = "1",
-        .keysets = Keysets({{KeycodeFromName("1")}}),
-    },
-    {
-        .name = "2",
-        .keysets = Keysets({{KeycodeFromName("2")}}),
-    },
-    {
-        .name = "3",
-        .keysets = Keysets({{KeycodeFromName("3")}}),
-    },
-    {
-        .name = "4",
-        .keysets = Keysets({{KeycodeFromName("4")}}),
-    },
-});
+auto gSettings = Settings();
+auto gHotkeys = Hotkeys<>();
+auto gHotkeysMutex = std::mutex();
+auto gUIContext = ui::Context();
+auto gUIContextMutex = std::mutex();
 
 void
 InitSettings() {
@@ -74,10 +59,11 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
         if (!msg || msg->type != SKSE::MessagingInterface::kInputLoaded) {
             return;
         }
-        if (auto res = ui::Init(gUICtx, gHotkeys, gSettings); !res) {
+        if (auto res = ui::Init(gHotkeys, gHotkeysMutex, gUIContext, gUIContextMutex, gSettings);
+            !res) {
             SKSE::stl::report_and_fail(res.error());
         }
-        if (auto res = EventHandler::Register(gHotkeys); !res) {
+        if (auto res = EventHandler::Init(gHotkeys, gHotkeysMutex); !res) {
             SKSE::stl::report_and_fail(res.error());
         }
     };
@@ -96,6 +82,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             return;
         }
 
+        auto lock = std::lock_guard(gHotkeysMutex);
         auto s = Serialize(gHotkeys);
         if (!si->WriteRecord('DATA', 1, s.c_str(), static_cast<uint32_t>(s.size()))) {
             SKSE::log::error("failed to serialize hotkeys data to SKSE cosave");
@@ -109,6 +96,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             return;
         }
 
+        auto lock = std::scoped_lock(gHotkeysMutex, gUIContextMutex);
         gHotkeys = {};
         uint32_t type;
         uint32_t version;  // unused
@@ -134,9 +122,8 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             gHotkeys = std::move(*hotkeys);
         }
 
-        auto lock = gUICtx.Acquire();
-        gUICtx.Deactivate();
-        gUICtx.selected_hotkey = 0;
+        gUIContext.Deactivate();
+        gUIContext.selected_hotkey = 0;
     };
 
     static constexpr auto on_revert = [](SKSE::SerializationInterface* si) {
@@ -146,10 +133,10 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             return;
         }
 
+        auto lock = std::scoped_lock(gHotkeysMutex, gUIContextMutex);
         gHotkeys = {};
-        auto lock = gUICtx.Acquire();
-        gUICtx.Deactivate();
-        gUICtx.selected_hotkey = 0;
+        gUIContext.Deactivate();
+        gUIContext.selected_hotkey = 0;
     };
 
     si.SetUniqueID('ECH?');
