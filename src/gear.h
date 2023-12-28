@@ -260,6 +260,11 @@ class Gear final {
 
   private:
     static std::optional<Gear>
+    FromEquippedScroll(const RE::Actor& actor, bool left_hand) {
+        // TODO
+    }
+
+    static std::optional<Gear>
     FromEquippedSpell(const RE::Actor& actor, bool left_hand) {
         auto* form = actor.GetEquippedObject(left_hand);
         auto* spell = form ? form->As<RE::SpellItem>() : nullptr;
@@ -347,6 +352,11 @@ class Gear final {
             return std::nullopt;
         }
         return New(shield, false, extra_health, extra_ench);
+    }
+
+    [[nodiscard]] bool
+    EquipScroll(RE::ActorEquipManager& aem, RE::Actor& actor) const {
+        // TODO
     }
 
     [[nodiscard]] bool

@@ -6,6 +6,62 @@
 #include "tes_util.h"
 
 namespace ech {
+namespace internal {
+
+/// Dev utility function. Used in combination with a debugger to inspect player's currently equipped
+/// items.
+inline void
+InspectEquipped(std::span<const Keystroke> keystrokes, RE::Actor& actor) {
+    static const auto keysets = Keysets({{KeycodeFromName("/"), KeycodeFromName("'")}});
+    if (keysets.Match(keystrokes) != Keysets::MatchResult::kPress) {
+        return;
+    }
+
+    struct SlotData final {
+        std::optional<Gear> gear;
+        RE::TESForm* form = nullptr;
+        RE::InventoryEntryData* ied = nullptr;
+
+        RE::TESObjectWEAP* obj_weap = nullptr;
+        RE::TESObjectARMO* obj_shield = nullptr;
+        RE::SpellItem* obj_spell = nullptr;
+        RE::ScrollItem* obj_scroll = nullptr;
+        RE::TESAmmo* obj_ammo = nullptr;
+        RE::TESShout* obj_shout = nullptr;
+
+        SlotData(std::optional<Gear> gear, RE::TESForm* form, RE::InventoryEntryData* ied = nullptr)
+            : gear(gear),
+              form(form),
+              ied(ied) {
+            if (!form) {
+                return;
+            }
+            obj_weap = form->As<RE::TESObjectWEAP>();
+            obj_shield = form->As<RE::TESObjectARMO>();
+            obj_spell = form->As<RE::SpellItem>();
+            obj_scroll = form->As<RE::ScrollItem>();
+            obj_ammo = form->As<RE::TESAmmo>();
+            obj_shout = form->As<RE::TESShout>();
+        }
+    };
+
+    auto sd_left = SlotData(
+        Gear::FromEquipped(actor, Gearslot::kLeft),
+        actor.GetEquippedObject(true),
+        actor.GetEquippedEntryData(true)
+    );
+    auto sd_right = SlotData(
+        Gear::FromEquipped(actor, Gearslot::kRight),
+        actor.GetEquippedObject(false),
+        actor.GetEquippedEntryData(false)
+    );
+    auto sd_ammo = SlotData(Gear::FromEquipped(actor, Gearslot::kAmmo), actor.GetCurrentAmmo());
+    auto sd_shout = SlotData(
+        Gear::FromEquipped(actor, Gearslot::kShout), actor.GetActorRuntimeData().selectedPower
+    );
+}
+
+}  // namespace internal
 
 class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
                            public RE::BSTEventSink<RE::TESEquipEvent> {
@@ -77,6 +133,8 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         if (!aem || !player) {
             return;
         }
+
+        internal::InspectEquipped(keystroke_buf_, *player);
 
         auto lock = std::lock_guard(*hotkeys_mutex_);
         const auto* equipset = hotkeys_->GetNextEquipset(keystroke_buf_);
