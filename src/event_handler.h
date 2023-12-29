@@ -71,7 +71,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         auto* idm = RE::BSInputDeviceManager::GetSingleton();
         auto* sesh = RE::ScriptEventSourceHolder::GetSingleton();
         if (!idm || !sesh) {
-            return std::unexpected("failed to get event sources");
+            return std::unexpected("cannot get event sources");
         }
 
         static EventHandler instance;

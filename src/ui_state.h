@@ -222,7 +222,7 @@ class UI final {
             });
         // clang-format on
         if (!hksui) {
-            SKSE::log::error("failed to read '{}'", p);
+            SKSE::log::error("cannot read '{}'", p);
             return;
         }
         hotkeys_ui = std::move(*hksui);
@@ -237,7 +237,7 @@ class UI final {
         NormalizeExportProfile();
         auto p = GetProfilePath(export_profile);
         if (!fs::Write(p, s)) {
-            SKSE::log::error("failed to write '{}'", p);
+            SKSE::log::error("cannot write '{}'", p);
             return;
         }
         ReloadProfileCache();
@@ -311,7 +311,7 @@ class UI final {
     ReloadProfileCache() {
         profile_cache.clear();
         if (!fs::ListDirectoryToBuffer(profile_dir_, profile_cache)) {
-            SKSE::log::error("failed to iterate '{}'", profile_dir_);
+            SKSE::log::error("cannot iterate '{}'", profile_dir_);
         }
         std::erase_if(profile_cache, [](std::string_view s) {
             return s == kExt || !s.ends_with(kExt);

@@ -23,9 +23,7 @@ InitSettings() {
         return Deserialize<Settings>(s);
     });
     if (!settings) {
-        SKSE::log::warn(
-            "failed to parse settings file '{}', falling back to defaults", fs::kSettingsPath
-        );
+        SKSE::log::warn("'{}' cannot be parsed, using default settings", fs::kSettingsPath);
         return;
     }
     gSettings = std::move(*settings);
@@ -35,7 +33,7 @@ void
 InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
     auto log_dir = SKSE::log::log_directory();
     if (!log_dir) {
-        SKSE::stl::report_and_fail("failed to get SKSE logs directory");
+        SKSE::stl::report_and_fail("cannot get SKSE logs directory");
     }
     log_dir->append(plugin_decl.GetName()).replace_extension("log");
 
@@ -69,7 +67,7 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
     };
 
     if (!mi.RegisterListener(listener)) {
-        SKSE::stl::report_and_fail("failed to register SKSE message listener");
+        SKSE::stl::report_and_fail("cannot register SKSE message listener");
     }
 }
 
@@ -87,7 +85,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
         }
         auto s = Serialize(gHotkeys);
         if (!si->WriteRecord('DATA', 1, s.c_str(), static_cast<uint32_t>(s.size()))) {
-            SKSE::log::error("failed to serialize hotkeys data to SKSE cosave");
+            SKSE::log::error("cannot serialize hotkeys data to SKSE cosave");
             return;
         }
 
@@ -120,7 +118,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             }
             auto hotkeys = Deserialize<Hotkeys<>>(s);
             if (!hotkeys) {
-                SKSE::log::error("failed to deserialize hotkeys data from SKSE cosave");
+                SKSE::log::error("cannot deserialize hotkeys data from SKSE cosave");
                 continue;
             }
             gHotkeys = std::move(*hotkeys);
@@ -155,7 +153,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     const auto* plugin_decl = SKSE::PluginDeclaration::GetSingleton();
     if (!plugin_decl) {
-        SKSE::stl::report_and_fail("failed to get SKSE plugin declaration");
+        SKSE::stl::report_and_fail("cannot get SKSE plugin declaration");
     }
 
     InitSettings();
@@ -165,10 +163,10 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     const auto* mi = SKSE::GetMessagingInterface();
     const auto* si = SKSE::GetSerializationInterface();
     if (!mi) {
-        SKSE::stl::report_and_fail("failed to get SKSE messaging interface");
+        SKSE::stl::report_and_fail("cannot get SKSE messaging interface");
     }
     if (!si) {
-        SKSE::stl::report_and_fail("failed to get SKSE serialization interface");
+        SKSE::stl::report_and_fail("cannot get SKSE serialization interface");
     }
 
     InitSKSEMessaging(*mi);

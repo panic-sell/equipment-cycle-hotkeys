@@ -585,19 +585,19 @@ Init(
     auto* ctx = renderer ? renderer->data.context : nullptr;
     auto* swapchain = renderer ? renderer->data.renderWindows[0].swapChain : nullptr;
     if (!device || !ctx || !swapchain) {
-        return std::unexpected("failed to get renderer");
+        return std::unexpected("cannot get renderer");
     }
 
     DXGI_SWAP_CHAIN_DESC sd;
     if (swapchain->GetDesc(&sd) != S_OK) {
-        return std::unexpected("failed to get swap chain description");
+        return std::unexpected("cannot get swap chain description");
     }
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     internal::Configure(settings);
     if (!ImGui_ImplWin32_Init(sd.OutputWindow) || !ImGui_ImplDX11_Init(device, ctx)) {
-        return std::unexpected("failed to initialize Dear ImGui components");
+        return std::unexpected("cannot initialize Dear ImGui components");
     }
 
     internal::RenderHook::Init(ui, ui_mutex);

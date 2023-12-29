@@ -91,7 +91,7 @@ UnequipHand(RE::ActorEquipManager& aem, RE::Actor& actor, bool left_hand) {
     if (!slot || !dummy) {
         // Swallow the error and do nothing. Players can still unequip via menus.
         SKSE::log::error(
-            "{} unequip failed: could not look up {:08X} or {:08X}",
+            "{} unequip failed: cannot look up {:08X} or {:08X}",
             left_hand ? Gearslot::kLeft : Gearslot::kRight,
             equipslot_id,
             tes_util::kWeapDummy
