@@ -137,8 +137,10 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         internal::InspectEquipped(keystroke_buf_, *player);
 
         auto lock = std::lock_guard(*hotkeys_mutex_);
-        const auto* equipset = hotkeys_->SelectNextEquipset(keystroke_buf_);
-        if (!equipset) {
+        const auto* orig = hotkeys_->GetSelectedEquipset();
+        hotkeys_->SelectNextEquipset(keystroke_buf_);
+        const auto* current = hotkeys_->GetSelectedEquipset();
+        if (!current || orig == current) {
             return;
         }
 
@@ -146,7 +148,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         // triggers equip events.
         auto now = RE::GetDurationOfApplicationRunTime();
         most_recent_hotkey_equip_time_.store(now);
-        equipset->Apply(*aem, *player);
+        current->Apply(*aem, *player);
         SKSE::log::debug(
             "selected hotkey {} ({}) equipset {}",
             hotkeys_->selected() + 1,

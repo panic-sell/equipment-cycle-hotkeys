@@ -8,7 +8,7 @@ using TestHotkey = Hotkey<std::string_view>;
 using TestHotkeys = Hotkeys<std::string_view>;
 
 TEST_CASE("Hotkeys ctor") {
-    auto hotkeys = std::vector<TestHotkey>{
+    auto hotkeys_v = std::vector<TestHotkey>{
         {.keysets = {}, .equipsets = {}},  // empty, gets pruned
         {.keysets = {}, .equipsets = TestEquipsets({"a1"})},
         {.keysets = Keysets({{1}}), .equipsets = {}},
@@ -16,20 +16,22 @@ TEST_CASE("Hotkeys ctor") {
     };
 
     SECTION("normal") {
-        auto hm = TestHotkeys(hotkeys);
-        REQUIRE(hm.vec().size() == hotkeys.size() - 1);
-        REQUIRE(!hm.GetSelectedEquipset());
+        auto hotkeys = TestHotkeys(hotkeys_v);
+        REQUIRE(hotkeys.vec().size() == hotkeys_v.size() - 1);
+        REQUIRE(!hotkeys.GetSelectedEquipset());
     }
 
     SECTION("specify initial selection") {
         // Pruned hotkey causes other hotkey indices to shift down by 1.
-        auto hm = TestHotkeys(hotkeys, 2);
-        REQUIRE(*hm.GetSelectedEquipset() == "b1");
+        auto hotkeys = TestHotkeys(hotkeys_v, 2);
+        const auto* es = hotkeys.GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "b1");
     }
 
     SECTION("initial selection becomes oob") {
-        auto hm = TestHotkeys(hotkeys, 3);
-        REQUIRE(!hm.GetSelectedEquipset());
+        auto hotkeys = TestHotkeys(hotkeys_v, 3);
+        REQUIRE(!hotkeys.GetSelectedEquipset());
     }
 }
 
@@ -47,25 +49,28 @@ TEST_CASE("Hotkeys press") {
         auto ks = std::vector<Keystroke>{
             *Keystroke::New(1, 0.f),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "a2");
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "a1");
+
+        const auto* es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a2");
+
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a1");
     }
 
     SECTION("press non-selected hotkey") {
         auto ks = std::vector<Keystroke>{
             *Keystroke::New(2, 0.f),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "b1");
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "b2");
-    }
 
-    SECTION("repeated press of hotkey with a single equipset yields null") {
-        auto ks = std::vector<Keystroke>{
-            *Keystroke::New(3, 0.f),
-        };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "c1");
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
+        const auto* es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "b1");
+
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "b2");
     }
 }
 
@@ -85,28 +90,31 @@ TEST_CASE("Hotkeys hold") {
         auto ks_hold = std::vector<Keystroke>{
             *Keystroke::New(1, Keysets::kHoldThreshold),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks_hold) == "a1");
-        REQUIRE(*hotkeys.SelectNextEquipset(ks_press) == "a2");
-        REQUIRE(*hotkeys.SelectNextEquipset(ks_hold) == "a1");  // press would have yielded a3
+
+        const auto* es = hotkeys.SelectNextEquipset(ks_hold).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a1");
+
+        es = hotkeys.SelectNextEquipset(ks_press).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a2");
+
+        es = hotkeys.SelectNextEquipset(ks_hold).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a1");  // press would have yielded a3
     }
 
     SECTION("hold non-selected hotkey") {
         auto ks = std::vector<Keystroke>{
             *Keystroke::New(2, Keysets::kHoldThreshold),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "b1");
-    }
-
-    SECTION("repeated hold yields null") {
-        auto ks = std::vector<Keystroke>{
-            *Keystroke::New(2, Keysets::kHoldThreshold),
-        };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "b1");
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
+        const auto* es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "b1");
     }
 }
 
+// Semi-holds do not change selected hotkeys/equipsets.
 TEST_CASE("Hotkeys almost hold") {
     auto hotkeys = TestHotkeys(
         {
@@ -120,17 +128,18 @@ TEST_CASE("Hotkeys almost hold") {
         auto ks = std::vector<Keystroke>{
             *Keystroke::New(1, Keysets::kHoldThreshold - 0.01f),
         };
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
-        REQUIRE(*hotkeys.GetSelectedEquipset() == "a3");
+        const auto* es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a3");
     }
 
     SECTION("almost hold non-selected hotkey") {
         auto ks = std::vector<Keystroke>{
             *Keystroke::New(2, Keysets::kHoldThreshold - 0.01f),
         };
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
-        // An "almost hold" does not change the current selected hotkey.
-        REQUIRE(*hotkeys.GetSelectedEquipset() == "a3");
+        const auto* es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a3");
     }
 }
 
@@ -148,25 +157,43 @@ TEST_CASE("Hotkeys no match") {
             {.keysets = Keysets({{1}, {2}}), .equipsets = TestEquipsets({"b1", "b2"})},
             {.keysets = Keysets({{2}}), .equipsets = {}},
         },
-        2  // points to b1 after pruning
+        2
     );
 
+    const auto* es_orig = hotkeys.GetSelectedEquipset();
+    REQUIRE(es_orig);
+    REQUIRE(*es_orig == "b1");
+
     auto ks = std::vector<Keystroke>();
-    REQUIRE(!hotkeys.SelectNextEquipset(ks));
+    const auto* es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+    REQUIRE(es);
+    REQUIRE(*es == *es_orig);
 
     ks = std::vector<Keystroke>{*Keystroke::New(9, 0.f)};
-    REQUIRE(!hotkeys.SelectNextEquipset(ks));
-
-    ks = std::vector<Keystroke>{*Keystroke::New(1, 0.f)};
-    const auto* es = hotkeys.SelectNextEquipset(ks);
+    es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
     REQUIRE(es);
-    REQUIRE(*es == "b2");
+    REQUIRE(*es == *es_orig);
+}
 
-    hotkeys.Deselect();
-    ks = std::vector<Keystroke>{*Keystroke::New(2, 0.f)};
-    es = hotkeys.SelectNextEquipset(ks);
+TEST_CASE("Hotkeys deselect") {
+    auto hotkeys = TestHotkeys(
+        {
+            {.keysets = Keysets({{1}}), .equipsets = TestEquipsets({"a1", "a2"}, 1)},
+        },
+        0
+    );
+
+    const auto* es = hotkeys.GetSelectedEquipset();
     REQUIRE(es);
-    REQUIRE(*es == "b2");
+    REQUIRE(*es == "a2");
+
+    es = hotkeys.Deselect().GetSelectedEquipset();
+    REQUIRE(!es);
+
+    auto ks = std::vector<Keystroke>{*Keystroke::New(1, 0.f)};
+    es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+    REQUIRE(es);
+    REQUIRE(*es == "a2");  // would be a1 if hotkeys wasn't deselected beforehand
 }
 
 TEST_CASE("Hotkeys hotkey precedence") {
@@ -192,7 +219,9 @@ TEST_CASE("Hotkeys hotkey precedence") {
         *Keystroke::New(1, 0.f),
         *Keystroke::New(2, 0.f),
     };
-    REQUIRE(*hotkeys.SelectNextEquipset(ks) == "a1");
+    const auto* es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+    REQUIRE(es);
+    REQUIRE(*es == "a1");
 
     // {1} is a subset of {1, 3}, so the first hotkey gets picked up even though {1, 3}
     // also matches the second hotkey.
@@ -200,14 +229,18 @@ TEST_CASE("Hotkeys hotkey precedence") {
         *Keystroke::New(1, 0.f),
         *Keystroke::New(3, 0.f),
     };
-    REQUIRE(*hotkeys.SelectNextEquipset(ks) == "a2");
+    es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+    REQUIRE(es);
+    REQUIRE(*es == "a2");
 
     ks = std::vector<Keystroke>{
         *Keystroke::New(1, 0.f),
         *Keystroke::New(2, 0.f),
         *Keystroke::New(3, 0.f),
     };
-    REQUIRE(*hotkeys.SelectNextEquipset(ks) == "a1");
+    es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+    REQUIRE(es);
+    REQUIRE(*es == "a1");
 }
 
 TEST_CASE("Hotkeys keystroke concurrency") {
@@ -236,65 +269,80 @@ TEST_CASE("Hotkeys keystroke concurrency") {
         auto ks = std::vector<Keystroke>{
             *Keystroke::New(1, 0.f),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "a2");
+        const auto* es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a2");
 
         ks = std::vector<Keystroke>{
             *Keystroke::New(1, Keysets::kHoldThreshold - .01f),
             *Keystroke::New(3, 0.f),
         };
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
-        REQUIRE(*hotkeys.GetSelectedEquipset() == "a2");
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a2");
 
         ks = std::vector<Keystroke>{
             *Keystroke::New(1, Keysets::kHoldThreshold),
             *Keystroke::New(3, Keysets::kHoldThreshold - .01f),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "a1");
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a1");
 
         ks = std::vector<Keystroke>{
             *Keystroke::New(1, Keysets::kHoldThreshold),
             *Keystroke::New(3, Keysets::kHoldThreshold),
         };
-        // SelectNextEquipset() already returned "a1", so now returns nullptr.
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
-        REQUIRE(*hotkeys.GetSelectedEquipset() == "a1");
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a1");
 
         ks = std::vector<Keystroke>{
             *Keystroke::New(1, Keysets::kHoldThreshold),
         };
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
-        REQUIRE(*hotkeys.GetSelectedEquipset() == "a1");
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a1");
 
         ks = std::vector<Keystroke>{
             *Keystroke::New(1, Keysets::kHoldThreshold),
             *Keystroke::New(3, 0.f),
         };
-        REQUIRE(!hotkeys.SelectNextEquipset(ks));
-        REQUIRE(*hotkeys.GetSelectedEquipset() == "a1");
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a1");
     }
 
     SECTION("selection of earlier hotkey takes precedence over infinite hold of later ones") {
         auto ks = std::vector<Keystroke>{
             *Keystroke::New(3, 0.f),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "b2");
+        const auto* es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "b2");
 
         ks = std::vector<Keystroke>{
             *Keystroke::New(3, Keysets::kHoldThreshold),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "b1");
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "b1");
 
         ks = std::vector<Keystroke>{
             *Keystroke::New(1, 0.f),
             *Keystroke::New(3, Keysets::kHoldThreshold),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "a1");
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "a1");
 
         // Letting go of {1} causes {3} to take over again.
         ks = std::vector<Keystroke>{
             *Keystroke::New(3, Keysets::kHoldThreshold),
         };
-        REQUIRE(*hotkeys.SelectNextEquipset(ks) == "b1");
+        es = hotkeys.SelectNextEquipset(ks).GetSelectedEquipset();
+        REQUIRE(es);
+        REQUIRE(*es == "b1");
     }
 }
 

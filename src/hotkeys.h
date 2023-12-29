@@ -19,6 +19,7 @@ struct Hotkey final {
 /// Invariants:
 /// - All hotkeys have at least 1 keyset or at least 1 equipset.
 /// - `selected_ == size_t(-1)` means no hotkeys are selected.
+/// - Throughout an instance's lifetime, every contained equipset has a stable, distinct pointer.
 ///
 /// This class is templated by "equipset" to facilitate unit testing. We swap out the real Equipset
 /// type so that tests don't depend on Skyrim itself.
@@ -52,9 +53,10 @@ class Hotkeys final {
 
     /// Ensures no hotkey is selected. Note that this does not change any hotkey's "selected
     /// equipset".
-    void
+    Hotkeys&
     Deselect() {
         selected_ = size_t(-1);
+        return *this;
     }
 
     /// Returns the selected hotkey's selected equipset. Returns nullptr if:
@@ -70,28 +72,18 @@ class Hotkeys final {
     }
 
     /// Selects the first hotkey that has at least one equipset and matches `keystrokes`, then
-    /// returns that hotkey's next selected equipset. A hotkey's next selected equipset is
-    /// determined as follows:
+    /// selects an equipset within that hotkey.
+    ///
+    /// Choosing which of that hotkey's equipset to select is done as follows:
     /// - If the matching `keystroke` is a hold, select the hotkey's first equipset.
-    /// - If the matching `keystroke` is a press and hotkey was already selected, call
-    /// `hotkey.equipset.SelectNext()`, then return `hotkey.equipsets.GetSelected()`.
-    /// - If the matching `keystroke` is a press and hotkey was not already selected, returns
-    /// `hotkey.equipsets.GetSelected()`.
-    ///
-    /// A non-null return value means "player should equip what was returned".
-    ///
-    /// Returns nullptr if:
-    /// - `keytrokes` is empty.
-    /// - There are no hotkeys.
-    /// - No hotkey matches `keystrokes`.
-    /// - The matched hotkey has no equipsets.
-    /// - The matched hotkey's match result is a semihold.
-    /// - This function would have returned Q, where Q is the result of calling
-    /// `GetSelectedEquipset()` prior to calling this function.
-    const Q*
+    /// - If the matching `keystroke` is a press and the hotkey was already selected, select the
+    /// hotkey's next ordered equipset.
+    /// - If the matching `keystroke` is a press and the hotkey was not already selected, don't
+    /// change the selected equipset.
+    Hotkeys&
     SelectNextEquipset(std::span<const Keystroke> keystrokes) {
         if (keystrokes.empty()) {
-            return nullptr;
+            return *this;
         }
 
         auto match_res = Keysets::MatchResult::kNone;
@@ -103,10 +95,8 @@ class Hotkeys final {
             return match_res != Keysets::MatchResult::kNone;
         });
         if (it == hotkeys_.end() || match_res == Keysets::MatchResult::kSemihold) {
-            return nullptr;
+            return *this;
         }
-
-        const Q* orig_selected_equipset = GetSelectedEquipset();
 
         Hotkey<Q>& hk = *it;
         auto orig_selected = selected_;
@@ -117,11 +107,8 @@ class Hotkeys final {
         } else if (selected_ == orig_selected) {
             hk.equipsets.SelectNext();
         }
-        const Q* next = hk.equipsets.GetSelected();
 
-        // Prevent returning the first equipset over and over again when input buttons are kept held
-        // down.
-        return next == orig_selected_equipset ? nullptr : next;
+        return *this;
     }
 
   private:
