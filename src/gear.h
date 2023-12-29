@@ -201,20 +201,30 @@ class Gear final {
     }
 
     /// Returns nullopt if `slot` is empty or contains an unsupported gear type.
+    ///
+    /// This function does not check if the equipped item is in the player's inventory. Suppose the
+    /// equipped item is a summoned bound sword; attempting to equip that later (equipping does
+    /// check inventory) will fail because the player's inventory will only have the bound sword
+    /// spell instead of the bound sword TESObjectWEAP.
+    ///
+    /// The reason this function doesn't check inventory is because there's no easy way to relate a
+    /// summoned bound sword to the bound sword spell.
     static std::optional<Gear>
     FromEquipped(RE::Actor& actor, Gearslot slot) {
         std::optional<Gear> gear;
         switch (slot) {
             case Gearslot::kLeft:
-                gear = FromEquippedSpell(actor, true)
+                // Scroll handling must precede spell handling since scroll subclasses spell.
+                gear = FromEquippedScroll(actor, true)
+                           .or_else([&]() { return FromEquippedSpell(actor, true); })
                            .or_else([&]() { return FromEquippedWeapon(actor, true); })
                            .or_else([&]() { return FromEquippedTorch(actor); })
                            .or_else([&]() { return FromEquippedShield(actor); });
                 break;
             case Gearslot::kRight:
-                gear = FromEquippedSpell(actor, false).or_else([&]() {
-                    return FromEquippedWeapon(actor, false);
-                });
+                gear = FromEquippedScroll(actor, false)
+                           .or_else([&]() { return FromEquippedSpell(actor, false); })
+                           .or_else([&]() { return FromEquippedWeapon(actor, false); });
                 break;
             case Gearslot::kAmmo:
                 gear = New(actor.GetCurrentAmmo());
@@ -235,13 +245,23 @@ class Gear final {
     void
     Equip(RE::ActorEquipManager& aem, RE::Actor& actor) const {
         auto success = false;
-        switch (slot()) {
+        switch (slot_) {
             case Gearslot::kLeft:
-                success = EquipSpell(aem, actor) || EquipWeapon(aem, actor)
-                          || EquipTorch(aem, actor) || EquipShield(aem, actor);
+                // Scroll handling must precede spell handling since scroll subclasses spell.
+                // clang-format off
+                success = EquipScroll(aem, actor)
+                    || EquipSpell(aem, actor)
+                    || EquipWeapon(aem, actor)
+                    || EquipTorch(aem, actor)
+                    || EquipShield(aem, actor);
+                // clang-format on
                 break;
             case Gearslot::kRight:
-                success = EquipSpell(aem, actor) || EquipWeapon(aem, actor);
+                // clang-format off
+                success = EquipScroll(aem, actor)
+                    || EquipSpell(aem, actor)
+                    || EquipWeapon(aem, actor);
+                // clang-format on
                 break;
             case Gearslot::kAmmo:
                 success = EquipAmmo(aem, actor);
@@ -259,10 +279,15 @@ class Gear final {
     }
 
   private:
-    // static std::optional<Gear>
-    // FromEquippedScroll(const RE::Actor& actor, bool left_hand) {
-    //     // TODO
-    // }
+    static std::optional<Gear>
+    FromEquippedScroll(const RE::Actor& actor, bool left_hand) {
+        auto* form = actor.GetEquippedObject(left_hand);
+        auto* scroll = form ? form->As<RE::ScrollItem>() : nullptr;
+        if (!scroll || (left_hand && scroll->IsTwoHanded())) {
+            return std::nullopt;
+        }
+        return New(scroll, left_hand);
+    }
 
     static std::optional<Gear>
     FromEquippedSpell(const RE::Actor& actor, bool left_hand) {
@@ -354,10 +379,25 @@ class Gear final {
         return New(shield, false, extra_health, extra_ench);
     }
 
-    // [[nodiscard]] bool
-    // EquipScroll(RE::ActorEquipManager& aem, RE::Actor& actor) const {
-    //     // TODO
-    // }
+    [[nodiscard]] bool
+    EquipScroll(RE::ActorEquipManager& aem, RE::Actor& actor) const {
+        auto* scroll = form_->As<RE::ScrollItem>();
+        if (!scroll) {
+            return false;
+        }
+        auto count = FindInventoryData(actor).first;
+        if (count <= 0) {
+            return false;
+        }
+        const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
+            slot_ == Gearslot::kLeft ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand
+        );
+        if (!slot) {
+            return false;
+        }
+        aem.EquipSpell(&actor, scroll, slot);
+        return true;
+    }
 
     [[nodiscard]] bool
     EquipSpell(RE::ActorEquipManager& aem, RE::Actor& actor) const {

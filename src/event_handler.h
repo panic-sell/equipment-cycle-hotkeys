@@ -59,6 +59,8 @@ InspectEquipped(std::span<const Keystroke> keystrokes, RE::Actor& actor) {
     auto sd_shout = SlotData(
         Gear::FromEquipped(actor, Gearslot::kShout), actor.GetActorRuntimeData().selectedPower
     );
+
+    (void)actor;  // breakpoint here
 }
 
 }  // namespace internal
@@ -134,7 +136,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
             return;
         }
 
-        internal::InspectEquipped(keystroke_buf_, *player);
+        // internal::InspectEquipped(keystroke_buf_, *player);
 
         auto lock = std::lock_guard(*hotkeys_mutex_);
         const auto* orig = hotkeys_->GetSelectedEquipset();
