@@ -72,7 +72,7 @@ TEST_CASE("Hotkeys press") {
 TEST_CASE("Hotkeys hold") {
     auto hotkeys = TestHotkeys(
         {
-            {.keysets = Keysets({{1}}), .equipsets = TestEquipsets({"a1", "a2", "a3"})},
+            {.keysets = Keysets({{1}}), .equipsets = TestEquipsets({"a1", "a2", "a3"}, 1)},
             {.keysets = Keysets({{2}}), .equipsets = TestEquipsets({"b1", "b2", "a3"}, 1)},
         },
         0
@@ -145,7 +145,7 @@ TEST_CASE("Hotkeys no match") {
 
             // Empty equipsets, ignored for matching.
             {.keysets = Keysets({{1}}), .equipsets = {}},
-            {.keysets = Keysets({{1}, {2}}), .equipsets = TestEquipsets({"b1"})},
+            {.keysets = Keysets({{1}, {2}}), .equipsets = TestEquipsets({"b1", "b2"})},
             {.keysets = Keysets({{2}}), .equipsets = {}},
         },
         2  // points to b1 after pruning
@@ -160,13 +160,13 @@ TEST_CASE("Hotkeys no match") {
     ks = std::vector<Keystroke>{*Keystroke::New(1, 0.f)};
     const auto* es = hotkeys.SelectNextEquipset(ks);
     REQUIRE(es);
-    REQUIRE(*es == "b1");
+    REQUIRE(*es == "b2");
 
     hotkeys.Deselect();
     ks = std::vector<Keystroke>{*Keystroke::New(2, 0.f)};
     es = hotkeys.SelectNextEquipset(ks);
     REQUIRE(es);
-    REQUIRE(*es == "b1");
+    REQUIRE(*es == "b2");
 }
 
 TEST_CASE("Hotkeys hotkey precedence") {

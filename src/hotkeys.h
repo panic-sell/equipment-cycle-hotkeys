@@ -19,7 +19,6 @@ struct Hotkey final {
 /// Invariants:
 /// - All hotkeys have at least 1 keyset or at least 1 equipset.
 /// - `selected_ == size_t(-1)` means no hotkeys are selected.
-/// - `most_recent_next_equipset_ == nullptr` if no hotkeys are selected.
 ///
 /// This class is templated by "equipset" to facilitate unit testing. We swap out the real Equipset
 /// type so that tests don't depend on Skyrim itself.
@@ -56,7 +55,6 @@ class Hotkeys final {
     void
     Deselect() {
         selected_ = size_t(-1);
-        most_recent_next_equipset_ = nullptr;
     }
 
     /// Returns the selected hotkey's selected equipset. Returns nullptr if:
@@ -88,8 +86,8 @@ class Hotkeys final {
     /// - No hotkey matches `keystrokes`.
     /// - The matched hotkey has no equipsets.
     /// - The matched hotkey's match result is a semihold.
-    /// - This function would have returned Q, where Q is the most recent non-null equipset returned
-    /// by a prior call of this function.
+    /// - This function would have returned Q, where Q is the result of calling
+    /// `GetSelectedEquipset()` prior to calling this function.
     const Q*
     SelectNextEquipset(std::span<const Keystroke> keystrokes) {
         if (keystrokes.empty()) {
@@ -108,6 +106,8 @@ class Hotkeys final {
             return nullptr;
         }
 
+        const Q* orig_selected_equipset = GetSelectedEquipset();
+
         Hotkey<Q>& hk = *it;
         auto orig_selected = selected_;
         selected_ = it - hotkeys_.begin();
@@ -117,21 +117,16 @@ class Hotkeys final {
         } else if (selected_ == orig_selected) {
             hk.equipsets.SelectNext();
         }
-        auto next = hk.equipsets.GetSelected();
+        const Q* next = hk.equipsets.GetSelected();
 
-        // When resetting a hotkey's selected equipset, this prevents returning the first equipset
-        // over and over again when input buttons are kept held down.
-        if (next == most_recent_next_equipset_) {
-            return nullptr;
-        }
-        most_recent_next_equipset_ = next;
-        return next;
+        // Prevent returning the first equipset over and over again when input buttons are kept held
+        // down.
+        return next == orig_selected_equipset ? nullptr : next;
     }
 
   private:
     std::vector<Hotkey<Q>> hotkeys_;
     size_t selected_ = size_t(-1);
-    const Q* most_recent_next_equipset_ = nullptr;
 };
 
 }  // namespace ech
