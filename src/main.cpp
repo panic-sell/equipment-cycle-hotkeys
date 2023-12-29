@@ -5,7 +5,7 @@
 #include "serde.h"
 #include "settings.h"
 #include "ui_plumbing.h"
-#include "ui_viewmodels.h"
+#include "ui_state.h"
 
 namespace {
 
@@ -14,8 +14,8 @@ using namespace ech;
 auto gSettings = Settings();
 auto gHotkeys = Hotkeys<>();
 auto gHotkeysMutex = std::mutex();
-auto gUIContext = UIContext();
-auto gUIContextMutex = std::mutex();
+auto gUI = UI();
+auto gUIMutex = std::mutex();
 
 void
 InitSettings() {
@@ -60,8 +60,7 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
         if (!msg || msg->type != SKSE::MessagingInterface::kInputLoaded) {
             return;
         }
-        if (auto res = ui::Init(gHotkeys, gHotkeysMutex, gUIContext, gUIContextMutex, gSettings);
-            !res) {
+        if (auto res = ui::Init(gHotkeys, gHotkeysMutex, gUI, gUIMutex, gSettings); !res) {
             SKSE::stl::report_and_fail(res.error());
         }
         if (auto res = EventHandler::Init(gHotkeys, gHotkeysMutex); !res) {
@@ -101,7 +100,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             return;
         }
 
-        auto lock = std::scoped_lock(gHotkeysMutex, gUIContextMutex);
+        auto lock = std::scoped_lock(gHotkeysMutex, gUIMutex);
         gHotkeys = {};
         uint32_t type;
         uint32_t version;  // unused
@@ -128,8 +127,8 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             SKSE::log::debug("loaded hotkeys data from SKSE cosave");
         }
 
-        gUIContext.Deactivate();
-        gUIContext.selected_hotkey = 0;
+        gUI.Deactivate();
+        gUI.selected_hotkey = 0;
     };
 
     static constexpr auto on_revert = [](SKSE::SerializationInterface* si) {
@@ -138,10 +137,10 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             return;
         }
 
-        auto lock = std::scoped_lock(gHotkeysMutex, gUIContextMutex);
+        auto lock = std::scoped_lock(gHotkeysMutex, gUIMutex);
         gHotkeys = {};
-        gUIContext.Deactivate();
-        gUIContext.selected_hotkey = 0;
+        gUI.Deactivate();
+        gUI.selected_hotkey = 0;
         SKSE::log::debug("reset current hotkeys data");
     };
 

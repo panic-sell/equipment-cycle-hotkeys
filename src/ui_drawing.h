@@ -1,7 +1,7 @@
 #pragma once
 
 #include "keys.h"
-#include "ui_viewmodels.h"
+#include "ui_state.h"
 
 namespace ech {
 namespace ui {
@@ -183,20 +183,20 @@ struct Table final {
 };
 
 inline Action
-DrawImportMenu(UIContext& ctx) {
+DrawImportMenu(UI& ui) {
     if (!ImGui::BeginMenu("Import")) {
         return {};
     }
 
     Action action;
-    if (ctx.profile_cache.empty()) {
+    if (ui.profile_cache.empty()) {
         ImGui::Text("No saved profiles.");
     } else {
-        for (const auto& profile : ctx.profile_cache) {
+        for (const auto& profile : ui.profile_cache) {
             if (!ImGui::MenuItem(profile.c_str())) {
                 continue;
             }
-            action = [&ctx, profile]() { ctx.ImportProfile(profile); };
+            action = [&ui, profile]() { ui.ImportProfile(profile); };
         }
     }
 
@@ -205,16 +205,16 @@ DrawImportMenu(UIContext& ctx) {
 }
 
 inline Action
-DrawExportMenu(UIContext& ctx) {
+DrawExportMenu(UI& ui) {
     Action action;
     auto confirm_export = false;
     if (ImGui::BeginMenu("Export")) {
-        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ctx.export_profile);
+        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ui.export_profile);
         if (ImGui::IsItemDeactivated()) {
-            action = [&ctx]() { ctx.NormalizeExportProfile(); };
+            action = [&ui]() { ui.NormalizeExportProfile(); };
         }
         if (ImGui::Button("Export Profile")) {
-            confirm_export = !ctx.export_profile.empty();
+            confirm_export = !ui.export_profile.empty();
         }
         ImGui::EndMenu();
     }
@@ -223,13 +223,13 @@ DrawExportMenu(UIContext& ctx) {
         ImGui::OpenPopup("confirm_export");
     }
     if (ImGui::BeginPopup("confirm_export")) {
-        if (const auto* cached_profile = ctx.FindCachedProfileMatchingExportProfile()) {
+        if (const auto* cached_profile = ui.FindCachedProfileMatchingExportProfile()) {
             ImGui::Text("Overwrite profile '%s'?", cached_profile->c_str());
         } else {
-            ImGui::Text("Save as profile '%s'?", ctx.export_profile.c_str());
+            ImGui::Text("Save as profile '%s'?", ui.export_profile.c_str());
         }
         if (ImGui::Button("Yes")) {
-            action = [&ctx]() { ctx.ExportProfile(); };
+            action = [&ui]() { ui.ExportProfile(); };
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
@@ -243,17 +243,17 @@ DrawExportMenu(UIContext& ctx) {
 }
 
 inline Action
-DrawHotkeyList(UIContext& ctx) {
+DrawHotkeyList(UI& ui) {
     auto table = Table<HotkeyUI<EquipsetUI>, 1>{
         .id = "hotkeys_list",
         .headers = std::array{""},
-        .viewmodel = ctx.hotkeys_ui,
-        .draw_cell = [&ctx](const HotkeyUI<EquipsetUI>& hotkey, size_t row, size_t) -> Action {
+        .viewmodel = ui.hotkeys_ui,
+        .draw_cell = [&ui](const HotkeyUI<EquipsetUI>& hotkey, size_t row, size_t) -> Action {
             const char* label = hotkey.name.empty() ? "(Unnamed)" : hotkey.name.c_str();
-            if (!ImGui::RadioButton(label, row == ctx.selected_hotkey)) {
+            if (!ImGui::RadioButton(label, row == ui.selected_hotkey)) {
                 return {};
             }
-            return [&ctx, row]() { ctx.selected_hotkey = row; };
+            return [&ui, row]() { ui.selected_hotkey = row; };
         },
         .draw_drag_tooltip = [](const HotkeyUI<EquipsetUI>& hotkey
                              ) { ImGui::Text("%s", hotkey.name.c_str()); },
@@ -261,10 +261,10 @@ DrawHotkeyList(UIContext& ctx) {
 
     auto atrc = table.Draw();
     if (ImGui::Button("New", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        auto a = [&ctx]() {
-            ctx.hotkeys_ui.emplace_back();
+        auto a = [&ui]() {
+            ui.hotkeys_ui.emplace_back();
             // Adding a new hotkey selects that hotkey.
-            ctx.selected_hotkey = ctx.hotkeys_ui.size() - 1;
+            ui.selected_hotkey = ui.hotkeys_ui.size() - 1;
         };
         atrc = {std::move(a), {}};
     }
@@ -272,20 +272,20 @@ DrawHotkeyList(UIContext& ctx) {
         return {};
     }
 
-    return [atrc, &ctx]() {
+    return [atrc, &ui]() {
         const auto& [a, trc] = atrc;
-        if (trc.remove < ctx.hotkeys_ui.size()) {
+        if (trc.remove < ui.hotkeys_ui.size()) {
             // If the selected hotkey is below the removed hotkey, then move selection upward.
-            if (trc.remove < ctx.selected_hotkey) {
-                ctx.selected_hotkey--;
+            if (trc.remove < ui.selected_hotkey) {
+                ui.selected_hotkey--;
             }
-        } else if (trc.drag_source < ctx.hotkeys_ui.size() && trc.drag_target < ctx.hotkeys_ui.size()) {
+        } else if (trc.drag_source < ui.hotkeys_ui.size() && trc.drag_target < ui.hotkeys_ui.size()) {
             // Select the row that was dragged.
-            ctx.selected_hotkey = trc.drag_target;
+            ui.selected_hotkey = trc.drag_target;
         }
         a();
-        if (ctx.selected_hotkey >= ctx.hotkeys_ui.size() && ctx.selected_hotkey > 0) {
-            ctx.selected_hotkey--;
+        if (ui.selected_hotkey >= ui.hotkeys_ui.size() && ui.selected_hotkey > 0) {
+            ui.selected_hotkey--;
         }
     };
 }
@@ -445,18 +445,18 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
 }  // namespace internal
 
 inline void
-Draw(UIContext& ctx) {
+Draw(UI& ui) {
     const auto* main_viewport = ImGui::GetMainViewport();
     if (!main_viewport) {
         return;
     }
-    auto viewport_size = main_viewport->WorkSize;
+    const auto viewport_size = main_viewport->WorkSize;
 
-    auto window_initial_pos = viewport_size * ImVec2(.1f, .1f);
-    auto window_initial_size = viewport_size * ImVec2(.5f, .8f);
-    auto window_min_size = viewport_size * ImVec2(.25f, .25f);
-    auto hotkeylist_initial_size = viewport_size * ImVec2(.15f, .0f);
-    auto hotkeylist_min_size = viewport_size * ImVec2(.15f, .0f);
+    const auto window_initial_pos = viewport_size * ImVec2(.1f, .1f);
+    const auto window_initial_size = viewport_size * ImVec2(.5f, .8f);
+    const auto window_min_size = viewport_size * ImVec2(.25f, .25f);
+    const auto hotkeylist_initial_size = viewport_size * ImVec2(.15f, .0f);
+    const auto hotkeylist_min_size = viewport_size * ImVec2(.15f, .0f);
     constexpr auto max_size =
         ImVec2(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 
@@ -472,10 +472,10 @@ Draw(UIContext& ctx) {
 
     // Menu bar.
     if (ImGui::BeginMenuBar()) {
-        if (auto a = internal::DrawImportMenu(ctx)) {
+        if (auto a = internal::DrawImportMenu(ui)) {
             action = a;
         }
-        if (auto a = internal::DrawExportMenu(ctx)) {
+        if (auto a = internal::DrawExportMenu(ui)) {
             action = a;
         }
         ImGui::EndMenuBar();
@@ -486,7 +486,7 @@ Draw(UIContext& ctx) {
     ImGui::BeginChild(
         "hotkey_list", hotkeylist_initial_size, ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX
     );
-    if (auto a = internal::DrawHotkeyList(ctx)) {
+    if (auto a = internal::DrawHotkeyList(ui)) {
         action = a;
     }
     ImGui::EndChild();
@@ -495,8 +495,8 @@ Draw(UIContext& ctx) {
 
     // Hotkey details.
     ImGui::BeginChild("selected_hotkey", ImVec2(.0f, .0f));
-    if (ctx.selected_hotkey < ctx.hotkeys_ui.size()) {
-        auto& hotkey = ctx.hotkeys_ui[ctx.selected_hotkey];
+    if (ui.selected_hotkey < ui.hotkeys_ui.size()) {
+        auto& hotkey = ui.hotkeys_ui[ui.selected_hotkey];
         internal::DrawName(hotkey);
 
         ImGui::Dummy(ImVec2(.0f, ImGui::GetTextLineHeight()));

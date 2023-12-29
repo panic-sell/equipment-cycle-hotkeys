@@ -22,7 +22,7 @@ set(headers
     "src/tes_util.h"
     "src/ui_drawing.h"
     "src/ui_plumbing.h"
-    "src/ui_viewmodels.h"
+    "src/ui_state.h"
 )
 set(tests
     "tests/equipset_tests.cpp"
@@ -30,7 +30,7 @@ set(tests
     "tests/hotkey_tests.cpp"
     "tests/key_tests.cpp"
     "tests/serde_tests.cpp"
-    "tests/ui_viewmodel_tests.cpp"
+    "tests/ui_state_tests.cpp"
 )
 
 

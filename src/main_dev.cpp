@@ -16,7 +16,7 @@
 #include "serde.h"
 #include "ui_drawing.h"
 #include "ui_plumbing.h"
-#include "ui_viewmodels.h"
+#include "ui_state.h"
 
 using namespace ech;
 
@@ -251,8 +251,8 @@ main(int, char**) {
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    auto ui_ctx = UIContext();
-    ui_ctx.Activate(Hotkeys<>({
+    auto ui = UI();
+    ui.Activate(Hotkeys<>({
         {
             .name = "asdf",
             .keysets = Keysets({
@@ -296,7 +296,7 @@ main(int, char**) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        ui::Draw(ui_ctx);
+        ui::Draw(ui);
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()!
         // You can browse its code to learn more about Dear ImGui!).

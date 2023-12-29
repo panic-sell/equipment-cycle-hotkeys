@@ -166,7 +166,8 @@ class HotkeysUI final : public std::vector<HotkeyUI<Q>> {
     }
 };
 
-class UIContext final {
+/// Main container for all UI-related state.
+class UI final {
   public:
     // Created/destroyed through activation state changes.
     std::vector<std::string> profile_cache;
@@ -176,7 +177,7 @@ class UIContext final {
     size_t selected_hotkey = 0;
     std::string export_profile;
 
-    UIContext(std::string profile_dir = fs::kProfileDir) : profile_dir_(std::move(profile_dir)) {}
+    UI(std::string profile_dir = fs::kProfileDir) : profile_dir_(std::move(profile_dir)) {}
 
     /// Intent for UI visibility. Something else has to realize this intent.
     bool
