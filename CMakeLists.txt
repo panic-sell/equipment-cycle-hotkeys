@@ -43,13 +43,13 @@ find_package(Boost 1.83.0 REQUIRED COMPONENTS json)
 find_package(imgui CONFIG REQUIRED)
 
 add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} "src/main.cpp")
+target_precompile_headers(${PROJECT_NAME} PUBLIC "src/pch.h")
+target_include_directories(${PROJECT_NAME} PUBLIC "src")
 target_link_libraries(${PROJECT_NAME} PUBLIC
     ${Boost_LIBRARIES}
-    d3d11  # for Dear ImGui
+    d3d11  # for imgui
     imgui::imgui
 )
-target_include_directories(${PROJECT_NAME} PUBLIC "src")
-target_precompile_headers(${PROJECT_NAME} PUBLIC "src/pch.h")
 
 set(DEV_APP_NAME "${PROJECT_NAME}_DevApp")
 add_executable(${DEV_APP_NAME} ${headers} "src/main_dev.cpp")
@@ -64,6 +64,7 @@ set(TEST_NAME "${PROJECT_NAME}_Tests")
 
 find_package(Catch2 CONFIG REQUIRED)
 add_executable(${TEST_NAME} ${headers} ${tests})
+target_precompile_headers(${TEST_NAME} PRIVATE "tests/pch.h")
 target_link_libraries(${TEST_NAME} PRIVATE
     ${PROJECT_NAME}
     Catch2::Catch2WithMain

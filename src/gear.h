@@ -259,10 +259,10 @@ class Gear final {
     }
 
   private:
-    static std::optional<Gear>
-    FromEquippedScroll(const RE::Actor& actor, bool left_hand) {
-        // TODO
-    }
+    // static std::optional<Gear>
+    // FromEquippedScroll(const RE::Actor& actor, bool left_hand) {
+    //     // TODO
+    // }
 
     static std::optional<Gear>
     FromEquippedSpell(const RE::Actor& actor, bool left_hand) {
@@ -354,10 +354,10 @@ class Gear final {
         return New(shield, false, extra_health, extra_ench);
     }
 
-    [[nodiscard]] bool
-    EquipScroll(RE::ActorEquipManager& aem, RE::Actor& actor) const {
-        // TODO
-    }
+    // [[nodiscard]] bool
+    // EquipScroll(RE::ActorEquipManager& aem, RE::Actor& actor) const {
+    //     // TODO
+    // }
 
     [[nodiscard]] bool
     EquipSpell(RE::ActorEquipManager& aem, RE::Actor& actor) const {

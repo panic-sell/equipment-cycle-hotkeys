@@ -1,6 +1,3 @@
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-
 #include "hotkeys.h"
 #include "keys.h"
 #include "ui_state.h"
