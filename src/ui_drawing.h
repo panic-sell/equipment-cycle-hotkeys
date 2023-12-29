@@ -1,176 +1,10 @@
 #pragma once
 
-#include "fs.h"
 #include "keys.h"
-#include "serde.h"
 #include "ui_viewmodels.h"
 
 namespace ech {
 namespace ui {
-
-class Context final {
-  public:
-    // Created/destroyed through activation state changes.
-    std::vector<std::string> profile_cache;
-    HotkeysUI<EquipsetUI> hotkeys_ui;
-
-    // Persists between activation state changes.
-    size_t selected_hotkey = 0;
-    std::string export_profile;
-
-    Context(std::string profile_dir = fs::kProfileDir) : profile_dir_(std::move(profile_dir)) {}
-
-    /// Intent for UI visibility. Something else has to realize this intent.
-    bool
-    IsActive() const {
-        return active_;
-    }
-
-    /// `hotkeys` is used to populates UI data.
-    void
-    Activate(const Hotkeys<>& hotkeys) {
-        ReloadProfileCache();
-        hotkeys_ui = HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
-        if (selected_hotkey >= hotkeys_ui.size()) {
-            selected_hotkey = 0;
-        }
-        active_ = true;
-    }
-
-    /// Discards UI data.
-    void
-    Deactivate() {
-        profile_cache.clear();
-        hotkeys_ui = {};
-        active_ = false;
-    }
-
-    /// Syncs `hotkeys` with UI data prior to discarding that data.
-    void
-    Deactivate(Hotkeys<>& hotkeys) {
-        hotkeys = hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
-        Deactivate();
-    }
-
-    void
-    ImportProfile(std::string_view profile) {
-        auto p = GetProfilePath(profile);
-        // clang-format off
-        auto hksui = fs::Read(p)
-            .and_then([](std::string&& s) { return Deserialize<Hotkeys<>>(s); })
-            .transform([](Hotkeys<>&& hotkeys) {
-                return HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
-            });
-        // clang-format on
-        if (!hksui) {
-            SKSE::log::error("failed to read '{}'", p);
-            return;
-        }
-        hotkeys_ui = std::move(*hksui);
-        ReloadProfileCache();
-        selected_hotkey = 0;
-    }
-
-    void
-    ExportProfile() {
-        auto hotkeys = HotkeysUI(hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
-        auto s = Serialize<Hotkeys<>>(hotkeys);
-        NormalizeExportProfile();
-        auto p = GetProfilePath(export_profile);
-        if (!fs::Write(p, s)) {
-            SKSE::log::error("failed to write '{}'", p);
-            return;
-        }
-        ReloadProfileCache();
-    }
-
-    /// 1. Removes all chars that are not `a-z`, `A-Z`, `0-9`, `-`, `_`, or ASCII 32 space.
-    /// 1. Removes all leading/trailing spaces.
-    /// 1. Truncates whatever is left to 32 bytes.
-    void
-    NormalizeExportProfile() {
-        constexpr auto rm_invalid_chars = [](std::string& s) {
-            std::erase_if(s, [](char c) {
-                auto valid = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')
-                             || (c >= 'a' && c <= 'z') || c == ' ' || c == '_' || c == '-';
-                return !valid;
-            });
-        };
-
-        constexpr auto trim_space = [](std::string& s) {
-            auto last = s.find_last_not_of(' ');
-            if (last == std::string::npos) {
-                s.clear();
-                return;
-            }
-            s.erase(s.begin() + last + 1, s.end());
-
-            auto first = s.find_first_not_of(' ');
-            if (first == std::string::npos) {
-                s.clear();
-                return;
-            }
-            s.erase(s.begin(), s.begin() + first);
-        };
-
-        constexpr auto truncate_to_size = [](std::string& s, size_t size) {
-            if (s.size() > size) {
-                s.erase(s.begin() + size, s.end());
-            }
-        };
-
-        rm_invalid_chars(export_profile);
-        trim_space(export_profile);
-        truncate_to_size(export_profile, 32);
-    }
-
-    const std::string*
-    FindCachedProfileMatchingExportProfile() const {
-        auto export_fp = fs::PathFromStr(GetProfilePath(export_profile));
-        if (!export_fp) {
-            return nullptr;
-        }
-
-        for (const auto& cached : profile_cache) {
-            auto existing_fp = fs::PathFromStr(GetProfilePath(cached));
-            if (!existing_fp) {
-                continue;
-            }
-            std::error_code ec;
-            auto eq = std::filesystem::equivalent(*export_fp, *existing_fp, ec);
-            if (!ec && eq) {
-                return &cached;
-            }
-        }
-        return nullptr;
-    }
-
-  private:
-    static constexpr std::string_view kExt = ".json";
-
-    void
-    ReloadProfileCache() {
-        profile_cache.clear();
-        if (!fs::ListDirectoryToBuffer(profile_dir_, profile_cache)) {
-            SKSE::log::error("failed to iterate '{}'", profile_dir_);
-        }
-        std::erase_if(profile_cache, [](std::string_view s) {
-            return s == kExt || !s.ends_with(kExt);
-        });
-        for (auto& s : profile_cache) {
-            s.erase(s.end() - kExt.size(), s.end());
-        }
-    }
-
-    std::string
-    GetProfilePath(std::string_view profile) const {
-        return std::format("{}/{}{}", profile_dir_, profile, kExt);
-    }
-
-    bool active_ = false;
-    std::string profile_dir_ = fs::kProfileDir;
-};
-
 namespace internal {
 
 using Action = std::function<void()>;
@@ -349,7 +183,7 @@ struct Table final {
 };
 
 inline Action
-DrawImportMenu(Context& ctx) {
+DrawImportMenu(UIContext& ctx) {
     if (!ImGui::BeginMenu("Import")) {
         return {};
     }
@@ -371,7 +205,7 @@ DrawImportMenu(Context& ctx) {
 }
 
 inline Action
-DrawExportMenu(Context& ctx) {
+DrawExportMenu(UIContext& ctx) {
     Action action;
     auto confirm_export = false;
     if (ImGui::BeginMenu("Export")) {
@@ -409,7 +243,7 @@ DrawExportMenu(Context& ctx) {
 }
 
 inline Action
-DrawHotkeyList(Context& ctx) {
+DrawHotkeyList(UIContext& ctx) {
     auto table = Table<HotkeyUI<EquipsetUI>, 1>{
         .id = "hotkeys_list",
         .headers = std::array{""},
@@ -611,7 +445,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
 }  // namespace internal
 
 inline void
-Draw(Context& ctx) {
+Draw(UIContext& ctx) {
     const auto* main_viewport = ImGui::GetMainViewport();
     if (!main_viewport) {
         return;

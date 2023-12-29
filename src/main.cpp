@@ -1,10 +1,11 @@
 // SKSE plugin entry point.
 #include "event_handler.h"
 #include "fs.h"
+#include "hotkeys.h"
 #include "serde.h"
 #include "settings.h"
-#include "ui_drawing.h"
 #include "ui_plumbing.h"
+#include "ui_viewmodels.h"
 
 namespace {
 
@@ -13,7 +14,7 @@ using namespace ech;
 auto gSettings = Settings();
 auto gHotkeys = Hotkeys<>();
 auto gHotkeysMutex = std::mutex();
-auto gUIContext = ui::Context();
+auto gUIContext = UIContext();
 auto gUIContextMutex = std::mutex();
 
 void

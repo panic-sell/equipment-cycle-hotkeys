@@ -14,7 +14,7 @@ namespace internal {
 class RenderHook final {
   public:
     static void
-    Init(Context& ctx, std::mutex& ctx_mutex) {
+    Init(UIContext& ctx, std::mutex& ctx_mutex) {
         static RenderHook instance;
         instance.ctx_ = &ctx;
         instance.ctx_mutex_ = &ctx_mutex;
@@ -53,7 +53,7 @@ class RenderHook final {
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     }
 
-    Context* ctx_ = nullptr;
+    UIContext* ctx_ = nullptr;
     std::mutex* ctx_mutex_ = nullptr;
     REL::Relocation<void(uint32_t)> orig_render_;
 };
@@ -62,7 +62,7 @@ class InputHook final {
   public:
     static void
     Init(
-        Context& ctx,
+        UIContext& ctx,
         std::mutex& ctx_mutex,
         Hotkeys<>& hotkeys,
         std::mutex& hotkeys_mutex,
@@ -530,7 +530,7 @@ class InputHook final {
         return keycode < keys.size() ? keys[keycode] : ImGuiKey_None;
     }
 
-    Context* ctx_ = nullptr;
+    UIContext* ctx_ = nullptr;
     std::mutex* ctx_mutex_ = nullptr;
     Hotkeys<>* hotkeys_ = nullptr;
     std::mutex* hotkeys_mutex_ = nullptr;
@@ -568,7 +568,7 @@ Init(
     Hotkeys<>& hotkeys,
     std::mutex& hotkeys_mutex,
     /// UI context. Nullopt means menu is not active. Likewise, non-nullopt means menu is active.
-    Context& ctx,
+    UIContext& ctx,
     std::mutex& ctx_mutex,
     const Settings& settings
 ) {
