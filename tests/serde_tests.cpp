@@ -18,13 +18,13 @@ TEST_CASE("Hotkeys<int> serde") {
         Testcase{
             .name = "normal",
             .src_str = R"({
-                "active_hotkey": 1,
+                "selected_hotkey": 1,
                 "hotkeys": [
                     {
                         "name": "hk0",
                         "keysets": [["0"]],
                         // Default value, discarded from reserialization.
-                        "active_equipset": 0,
+                        "selected_equipset": 0,
                         "equipsets": [0, 1, 2, 3],
                     },
                     {
@@ -35,13 +35,13 @@ TEST_CASE("Hotkeys<int> serde") {
                             ["LShift", "1"],
                             ["RShift", "1"],
                         ],
-                        "active_equipset": 1,
+                        "selected_equipset": 1,
                         "equipsets": [0, 1, 2, 3],
                     },
                 ],
             })",
             .jv_str = R"({
-                "active_hotkey": 1,
+                "selected_hotkey": 1,
                 "hotkeys": [
                     {
                         "name": "hk0",
@@ -56,7 +56,7 @@ TEST_CASE("Hotkeys<int> serde") {
                             ["1", "LShift"],
                             ["1", "RShift"],
                         ],
-                        "active_equipset": 1,
+                        "selected_equipset": 1,
                         "equipsets": [0, 1, 2, 3],
                     },
                 ],
@@ -70,17 +70,17 @@ TEST_CASE("Hotkeys<int> serde") {
         },
         Testcase{
             .name = "no_hotkeys_because_wrong_type_1",
-            .src_str = R"({"active_hotkey": 1, "hotkeys": null})",
+            .src_str = R"({"selected_hotkey": 1, "hotkeys": null})",
             .jv_str = "{}",
         },
         Testcase{
             .name = "no_hotkeys_because_wrong_type_2",
-            .src_str = R"({"active_hotkey": 1, "hotkeys": {}})",
+            .src_str = R"({"selected_hotkey": 1, "hotkeys": {}})",
             .jv_str = "{}",
         },
         Testcase{
             .name = "no_hotkeys_because_wrong_type_3",
-            .src_str = R"({"active_hotkey": 1, "hotkeys": [null, 1]})",
+            .src_str = R"({"selected_hotkey": 1, "hotkeys": [null, 1]})",
             .jv_str = "{}",
         },
 
@@ -232,12 +232,12 @@ TEST_CASE("Hotkeys<int> serde") {
         Testcase{
             .name = "default_scalar_values_not_serialized",
             .src_str = R"({
-                "active_hotkey": -1,
+                "selected_hotkey": -1,
                 "hotkeys": [
                     {
                         "name": "",
                         "keysets": [["0"]],
-                        "active_equipset": 0,
+                        "selected_equipset": 0,
                         "equipsets": [0],
                     },
                 ],

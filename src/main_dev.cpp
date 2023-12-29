@@ -99,25 +99,18 @@ main() {
     opts.allow_comments = true;
     opts.allow_trailing_commas = true;
 
-    // R"({
-    //         "name": "Hotkey",
-    //         "keysets": [["esc", "", "gamepADRt", "", "TAB"]],
-    //         "equipsets": [2, 3, 4],
-    //         "active_equipset": 1
-    //     })"
-
     json::value j;
     json::error_code ec;
     j = json::parse(
         R"({
-                "active_hotkey": 1,
+                "selected_hotkey": 1,
                 "hotkeys": [
                     {
                         "name": "hk0",
                         "keysets": [
                             ["0"]
                         ],
-                        "active_equipset": 0,
+                        "selected_equipset": 0,
                         "equipsets": [
                             [
                                 {"slot": 0, "unequip": true},
@@ -133,7 +126,7 @@ main() {
                             ["LShift", "1"],
                             ["RShift", "1"],
                         ],
-                        "active_equipset": 1,
+                        "selected_equipset": 1,
                         "equipsets": [
                             [
                                 {"slot": 0, "unequip": true},

@@ -89,7 +89,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         return RE::BSEventNotifyControl::kContinue;
     }
 
-    /// Deactivates hotkeys if something else equips/unequips player gear.
+    /// Deselects hotkeys if something else equips/unequips player gear.
     RE::BSEventNotifyControl
     ProcessEvent(const RE::TESEquipEvent* event, RE::BSTEventSource<RE::TESEquipEvent>*) override {
         HandleEquipEvent(event);
@@ -137,7 +137,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         internal::InspectEquipped(keystroke_buf_, *player);
 
         auto lock = std::lock_guard(*hotkeys_mutex_);
-        const auto* equipset = hotkeys_->GetNextEquipset(keystroke_buf_);
+        const auto* equipset = hotkeys_->SelectNextEquipset(keystroke_buf_);
         if (!equipset) {
             return;
         }
@@ -148,10 +148,10 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
         most_recent_hotkey_equip_time_.store(now);
         equipset->Apply(*aem, *player);
         SKSE::log::debug(
-            "activated hotkey {} ({}), equipset {}",
-            hotkeys_->active() + 1,
-            hotkeys_->vec()[hotkeys_->active()].name,
-            hotkeys_->vec()[hotkeys_->active()].equipsets.active() + 1
+            "selected hotkey {} ({}) equipset {}",
+            hotkeys_->selected() + 1,
+            hotkeys_->vec()[hotkeys_->selected()].name,
+            hotkeys_->vec()[hotkeys_->selected()].equipsets.selected() + 1
         );
     }
 
@@ -188,8 +188,8 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*>,
             return;
         }
         auto lock = std::lock_guard(*hotkeys_mutex_);
-        hotkeys_->Deactivate();
-        SKSE::log::debug("deactivated hotkeys");
+        hotkeys_->Deselect();
+        SKSE::log::debug("deselected all hotkeys");
     }
 
     Hotkeys<>* hotkeys_ = nullptr;

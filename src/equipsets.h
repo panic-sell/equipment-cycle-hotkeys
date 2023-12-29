@@ -104,17 +104,17 @@ class Equipset final {
 /// An ordered collection of 0 or more equipsets.
 ///
 /// Invariants:
-/// - If `equipsets_.empty()`, then `active_ == 0`.
-/// - If `!equipsets_.empty()`, then `active_ < equipsets.size()`. In other words, there is
-/// always an active equipset.
+/// - If `equipsets_.empty()`, then `selected_ == 0`.
+/// - If `!equipsets_.empty()`, then `selected_ < equipsets.size()`. In other words, there is
+/// always a selected equipset.
 template <typename Q = Equipset>
 class Equipsets final {
   public:
     Equipsets() = default;
 
-    explicit Equipsets(std::vector<Q> equipsets, size_t active_index = 0)
+    explicit Equipsets(std::vector<Q> equipsets, size_t initial_selection = 0)
         : equipsets_(std::move(equipsets)),
-          active_(active_index) {
+          selected_(initial_selection) {
         // Prune empty equipsets. An empty equipset ignores all gear slots, so cycling into one
         // gives no user feedback, which could be confusing.
         if constexpr (std::is_same_v<Q, Equipset>) {
@@ -122,8 +122,8 @@ class Equipsets final {
                 return equipset.vec().empty();
             });
         }
-        if (active_ >= equipsets_.size()) {
-            ActivateFirst();
+        if (selected_ >= equipsets_.size()) {
+            SelectFirst();
         }
     }
 
@@ -132,36 +132,38 @@ class Equipsets final {
         return equipsets_;
     }
 
+    /// Returns the index of the selected equipset.
     size_t
-    active() const {
-        return active_;
+    selected() const {
+        return selected_;
     }
 
+    /// Returns a pointer to the selected equipset. Returns nullptr if there are no equipsets (if
+    /// there exists at least 1 equipset, the return value is guaranteed to be non-null).
     const Q*
-    GetActive() const {
+    GetSelected() const {
         if (equipsets_.empty()) {
             return nullptr;
         }
-        auto i = active_ < equipsets_.size() ? active_ : 0;
+        auto i = selected_ < equipsets_.size() ? selected_ : 0;
         return &equipsets_[i];
     }
 
     void
-    ActivateNext() {
-        if (equipsets_.empty()) {
-            return;
-        }
-        active_ = (active_ + 1) % equipsets_.size();
+    SelectFirst() {
+        selected_ = 0;
     }
 
     void
-    ActivateFirst() {
-        active_ = 0;
+    SelectNext() {
+        if (!equipsets_.empty()) {
+            selected_ = (selected_ + 1) % equipsets_.size();
+        }
     }
 
   private:
     std::vector<Q> equipsets_;
-    size_t active_ = 0;
+    size_t selected_ = 0;
 };
 
 }  // namespace ech

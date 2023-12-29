@@ -223,9 +223,9 @@ tag_invoke(
         jo.insert_or_assign("keysets", boost::json::value_from(hotkey.keysets.vec(), ctx));
     }
     if (!hotkey.equipsets.vec().empty()) {
-        auto active_equipset = hotkey.equipsets.active();
-        if (active_equipset > 0) {
-            jo.insert_or_assign("active_equipset", active_equipset);
+        auto selected_equipset = hotkey.equipsets.selected();
+        if (selected_equipset > 0) {
+            jo.insert_or_assign("selected_equipset", selected_equipset);
         }
         jo.insert_or_assign("equipsets", boost::json::value_from(hotkey.equipsets.vec(), ctx));
     }
@@ -249,10 +249,11 @@ tag_invoke(
     hotkey.keysets = Keysets(internal::GetSerObjField<std::vector<Keyset>>(jo, "keysets", ctx)
                                  .value_or(std::vector<Keyset>()));
 
-    auto active_equipset = internal::GetSerObjField<size_t>(jo, "active_equipset", ctx).value_or(0);
+    auto selected_equipset =
+        internal::GetSerObjField<size_t>(jo, "selected_equipset", ctx).value_or(0);
     hotkey.equipsets = Equipsets(
         internal::GetSerObjField<std::vector<Q>>(jo, "equipsets", ctx).value_or(std::vector<Q>()),
-        active_equipset
+        selected_equipset
     );
 
     return hotkey;
@@ -267,8 +268,8 @@ tag_invoke(
     const SerdeContext& ctx
 ) {
     auto jo = boost::json::object();
-    if (hotkeys.active() < hotkeys.vec().size()) {
-        jo.insert_or_assign("active_hotkey", hotkeys.active());
+    if (hotkeys.selected() < hotkeys.vec().size()) {
+        jo.insert_or_assign("selected_hotkey", hotkeys.selected());
     }
     if (!hotkeys.vec().empty()) {
         jo.insert_or_assign("hotkeys", boost::json::value_from(hotkeys.vec(), ctx));
@@ -288,10 +289,11 @@ tag_invoke(
     }
     const auto& jo = jv.get_object();
 
-    auto active_hotkey = internal::GetSerObjField<size_t>(jo, "active_hotkey", ctx).value_or(-1);
+    auto selected_hotkey =
+        internal::GetSerObjField<size_t>(jo, "selected_hotkey", ctx).value_or(-1);
     auto hotkeys = internal::GetSerObjField<std::vector<Hotkey<Q>>>(jo, "hotkeys", ctx)
                        .value_or(std::vector<Hotkey<Q>>());
-    return Hotkeys<Q>(std::move(hotkeys), active_hotkey);
+    return Hotkeys<Q>(std::move(hotkeys), selected_hotkey);
 }
 
 /// Note that there's no `value_from` tag_invoke. Settings are only every configured through JSON

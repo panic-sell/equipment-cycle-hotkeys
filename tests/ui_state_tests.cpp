@@ -15,9 +15,9 @@ CompareHotkeys(const Hotkeys<Q>& a, const Hotkeys<Q>& b) {
         REQUIRE(ah.name == bh.name);
         REQUIRE(ah.keysets.vec() == bh.keysets.vec());
         REQUIRE(ah.equipsets.vec() == bh.equipsets.vec());
-        REQUIRE(ah.equipsets.active() == bh.equipsets.active());
+        REQUIRE(ah.equipsets.selected() == bh.equipsets.selected());
     }
-    REQUIRE(a.active() == b.active());
+    REQUIRE(a.selected() == b.selected());
     REQUIRE(a.vec().size() == b.vec().size());
 }
 
@@ -34,21 +34,6 @@ CompareHotkeysUI(const HotkeysUI<Q>& a, const HotkeysUI<Q>& b) {
         REQUIRE(ah.equipsets == bh.equipsets);
     }
     REQUIRE(a.size() == b.size());
-}
-
-template <typename Q>
-requires(std::equality_comparable<Q>)
-bool
-operator==(const HotkeyUI<Q>& a, const HotkeyUI<Q>& b) {
-    return a.name == b.name && a.keysets == b.keysets && a.equipsets == b.equipsets
-           && a.active_equipset == b.active_equipset;
-}
-
-template <typename Q>
-requires(std::equality_comparable<Q>)
-bool
-operator==(const HotkeysUI<Q>& a, const HotkeysUI<Q>& b) {
-    return a.hotkeys == b.hotkeys && a.active_hotkey == b.active_hotkey;
 }
 
 TEST_CASE("HotkeysUI from Hotkeys") {
@@ -105,7 +90,6 @@ TEST_CASE("HotkeysUI to Hotkeys") {
             .equipsets = {},
         },
         {
-            // active_equipsets defaults to 0
             .name = "hk",
             .keysets = {{1}, {2, 3}},
             .equipsets = {},

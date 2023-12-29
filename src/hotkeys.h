@@ -14,12 +14,12 @@ struct Hotkey final {
 
 /// An ordered collection of 0 or more hotkeys.
 ///
-/// The "active" hotkey is the one that most recently matched key inputs.
+/// The "selected" hotkey is the one that most recently matched key inputs.
 ///
 /// Invariants:
 /// - All hotkeys have at least 1 keyset or at least 1 equipset.
-/// - `active_ == size_t(-1)` means no hotkeys are active.
-/// - `most_recent_next_equipset_ == nullptr` if no hotkeys are active.
+/// - `selected_ == size_t(-1)` means no hotkeys are selected.
+/// - `most_recent_next_equipset_ == nullptr` if no hotkeys are selected.
 ///
 /// This class is templated by "equipset" to facilitate unit testing. We swap out the real Equipset
 /// type so that tests don't depend on Skyrim itself.
@@ -28,15 +28,15 @@ class Hotkeys final {
   public:
     Hotkeys() = default;
 
-    /// `active_index` applies AFTER pruning hotkeys.
-    explicit Hotkeys(std::vector<Hotkey<Q>> hotkeys, size_t active_index = -1)
+    /// `initial_selection` applies AFTER pruning hotkeys.
+    explicit Hotkeys(std::vector<Hotkey<Q>> hotkeys, size_t initial_selection = -1)
         : hotkeys_(std::move(hotkeys)),
-          active_(active_index) {
+          selected_(initial_selection) {
         std::erase_if(hotkeys_, [](const Hotkey<Q>& hk) {
             return hk.keysets.vec().empty() && hk.equipsets.vec().empty();
         });
-        if (active_ >= hotkeys_.size()) {
-            Deactivate();
+        if (selected_ >= hotkeys_.size()) {
+            Deselect();
         }
     }
 
@@ -45,34 +45,42 @@ class Hotkeys final {
         return hotkeys_;
     }
 
-    /// Returns the active hotkey's index.
+    /// Returns the selected hotkey's index.
     size_t
-    active() const {
-        return active_;
+    selected() const {
+        return selected_;
     }
 
-    /// Make none of the hotkeys active.
+    /// Ensures no hotkey is selected. Note that this does not change any hotkey's "selected
+    /// equipset".
     void
-    Deactivate() {
-        active_ = size_t(-1);
+    Deselect() {
+        selected_ = size_t(-1);
         most_recent_next_equipset_ = nullptr;
     }
 
-    /// Returns the active hotkey's active equipset. Returns nullptr if:
-    /// - No hotkey is active.
-    /// - The active hotkey has no equipsets.
+    /// Returns the selected hotkey's selected equipset. Returns nullptr if:
+    /// - No hotkey is selected.
+    /// - The selected hotkey has no equipsets.
     const Q*
-    GetActiveEquipset() const {
-        if (active_ >= hotkeys_.size()) {
+    GetSelectedEquipset() const {
+        if (selected_ >= hotkeys_.size()) {
             return nullptr;
         }
-        const Hotkey<Q>& hk = hotkeys_[active_];
-        return hk.equipsets.GetActive();
+        const Hotkey<Q>& hk = hotkeys_[selected_];
+        return hk.equipsets.GetSelected();
     }
 
-    /// Activates the first hotkey that has at least one equipset and matches `keystrokes`, then
-    /// returns that hotkey's next active equipset. A non-null return value means "player should
-    /// equip what was returned".
+    /// Selects the first hotkey that has at least one equipset and matches `keystrokes`, then
+    /// returns that hotkey's next selected equipset. A hotkey's next selected equipset is
+    /// determined as follows:
+    /// - If the matching `keystroke` is a hold, select the hotkey's first equipset.
+    /// - If the matching `keystroke` is a press and hotkey was already selected, call
+    /// `hotkey.equipset.SelectNext()`, then return `hotkey.equipsets.GetSelected()`.
+    /// - If the matching `keystroke` is a press and hotkey was not already selected, returns
+    /// `hotkey.equipsets.GetSelected()`.
+    ///
+    /// A non-null return value means "player should equip what was returned".
     ///
     /// Returns nullptr if:
     /// - `keytrokes` is empty.
@@ -83,7 +91,7 @@ class Hotkeys final {
     /// - This function would have returned Q, where Q is the most recent non-null equipset returned
     /// by a prior call of this function.
     const Q*
-    GetNextEquipset(std::span<const Keystroke> keystrokes) {
+    SelectNextEquipset(std::span<const Keystroke> keystrokes) {
         if (keystrokes.empty()) {
             return nullptr;
         }
@@ -101,18 +109,18 @@ class Hotkeys final {
         }
 
         Hotkey<Q>& hk = *it;
-        auto orig_active = active_;
-        active_ = it - hotkeys_.begin();
+        auto orig_selected = selected_;
+        selected_ = it - hotkeys_.begin();
 
         if (match_res == Keysets::MatchResult::kHold) {
-            hk.equipsets.ActivateFirst();
-        } else if (active_ == orig_active) {
-            hk.equipsets.ActivateNext();
+            hk.equipsets.SelectFirst();
+        } else if (selected_ == orig_selected) {
+            hk.equipsets.SelectNext();
         }
-        auto next = hk.equipsets.GetActive();
+        auto next = hk.equipsets.GetSelected();
 
-        // When resetting a hotkey's active equipset, this prevents returning the first equipset
-        // over and over again.
+        // When resetting a hotkey's selected equipset, this prevents returning the first equipset
+        // over and over again when input buttons are kept held down.
         if (next == most_recent_next_equipset_) {
             return nullptr;
         }
@@ -122,7 +130,7 @@ class Hotkeys final {
 
   private:
     std::vector<Hotkey<Q>> hotkeys_;
-    size_t active_ = size_t(-1);
+    size_t selected_ = size_t(-1);
     const Q* most_recent_next_equipset_ = nullptr;
 };
 

@@ -100,13 +100,13 @@ TEST_CASE("Equipset ctor") {
 
 TEST_CASE("Equipsets empty") {
     auto es = TestEquipsets();
-    REQUIRE(!es.GetActive());
-    es.ActivateNext();
-    es.ActivateNext();
-    REQUIRE(!es.GetActive());
+    REQUIRE(!es.GetSelected());
+    es.SelectNext();
+    es.SelectNext();
+    REQUIRE(!es.GetSelected());
 }
 
-TEST_CASE("Equipsets nonempty activation") {
+TEST_CASE("Equipsets nonempty selection") {
     struct Testcase {
         std::string_view name;
         TestEquipsets equipsets;
@@ -146,18 +146,18 @@ TEST_CASE("Equipsets nonempty activation") {
     CAPTURE(testcase.name);
 
     auto& es = testcase.equipsets;
-    REQUIRE(*es.GetActive() == testcase.initial_slot);
+    REQUIRE(*es.GetSelected() == testcase.initial_slot);
 
-    es.ActivateNext();
-    REQUIRE(*es.GetActive() == testcase.next_slot);
+    es.SelectNext();
+    REQUIRE(*es.GetSelected() == testcase.next_slot);
 
     for (size_t i = 0; i < testcase.additional_increments; i++) {
-        es.ActivateNext();
+        es.SelectNext();
     }
-    REQUIRE(*es.GetActive() == testcase.slot_after_increments);
+    REQUIRE(*es.GetSelected() == testcase.slot_after_increments);
 
-    es.ActivateFirst();
-    REQUIRE(*es.GetActive() == testcase.initial_slot);
+    es.SelectFirst();
+    REQUIRE(*es.GetSelected() == testcase.initial_slot);
 }
 
 TEST_CASE("Equipsets ctor specialization prunes empty equipsets") {

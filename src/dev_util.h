@@ -137,7 +137,7 @@ UseHotkeys(Hotkeys<>& hotkeys, std::span<const Keystroke> keystrokes, RE::Actor&
     };
 
     const Equipset* next_equipset = nullptr;
-    auto equip = [&]() { next_equipset = hotkeys.GetNextEquipset(keystrokes); };
+    auto equip = [&]() { next_equipset = hotkeys.SelectNextEquipset(keystrokes); };
 
     auto actions = std::vector<InputAction>{
         {.keysets = KeysetsFromStr({{"lshift", "1"}}), .invoke = std::bind(set, 0)},
