@@ -251,27 +251,20 @@ main(int, char**) {
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    ui::Context ui_ctx = ui::Context();
-    ui_ctx.hotkeys_ui = {
+    auto ui_ctx = ui::Context();
+    ui_ctx.Activate(Hotkeys<>({
         {
             .name = "asdf",
-            .keysets{
+            .keysets = Keysets({
                 {1, 2, 3, 4},
                 {5, 0, 45, 104},
                 {7, 0, 0, 0},
                 {4, 3, 2, 1},
                 {0, 20, 19, 18},
                 {0},
-            },
-            .equipsets{
-                {},
-                {},
-                {},
-                {},
-            },
+            }),
         },
-    };
-    ui_ctx.ReloadProfileCache();
+    }));
 
     // Main loop
     bool done = false;
