@@ -395,7 +395,7 @@ class Gear final {
         if (!slot) {
             return false;
         }
-        aem.EquipSpell(&actor, scroll, slot);
+        aem.EquipObject(&actor, scroll, nullptr, 1, slot);
         return true;
     }
 
