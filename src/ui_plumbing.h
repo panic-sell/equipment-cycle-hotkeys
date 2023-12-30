@@ -223,8 +223,8 @@ class InputHook final {
             if (!sc_keyboard || !sc_keystate) {
                 return true;
             }
-            for (UINT sc = 0; sc < vk_keystate.size(); sc++) {
-                auto vk = MapVirtualKeyW(sc, MAPVK_VSC_TO_VK);
+            for (uint32_t sc = 0; sc < vk_keystate.size(); sc++) {
+                uint32_t vk = ::MapVirtualKeyW(sc, MAPVK_VSC_TO_VK);
                 if (vk >= 256) {
                     continue;
                 }
@@ -235,10 +235,10 @@ class InputHook final {
             }
         }
 
-        auto vk = MapVirtualKeyW(scancode, MAPVK_VSC_TO_VK);
-        auto buf = std::array<WCHAR, 4>{0};
-        auto count =
-            ToUnicode(vk, scancode, &vk_keystate[0], &buf[0], static_cast<int>(buf.size()), 0);
+        uint32_t vk = ::MapVirtualKeyW(scancode, MAPVK_VSC_TO_VK);
+        auto buf = std::array<wchar_t, 4>{0};
+        int count =
+            ::ToUnicode(vk, scancode, &vk_keystate[0], &buf[0], static_cast<int>(buf.size()), 0);
         for (int i = 0; i < count; i++) {
             io.AddInputCharacterUTF16(buf[i]);
         }
