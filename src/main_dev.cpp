@@ -207,7 +207,7 @@ main(int, char**) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    auto settings = fs::Read(fs::kSettingsPath).and_then([](std::string&& s) {
+    auto settings = fs::ReadFile(fs::kSettingsPath).and_then([](std::string&& s) {
         return Deserialize<Settings>(s);
     });
     ui::internal::Configure(settings ? *settings : Settings());

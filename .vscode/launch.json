@@ -1,10 +1,20 @@
 {
     "configurations": [
         {
-            "name": "Debug (Attach)",
+            "name": "Debug DLL (Attach)",
             "type": "cppvsdbg",
             "request": "attach",
             "processId": "${command:pickProcess}"
         },
+        {
+            "name": "Debug Tests (Launch)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${cmake.testProgram}",
+            "args": [
+                "${cmake.testArgs}"
+            ],
+            "cwd": "${workspaceRoot}"
+        }
     ]
 }

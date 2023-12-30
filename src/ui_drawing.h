@@ -189,14 +189,23 @@ DrawImportMenu(UI& ui) {
     }
 
     Action action;
-    if (ui.profile_cache.empty()) {
+    const auto& profiles = ui.GetSavedProfiles();
+    if (profiles.empty()) {
         ImGui::Text("No saved profiles.");
     } else {
-        for (const auto& profile : ui.profile_cache) {
+        for (const auto& profile : profiles) {
             if (!ImGui::MenuItem(profile.c_str())) {
                 continue;
             }
-            action = [&ui, profile]() { ui.ImportProfile(profile); };
+            action = [&ui, profile]() {
+                if (!ui.ImportProfile(profile)) {
+                    SKSE::log::error(
+                        "importing '{}' aborted: cannot read '{}'",
+                        profile,
+                        ui.GetProfilePath(profile)
+                    );
+                }
+            };
         }
     }
 
@@ -209,12 +218,12 @@ DrawExportMenu(UI& ui) {
     Action action;
     auto confirm_export = false;
     if (ImGui::BeginMenu("Export")) {
-        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ui.export_profile);
+        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ui.export_name);
         if (ImGui::IsItemDeactivated()) {
-            action = [&ui]() { ui.NormalizeExportProfile(); };
+            action = [&ui]() { ui.NormalizeExportName(); };
         }
         if (ImGui::Button("Export Profile")) {
-            confirm_export = !ui.export_profile.empty();
+            confirm_export = !ui.export_name.empty();
         }
         ImGui::EndMenu();
     }
@@ -223,13 +232,21 @@ DrawExportMenu(UI& ui) {
         ImGui::OpenPopup("confirm_export");
     }
     if (ImGui::BeginPopup("confirm_export")) {
-        if (const auto* cached_profile = ui.FindCachedProfileMatchingExportProfile()) {
-            ImGui::Text("Overwrite profile '%s'?", cached_profile->c_str());
+        if (auto existing_profile = ui.GetSavedProfileMatchingExportName()) {
+            ImGui::Text("Overwrite profile '%s'?", existing_profile->data());
         } else {
-            ImGui::Text("Save as profile '%s'?", ui.export_profile.c_str());
+            ImGui::Text("Save as profile '%s'?", ui.export_name.c_str());
         }
         if (ImGui::Button("Yes")) {
-            action = [&ui]() { ui.ExportProfile(); };
+            action = [&ui]() {
+                if (!ui.ExportProfile()) {
+                    SKSE::log::error(
+                        "exporting '{}' aborted: cannot write to '{}'",
+                        ui.export_name,
+                        ui.GetProfilePath(ui.export_name)
+                    );
+                }
+            };
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
@@ -250,10 +267,10 @@ DrawHotkeyList(UI& ui) {
         .viewmodel = ui.hotkeys_ui,
         .draw_cell = [&ui](const HotkeyUI<EquipsetUI>& hotkey, size_t row, size_t) -> Action {
             const char* label = hotkey.name.empty() ? "(Unnamed)" : hotkey.name.c_str();
-            if (!ImGui::RadioButton(label, row == ui.selected_hotkey)) {
+            if (!ImGui::RadioButton(label, row == ui.hotkey_in_focus)) {
                 return {};
             }
-            return [&ui, row]() { ui.selected_hotkey = row; };
+            return [&ui, row]() { ui.hotkey_in_focus = row; };
         },
         .draw_drag_tooltip = [](const HotkeyUI<EquipsetUI>& hotkey
                              ) { ImGui::Text("%s", hotkey.name.c_str()); },
@@ -263,8 +280,8 @@ DrawHotkeyList(UI& ui) {
     if (ImGui::Button("New", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         auto a = [&ui]() {
             ui.hotkeys_ui.emplace_back();
-            // Adding a new hotkey selects that hotkey.
-            ui.selected_hotkey = ui.hotkeys_ui.size() - 1;
+            // Adding a new hotkey puts that hotkey in focus.
+            ui.hotkey_in_focus = ui.hotkeys_ui.size() - 1;
         };
         atrc = {std::move(a), {}};
     }
@@ -275,17 +292,17 @@ DrawHotkeyList(UI& ui) {
     return [atrc, &ui]() {
         const auto& [a, trc] = atrc;
         if (trc.remove < ui.hotkeys_ui.size()) {
-            // If the selected hotkey is below the removed hotkey, then move selection upward.
-            if (trc.remove < ui.selected_hotkey) {
-                ui.selected_hotkey--;
+            // If the in-focus hotkey is below the removed hotkey, then move focus upward.
+            if (trc.remove < ui.hotkey_in_focus) {
+                ui.hotkey_in_focus--;
             }
         } else if (trc.drag_source < ui.hotkeys_ui.size() && trc.drag_target < ui.hotkeys_ui.size()) {
-            // Select the row that was dragged.
-            ui.selected_hotkey = trc.drag_target;
+            // Focus on the row that was dragged.
+            ui.hotkey_in_focus = trc.drag_target;
         }
         a();
-        if (ui.selected_hotkey >= ui.hotkeys_ui.size() && ui.selected_hotkey > 0) {
-            ui.selected_hotkey--;
+        if (ui.hotkey_in_focus >= ui.hotkeys_ui.size() && ui.hotkey_in_focus > 0) {
+            ui.hotkey_in_focus--;
         }
     };
 }
@@ -494,9 +511,9 @@ Draw(UI& ui) {
     ImGui::SameLine();
 
     // Hotkey details.
-    ImGui::BeginChild("selected_hotkey", ImVec2(.0f, .0f));
-    if (ui.selected_hotkey < ui.hotkeys_ui.size()) {
-        auto& hotkey = ui.hotkeys_ui[ui.selected_hotkey];
+    ImGui::BeginChild("hotkey_in_focus", ImVec2(.0f, .0f));
+    if (ui.hotkey_in_focus < ui.hotkeys_ui.size()) {
+        auto& hotkey = ui.hotkeys_ui[ui.hotkey_in_focus];
         internal::DrawName(hotkey);
 
         ImGui::Dummy(ImVec2(.0f, ImGui::GetTextLineHeight()));

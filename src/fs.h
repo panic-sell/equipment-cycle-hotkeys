@@ -3,6 +3,16 @@
 
 namespace ech {
 namespace fs {
+namespace internal {
+
+[[nodiscard]] inline bool
+EnsureDirExists(const std::filesystem::path& p) {
+    std::error_code ec;
+    std::filesystem::create_directories(p, ec);
+    return !ec;
+}
+
+}  // namespace internal
 
 #ifndef ECH_UI_DEV
 inline constexpr const char* kProfileDir = "Data/SKSE/Plugins/" ECH_NAME;
@@ -28,7 +38,7 @@ StrFromPath(const std::filesystem::path& p) {
 
 /// Returns nullopt on failure.
 inline std::optional<std::string>
-Read(std::string_view path) {
+ReadFile(std::string_view path) {
     auto fp = PathFromStr(path);
     if (!fp) {
         return std::nullopt;
@@ -44,14 +54,12 @@ Read(std::string_view path) {
 
 /// Will create intermediate directories as needed. Returns false on failure.
 [[nodiscard]] inline bool
-Write(std::string_view path, std::string_view contents) {
+WriteFile(std::string_view path, std::string_view contents) {
     auto fp = PathFromStr(path);
     if (!fp) {
         return false;
     }
-    std::error_code ec;
-    std::filesystem::create_directories(fp->parent_path(), ec);
-    if (ec) {
+    if (!internal::EnsureDirExists(fp->parent_path())) {
         return false;
     }
     auto f = std::ofstream(*fp);
@@ -73,10 +81,20 @@ Remove(std::string_view path) {
     return std::filesystem::remove(*fp, ec);
 }
 
+/// Will create intermediate directories as needed. Returns false on failure.
+[[nodiscard]] inline bool
+EnsureDirExists(std::string_view path) {
+    auto p = PathFromStr(path);
+    if (!p) {
+        return false;
+    }
+    return internal::EnsureDirExists(*p);
+}
+
 /// For all items inside `dir`, puts their names into `buf`. A nonexistent `dir` is treated like an
 /// empty directory. Returns false on failure.
 [[nodiscard]] inline bool
-ListDirectoryToBuffer(std::string_view dir_path, std::vector<std::string>& buf) {
+ListDirToBuf(std::string_view dir_path, std::vector<std::string>& buf) {
     auto dp = PathFromStr(dir_path);
     if (!dp) {
         return false;

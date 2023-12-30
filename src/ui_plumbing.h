@@ -128,6 +128,7 @@ class InputHook final {
             if (!hotkeys_->StructurallyEquals(new_hotkeys)) {
                 // This also resets selected hotkey/equipset state.
                 *hotkeys_ = std::move(new_hotkeys);
+                SKSE::log::debug("hotkeys modified");
             }
             io.MouseDrawCursor = false;
         } else {

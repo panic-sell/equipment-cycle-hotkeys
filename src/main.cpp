@@ -19,7 +19,7 @@ auto gUIMutex = std::mutex();
 
 void
 InitSettings() {
-    auto settings = fs::Read(fs::kSettingsPath).and_then([](std::string&& s) {
+    auto settings = fs::ReadFile(fs::kSettingsPath).and_then([](std::string&& s) {
         return Deserialize<Settings>(s);
     });
     if (!settings) {
@@ -126,7 +126,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
         }
 
         gUI.Deactivate();
-        gUI.selected_hotkey = 0;
+        gUI.hotkey_in_focus = 0;
     };
 
     static constexpr auto on_revert = [](SKSE::SerializationInterface* si) {
@@ -138,7 +138,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
         auto lock = std::scoped_lock(gHotkeysMutex, gUIMutex);
         gHotkeys = {};
         gUI.Deactivate();
-        gUI.selected_hotkey = 0;
+        gUI.hotkey_in_focus = 0;
         SKSE::log::debug("reset current hotkeys data");
     };
 

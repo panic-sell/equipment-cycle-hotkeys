@@ -1,5 +1,7 @@
+#include "fs.h"
 #include "hotkeys.h"
 #include "keys.h"
+#include "test_util.h"
 #include "ui_state.h"
 
 namespace ech {
@@ -147,6 +149,79 @@ TEST_CASE("HotkeysUI equipset conversions") {
         },
     };
     CompareHotkeysUI(got, want);
+}
+
+TEST_CASE("UI tests") {
+    auto td = Tempdir();
+    auto ui = UI(td.path());
+    auto ui_nonexistent_profile_dir = UI("8df229d6-f338-4308-9fc4-e1f3c3e188cf");
+
+    SECTION("GetProfilePath") {
+        REQUIRE(ui.GetProfilePath("") == td.path() + "/.json");
+        REQUIRE(ui.GetProfilePath("abc") == td.path() + "/abc.json");
+    }
+
+    SECTION("GetSavedProfiles") {
+        SECTION("nonexistent dir") {
+            REQUIRE(ui_nonexistent_profile_dir.GetSavedProfiles().empty());
+        }
+
+        SECTION("empty dir") {
+            REQUIRE(ui.GetSavedProfiles().empty());
+        }
+
+        SECTION("normal") {
+            REQUIRE(fs::WriteFile(td.path() + "/.json", "")
+            );  // empty profile name is filtered away
+            REQUIRE(fs::WriteFile(td.path() + "/abc.json", ""));
+            REQUIRE(fs::WriteFile(td.path() + "/def.JSoN", ""));
+            REQUIRE(fs::WriteFile(td.path() + "/xyz.txt", ""));
+            REQUIRE(fs::EnsureDirExists(td.path() + "/A_folder.json"));
+            REQUIRE(fs::EnsureDirExists(td.path() + "/some_folder.json"));
+
+            auto sorted_cache = ui.GetSavedProfiles();
+            std::sort(sorted_cache.begin(), sorted_cache.end());
+            REQUIRE(
+                sorted_cache == std::vector<std::string>{"A_folder", "abc", "def", "some_folder"}
+            );
+        }
+    }
+
+    SECTION("NormalizeExportName") {
+        const auto& [orig, want] = GENERATE(
+            std::pair("asdf", "asdf"),
+            std::pair("AS/\\df_c.json", "ASdf_cjson"),
+            std::pair("  a  b  ", "a  b"),
+            std::pair("     ", ""),
+            std::pair("   ✒  . ", "")
+        );
+        ui.export_name = orig;
+        ui.NormalizeExportName();
+        REQUIRE(ui.export_name == want);
+    }
+
+    SECTION("GetSavedProfileMatchingExportName") {
+        REQUIRE(fs::WriteFile(td.path() + "/aaa.json", ""));
+        REQUIRE(fs::WriteFile(td.path() + "/bbb.json", ""));
+        REQUIRE(fs::WriteFile(td.path() + "/ccc.json", ""));
+        REQUIRE(fs::EnsureDirExists(td.path() + "/DDD.json"));
+
+        const auto& [profile_for_export, want_match] = GENERATE(
+            std::pair("aaa", "aaa"),
+            std::pair("AaA", "aaa"),
+            std::pair("a", nullptr),
+            std::pair("ddd", "DDD")
+        );
+
+        ui.export_name = profile_for_export;
+        auto found = ui.GetSavedProfileMatchingExportName();
+        if (want_match) {
+            REQUIRE(found);
+            REQUIRE(*found == want_match);
+        } else {
+            REQUIRE(!found);
+        }
+    }
 }
 
 }  // namespace ech

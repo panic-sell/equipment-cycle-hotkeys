@@ -1,5 +1,4 @@
-1. scroll effects visual bug
-1. mouse scroll +/-1
+1. ui class tests
 1. imgui gamepad support
 
 Document limitations:
