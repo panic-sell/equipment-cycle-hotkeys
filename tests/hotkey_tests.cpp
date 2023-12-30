@@ -346,4 +346,113 @@ TEST_CASE("Hotkeys keystroke concurrency") {
     }
 }
 
+TEST_CASE("Hotkeys structural equality") {
+    struct Testcase {
+        std::string_view name;
+        TestHotkeys a;
+        TestHotkeys b;
+        bool want;
+    };
+
+    auto testcase = GENERATE(
+        Testcase{
+            .name = "empty",
+            .a = {},
+            .b = {},
+            .want = true,
+        },
+        Testcase{
+            .name = "same_structure",
+            .a = TestHotkeys(
+                {
+                    {
+                        .name = "hk1",
+                        .keysets = Keysets({{1}}),
+                        .equipsets = TestEquipsets({"a", "b", "c"}, 0),
+                    },
+                },
+                0
+            ),
+            .b = TestHotkeys(
+                {
+                    {
+                        .name = "hk2",
+                        .keysets = Keysets({{1}}),
+                        .equipsets = TestEquipsets({"a", "b", "c"}, 1),
+                    },
+                },
+                -1
+            ),
+            .want = true,
+        },
+        Testcase{
+            .name = "different_keysets",
+            .a = TestHotkeys(
+                {
+                    {
+                        .name = "hk1",
+                        .keysets = {},
+                        .equipsets = TestEquipsets({"a", "b", "c"}, 0),
+                    },
+                },
+                0
+            ),
+            .b = TestHotkeys(
+                {
+                    {
+                        .name = "hk2",
+                        .keysets = Keysets({{1}}),
+                        .equipsets = TestEquipsets({"a", "b", "c"}, 1),
+                    },
+                },
+                -1
+            ),
+            .want = false,
+        },
+        Testcase{
+            .name = "different_equipsets",
+            .a = TestHotkeys(
+                {
+                    {
+                        .name = "hk1",
+                        .keysets = Keysets({{1}}),
+                        .equipsets = TestEquipsets({"a", "b"}, 0),
+                    },
+                },
+                0
+            ),
+            .b = TestHotkeys(
+                {
+                    {
+                        .name = "hk2",
+                        .keysets = Keysets({{1}}),
+                        .equipsets = TestEquipsets({"a", "b", "c"}, 1),
+                    },
+                },
+                -1
+            ),
+            .want = false,
+        },
+        Testcase{
+            .name = "different_hotkeys",
+            .a = {},
+            .b = TestHotkeys(
+                {
+                    {
+                        .name = "hk2",
+                        .keysets = Keysets({{1}}),
+                        .equipsets = TestEquipsets({"a", "b", "c"}, 1),
+                    },
+                },
+                -1
+            ),
+            .want = false,
+        }
+    );
+
+    CAPTURE(testcase.name);
+    auto got = testcase.a.StructurallyEquals(testcase.b);
+    REQUIRE(got == testcase.want);
+}
+
 }  // namespace ech

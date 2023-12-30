@@ -111,6 +111,28 @@ class Hotkeys final {
         return *this;
     }
 
+    /// Checks for equality of inner keyset and equipset data. Ignores hotkey names and
+    /// hotkey/equipset selection state.
+    bool
+    StructurallyEquals(const Hotkeys& other) const
+    requires(std::equality_comparable<Q>)
+    {
+        if (vec().size() != other.vec().size()) {
+            return false;
+        }
+        for (size_t i = 0; i < vec().size(); i++) {
+            const Hotkey<Q>& a = vec()[i];
+            const Hotkey<Q>& b = other.vec()[i];
+            if (a.keysets.vec() != b.keysets.vec()) {
+                return false;
+            }
+            if (a.equipsets.vec() != b.equipsets.vec()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
   private:
     std::vector<Hotkey<Q>> hotkeys_;
     size_t selected_ = size_t(-1);

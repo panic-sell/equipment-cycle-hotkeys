@@ -124,7 +124,11 @@ class InputHook final {
         auto lock = std::scoped_lock(*ui_mutex_, *hotkeys_mutex_);
         auto& io = ImGui::GetIO();
         if (ui_->IsActive()) {
-            ui_->Deactivate(*hotkeys_);
+            auto new_hotkeys = ui_->Deactivate();
+            if (!hotkeys_->StructurallyEquals(new_hotkeys)) {
+                // This also resets selected hotkey/equipset state.
+                *hotkeys_ = std::move(new_hotkeys);
+            }
             io.MouseDrawCursor = false;
         } else {
             ui_->Activate(*hotkeys_);

@@ -189,30 +189,25 @@ class UI final {
         return active_;
     }
 
-    /// `hotkeys` is used to populates UI data.
+    /// `hotkeys` is used to populate UI data.
     void
     Activate(const Hotkeys<>& hotkeys) {
-        ReloadProfileCache();
         hotkeys_ui = HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
         if (selected_hotkey >= hotkeys_ui.size()) {
             selected_hotkey = 0;
         }
+        ReloadProfileCache();
         active_ = true;
     }
 
-    /// Discards UI data.
-    void
+    /// Returns UI data converted to Hotkeys data. UI data is then discarded.
+    Hotkeys<>
     Deactivate() {
-        profile_cache.clear();
+        auto hotkeys = hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
         hotkeys_ui = {};
+        profile_cache.clear();
         active_ = false;
-    }
-
-    /// Syncs `hotkeys` with UI data prior to discarding that data.
-    void
-    Deactivate(Hotkeys<>& hotkeys) {
-        hotkeys = hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
-        Deactivate();
+        return hotkeys;
     }
 
     void
