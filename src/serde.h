@@ -177,7 +177,7 @@ tag_invoke(
         }
 
         auto extra_health = internal::GetSerObjField<float>(jo, "extra_health", ctx)
-                                .value_or(Gear::kExtraHealthNone);
+                                .value_or(std::numeric_limits<float>::quiet_NaN());
 
         RE::EnchantmentItem* extra_ench = nullptr;
         auto ee_mod =

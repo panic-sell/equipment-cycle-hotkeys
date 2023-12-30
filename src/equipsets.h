@@ -13,6 +13,7 @@ namespace ech {
 class Equipset final {
   public:
     Equipset() = default;
+    bool operator==(const Equipset&) const = default;
 
     explicit Equipset(std::vector<GearOrSlot> items) : items_(std::move(items)) {
         std::stable_sort(

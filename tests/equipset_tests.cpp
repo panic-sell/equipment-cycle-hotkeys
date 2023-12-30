@@ -24,29 +24,6 @@ GearForTest(Gearslot slot) {
 
 using TestEquipsets = Equipsets<int>;
 
-bool
-operator==(const Gear& a, const Gear& b) {
-    return a.slot() == b.slot();
-}
-
-bool
-operator==(const GearOrSlot& a, const GearOrSlot& b) {
-    const auto* ag = a.gear();
-    const auto* bg = b.gear();
-    if (ag && bg) {
-        return *ag == *bg;
-    }
-    if (!ag && !bg) {
-        return a.slot() == b.slot();
-    }
-    return false;
-}
-
-bool
-operator==(const Equipset& a, const Equipset& b) {
-    return a.vec() == b.vec();
-}
-
 TEST_CASE("Equipset ctor") {
     struct Testcase {
         std::string_view name;

@@ -51,7 +51,15 @@ struct fmt::formatter<ech::Gearslot> : fmt::formatter<std::string_view> {
 namespace ech {
 namespace internal {
 
-static std::optional<Gearslot>
+inline bool
+ExtraHealthEq(float a, float b) {
+    if (std::isnan(a) && std::isnan(b)) {
+        return true;
+    }
+    return std::fabsf(a - b) < .001f;
+}
+
+inline std::optional<Gearslot>
 GetExpectedGearslot(const RE::TESForm* form, bool prefer_left) {
     if (!form) {
         return std::nullopt;
@@ -165,8 +173,6 @@ UnequipGear(RE::ActorEquipManager& aem, RE::Actor& actor, Gearslot slot) {
 /// - `extra_ench == nullptr` indicates weapon/shield does not have custom enchantment.
 class Gear final {
   public:
-    static constexpr float kExtraHealthNone = std::numeric_limits<float>::quiet_NaN();
-
     const RE::TESForm&
     form() const {
         return *form_;
@@ -187,13 +193,20 @@ class Gear final {
         return extra_ench_;
     }
 
+    bool
+    operator==(const Gear& other) const {
+        return form_ == other.form_ && slot_ == other.slot_
+               && internal::ExtraHealthEq(extra_health_, other.extra_health_)
+               && extra_ench_ == other.extra_ench_;
+    }
+
     /// Returns nullopt if `form` is not a supported gear type.
     ///
     /// `prefer_left` is ignored if `form` is not a 1h spell/weapon.
     static std::optional<Gear>
     New(RE::TESForm* form,
         bool prefer_left = false,
-        float extra_health = kExtraHealthNone,
+        float extra_health = std::numeric_limits<float>::quiet_NaN(),
         RE::EnchantmentItem* extra_ench = nullptr) {
         return internal::GetExpectedGearslot(form, prefer_left).transform([&](Gearslot slot) {
             return Gear(form, slot, extra_health, extra_ench);
@@ -313,7 +326,7 @@ class Gear final {
             return std::nullopt;
         }
 
-        auto extra_health = kExtraHealthNone;
+        auto extra_health = std::numeric_limits<float>::quiet_NaN();
         RE::EnchantmentItem* extra_ench = nullptr;
 
         tes_util::ForEachExtraList(ied, [&](const RE::ExtraDataList& xl) {
@@ -356,7 +369,7 @@ class Gear final {
         }
 
         auto equipped = false;
-        auto extra_health = kExtraHealthNone;
+        auto extra_health = std::numeric_limits<float>::quiet_NaN();
         RE::EnchantmentItem* extra_ench = nullptr;
 
         tes_util::ForEachExtraList(ied, [&](const RE::ExtraDataList& xl) {
@@ -506,18 +519,20 @@ class Gear final {
 
     bool
     MatchesExtraList(const RE::ExtraDataList& xl) const {
-        const auto* a = xl.GetByType<RE::ExtraEnchantment>();
-        auto* extra_ench = a ? a->enchantment : nullptr;
-        if (extra_ench != extra_ench_) {
+        const auto* xl_extra_health = xl.GetByType<RE::ExtraHealth>();
+        if (!internal::ExtraHealthEq(
+                extra_health_,
+                xl_extra_health ? xl_extra_health->health : std::numeric_limits<float>::quiet_NaN()
+            )) {
             return false;
         }
 
-        const auto* b = xl.GetByType<RE::ExtraHealth>();
-        auto extra_health = b ? b->health : kExtraHealthNone;
-        if (std::isnan(extra_health) && std::isnan(extra_health_)) {
-            return true;
+        const auto* xl_extra_ench = xl.GetByType<RE::ExtraEnchantment>();
+        if (extra_ench_ != (xl_extra_ench ? xl_extra_ench->enchantment : nullptr)) {
+            return false;
         }
-        return std::fabsf(extra_health - extra_health_) < .001f;
+
+        return true;
     }
 
     /// Returns the first matching `RE::ExtraDataList` from `ied` along with the number of extra
@@ -576,8 +591,8 @@ class Gear final {
 
     RE::TESForm* form_;
     Gearslot slot_;
-    float extra_health_ = kExtraHealthNone;
-    RE::EnchantmentItem* extra_ench_ = nullptr;
+    float extra_health_;
+    RE::EnchantmentItem* extra_ench_;
 
     friend Gear GearForTest(Gearslot);
 };
@@ -604,6 +619,19 @@ class GearOrSlot final {
             return *slot;
         }
         return static_cast<Gearslot>(0);
+    }
+
+    bool
+    operator==(const GearOrSlot& other) const {
+        const auto* a = gear();
+        const auto* b = other.gear();
+        if (a && b) {
+            return *a == *b;
+        }
+        if (!a && !b) {
+            return slot() == other.slot();
+        }
+        return false;
     }
 
   private:
