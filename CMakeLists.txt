@@ -63,8 +63,9 @@ target_link_libraries(${DEV_APP_NAME} PRIVATE ${PROJECT_NAME})
 set(TEST_NAME "${PROJECT_NAME}_Tests")
 
 find_package(Catch2 CONFIG REQUIRED)
-add_executable(${TEST_NAME} ${headers} ${tests})
+add_executable(${TEST_NAME} ${headers} "tests/test_util.h" ${tests})
 target_precompile_headers(${TEST_NAME} PRIVATE "tests/pch.h")
+target_include_directories(${PROJECT_NAME} PRIVATE "tests")
 target_link_libraries(${TEST_NAME} PRIVATE
     ${PROJECT_NAME}
     Catch2::Catch2WithMain

@@ -177,7 +177,11 @@ class UI final {
     size_t selected_hotkey = 0;
     std::string export_profile;
 
-    UI(std::string profile_dir = fs::kProfileDir) : profile_dir_(std::move(profile_dir)) {}
+    UI(std::string profile_dir = fs::kProfileDir) : profile_dir_(std::move(profile_dir)) {
+        while (profile_dir_.ends_with('/')) {
+            profile_dir_.pop_back();
+        }
+    }
 
     /// Intent for UI visibility. Something else has to realize this intent.
     bool

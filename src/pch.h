@@ -136,3 +136,5 @@
 
 using namespace std::literals;
 using namespace REL::literals;
+
+#define ECH_NAME "EquipmentCycleHotkeys"

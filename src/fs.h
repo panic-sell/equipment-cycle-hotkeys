@@ -5,13 +5,13 @@ namespace ech {
 namespace fs {
 
 #ifndef ECH_UI_DEV
-inline constexpr const char* kSettingsPath = "Data/SKSE/Plugins/EquipmentCycleHotkeys.json";
-inline constexpr const char* kImGuiIniPath = "Data/SKSE/Plugins/EquipmentCycleHotkeys_imgui.ini";
-inline constexpr const char* kProfileDir = "Data/SKSE/Plugins/EquipmentCycleHotkeys";
+inline constexpr const char* kProfileDir = "Data/SKSE/Plugins/" ECH_NAME;
+inline constexpr const char* kSettingsPath = "Data/SKSE/Plugins/" ECH_NAME ".json";
+inline constexpr const char* kImGuiIniPath = "Data/SKSE/Plugins/" ECH_NAME "_imgui.ini";
 #else
-inline constexpr const char* kSettingsPath = ".ech/EquipmentCycleHotkeys.json";
-inline constexpr const char* kImGuiIniPath = ".ech/EquipmentCycleHotkeys_imgui.ini";
-inline constexpr const char* kProfileDir = ".ech/EquipmentCycleHotkeys";
+inline constexpr const char* kProfileDir = ".ech/" ECH_NAME;
+inline constexpr const char* kSettingsPath = ".ech/" ECH_NAME ".json";
+inline constexpr const char* kImGuiIniPath = ".ech/" ECH_NAME "_imgui.ini";
 #endif
 
 inline std::optional<std::filesystem::path>
