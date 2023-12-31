@@ -91,7 +91,7 @@ class EquipsetUI final : public std::array<EsItemUI, kGearslots.size()> {
 
 template <typename Q>
 struct HotkeyUI final {
-    std::string name = "Hotkey";
+    std::string name;
     std::vector<Keyset> keysets;
     std::vector<Q> equipsets;
 };

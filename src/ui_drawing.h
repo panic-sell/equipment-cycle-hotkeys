@@ -139,18 +139,18 @@ struct Table final {
 
     std::pair<Action, TableRowChanges>
     DrawDragButton(size_t row, ImGuiDir dir) const {
-        Action a;
+        auto action = Action();
         TableRowChanges trc;
         if (dir == ImGuiDir_Up) {
             if (ImGui::ArrowButton("up", dir) && row > 0) {
-                a = [&viewmodel = viewmodel, row]() {
+                action = [&viewmodel = viewmodel, row]() {
                     std::swap(viewmodel[row], viewmodel[row - 1]);
                 };
                 trc = {.drag_source = row, .drag_target = row - 1};
             }
         } else if (dir == ImGuiDir_Down) {
             if (ImGui::ArrowButton("down", dir) && row + 1 < rows()) {
-                a = [&viewmodel = viewmodel, row]() {
+                action = [&viewmodel = viewmodel, row]() {
                     std::swap(viewmodel[row], viewmodel[row + 1]);
                 };
                 trc = {.drag_source = row, .drag_target = row + 1};
@@ -168,7 +168,7 @@ struct Table final {
         if (ImGui::BeginDragDropTarget()) {
             if (const auto* payload = ImGui::AcceptDragDropPayload(id)) {
                 auto src_row = *static_cast<const size_t*>(payload->Data);
-                a = [&viewmodel = viewmodel, src_row, row]() {
+                action = [&viewmodel = viewmodel, src_row, row]() {
                     auto item = std::move(viewmodel[src_row]);
                     viewmodel.erase(viewmodel.begin() + src_row);
                     viewmodel.insert(viewmodel.begin() + row, std::move(item));
@@ -178,7 +178,7 @@ struct Table final {
             ImGui::EndDragDropTarget();
         }
 
-        return {a, trc};
+        return {action, trc};
     }
 };
 
@@ -188,7 +188,7 @@ DrawImportMenu(UI& ui) {
         return {};
     }
 
-    Action action;
+    auto action = Action();
     const auto& profiles = ui.GetSavedProfiles();
     if (profiles.empty()) {
         ImGui::Text("No saved profiles.");
@@ -215,7 +215,7 @@ DrawImportMenu(UI& ui) {
 
 inline Action
 DrawExportMenu(UI& ui) {
-    Action action;
+    auto action = Action();
     auto confirm_export = false;
     if (ImGui::BeginMenu("Export")) {
         ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ui.export_name);
@@ -266,18 +266,23 @@ DrawHotkeyList(UI& ui) {
         .headers = std::array{""},
         .viewmodel = ui.hotkeys_ui,
         .draw_cell = [&ui](const HotkeyUI<EquipsetUI>& hotkey, size_t row, size_t) -> Action {
-            const char* label = hotkey.name.empty() ? "(Unnamed)" : hotkey.name.c_str();
-            if (!ImGui::RadioButton(label, row == ui.hotkey_in_focus)) {
-                return {};
+            auto a = Action();
+            if (ImGui::RadioButton("##hotkey_radio", row == ui.hotkey_in_focus)) {
+                a = [&ui, row]() { ui.hotkey_in_focus = row; };
             }
-            return [&ui, row]() { ui.hotkey_in_focus = row; };
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+            ImGui::InputTextWithHint(
+                "##hotkey_name", "Hotkey Name", const_cast<std::string*>(&hotkey.name)
+            );
+            return a;
         },
         .draw_drag_tooltip = [](const HotkeyUI<EquipsetUI>& hotkey
                              ) { ImGui::Text("%s", hotkey.name.c_str()); },
     };
 
     auto atrc = table.Draw();
-    if (ImGui::Button("New", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+    if (ImGui::Button("New Hotkey", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         auto a = [&ui]() {
             ui.hotkeys_ui.emplace_back();
             // Adding a new hotkey puts that hotkey in focus.
@@ -307,11 +312,6 @@ DrawHotkeyList(UI& ui) {
     };
 }
 
-inline void
-DrawName(HotkeyUI<EquipsetUI>& hotkey) {
-    ImGui::InputTextWithHint("Hotkey Name", "Enter hotkey name...", &hotkey.name);
-}
-
 inline Action
 DrawKeysets(std::vector<Keyset>& keysets) {
     constexpr auto keycode_names = []() {
@@ -333,7 +333,7 @@ DrawKeysets(std::vector<Keyset>& keysets) {
                 return {};
             }
 
-            Action action;
+            auto action = Action();
             for (uint32_t opt_keycode = 0; opt_keycode < keycode_names.size(); opt_keycode++) {
                 const char* opt = keycode_names[opt_keycode];
                 if (!*opt) {
@@ -381,7 +381,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
         arr[static_cast<size_t>(EsItemUI::Choice::kUnequip)] = "(Unequip)";
         return arr;
     }();
-    constexpr auto item_to_str = [](const EsItemUI& item) -> const char* {
+    constexpr auto item_to_str = [](const EsItemUI& item) {
         if (item.canonical_choice() == EsItemUI::Choice::kGear) {
             return item.gos.gear()->form().GetName();
         }
@@ -407,7 +407,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
                 opts[static_cast<size_t>(EsItemUI::Choice::kGear)] = gear->form().GetName();
             }
 
-            Action action;
+            auto action = Action();
             for (size_t i = 0; i < opts.size(); i++) {
                 const char* opt = opts[i];
                 if (!*opt) {
@@ -485,7 +485,7 @@ Draw(UI& ui) {
         "Equipment Cycle Hotkeys", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
     );
 
-    internal::Action action;
+    auto action = internal::Action();
 
     // Menu bar.
     if (ImGui::BeginMenuBar()) {
@@ -514,9 +514,7 @@ Draw(UI& ui) {
     ImGui::BeginChild("hotkey_in_focus", ImVec2(.0f, .0f));
     if (ui.hotkey_in_focus < ui.hotkeys_ui.size()) {
         auto& hotkey = ui.hotkeys_ui[ui.hotkey_in_focus];
-        internal::DrawName(hotkey);
 
-        ImGui::Dummy(ImVec2(.0f, ImGui::GetTextLineHeight()));
         if (auto a = internal::DrawKeysets(hotkey.keysets)) {
             action = a;
         }
