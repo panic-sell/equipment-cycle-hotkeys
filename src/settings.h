@@ -10,8 +10,8 @@ struct Settings final {
     float menu_font_scale = 1.f;
     std::string menu_color_style = "dark";
     Keysets menu_toggle_keysets = Keysets({
-        {KeycodeFromName("LShift"), KeycodeFromName("=")},
-        {KeycodeFromName("RShift"), KeycodeFromName("=")},
+        {KeycodeFromName("LShift"), KeycodeFromName("\\")},
+        {KeycodeFromName("RShift"), KeycodeFromName("\\")},
     });
 };
 

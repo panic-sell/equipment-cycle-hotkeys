@@ -207,13 +207,12 @@ DrawProfilesMenu(UI& ui) {
                     continue;
                 }
                 action = [&ui, profile]() {
-                    ui.status_msg.show = true;
                     if (ui.ImportProfile(profile)) {
-                        ui.status_msg.value = std::format("Profile '{}' imported.", profile);
                         return;
                     }
+                    ui.status.show = true;
                     auto fp = ui.GetProfilePath(profile);
-                    ui.status_msg.value = std::format("FILESYSTEM ERROR: Failed to read '{}'", fp);
+                    ui.status.msg = std::format("FILESYSTEM ERROR: Failed to read '{}'", fp);
                     SKSE::log::error("importing '{}' aborted: cannot read '{}'", profile, fp);
                 };
             }
@@ -233,13 +232,12 @@ DrawProfilesMenu(UI& ui) {
         }
         if (ImGui::Button("Yes")) {
             action = [&ui]() {
-                ui.status_msg.show = true;
                 if (ui.ExportProfile()) {
-                    ui.status_msg.value = std::format("Profile '{}' exported.", ui.export_name);
                     return;
                 }
+                ui.status.show = true;
                 auto fp = ui.GetProfilePath(ui.export_name);
-                ui.status_msg.value = std::format("FILESYSTEM ERROR: Failed to write '{}'", fp);
+                ui.status.msg = std::format("FILESYSTEM ERROR: Failed to write '{}'", fp);
                 SKSE::log::error("exporting '{}' aborted: cannot write '{}'", ui.export_name, fp);
             };
             ImGui::CloseCurrentPopup();
@@ -368,7 +366,7 @@ DrawKeysets(std::vector<Keyset>& keysets) {
 }
 
 inline Action
-DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
+DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
     constexpr auto opts_template = []() {
         auto arr = std::array{"", "", ""};
         arr[static_cast<size_t>(EsItemUI::Choice::kIgnore)] = "(Ignore)";
@@ -436,14 +434,16 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
     ImGui::SeparatorText("Equipsets");
     auto action = table.Draw().first;
     if (ImGui::Button("Add Currently Equipped", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        action = [&equipsets]() {
+        action = [&equipsets, &status]() {
 #ifndef ECH_UI_DEV
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (!player) {
-                SKSE::log::error("cannot get RE::PlayerCharacter instance");
+                equipsets.push_back(EquipsetUI::From(Equipset::FromEquipped(*player)));
                 return;
             }
-            equipsets.push_back(EquipsetUI::From(Equipset::FromEquipped(*player)));
+            status.show = true;
+            status.msg = "INTERNAL ERROR: Failed to get RE::PlayerCharacter instance.";
+            SKSE::log::error("cannot get RE::PlayerCharacter instance");
 #else
             equipsets.emplace_back();
 #endif
@@ -453,14 +453,14 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
 }
 
 inline Action
-DrawStatusPopup(UI::StatusMsg& status_msg) {
+DrawStatusPopup(UI::Status& status) {
     auto action = Action();
-    if (status_msg.show) {
-        action = [&status_msg]() { status_msg.show = false; };
+    if (status.show) {
+        action = [&status]() { status.show = false; };
         ImGui::OpenPopup("status");
     }
     if (ImGui::BeginPopup("status")) {
-        ImGui::Text(status_msg.value.c_str());
+        ImGui::Text(status.msg.c_str());
         ImGui::EndPopup();
     }
     return action;
@@ -518,13 +518,13 @@ Draw(UI& ui) {
         }
 
         ImGui::Dummy(ImVec2(.0f, ImGui::GetTextLineHeight()));
-        if (auto a = internal::DrawEquipsets(hotkey.equipsets)) {
+        if (auto a = internal::DrawEquipsets(hotkey.equipsets, ui.status)) {
             action = a;
         }
     }
     ImGui::EndChild();
 
-    if (auto a = internal::DrawStatusPopup(ui.status_msg)) {
+    if (auto a = internal::DrawStatusPopup(ui.status)) {
         action = a;
     }
 

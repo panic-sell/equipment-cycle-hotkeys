@@ -1,17 +1,17 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-  "name": "equipment-cycle-hotkeys",
-  "version-string": "1.0.0",
-  "dependencies": [
-    "boost-json",
-    "catch2",
-    "commonlibsse-ng-flatrim",
-    {
-      "name": "imgui",
-      "features": [
-        "dx11-binding",
-        "win32-binding"
-      ]
-    }
-  ]
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "name": "equipment-cycle-hotkeys",
+    "version-string": "1.0.0",
+    "dependencies": [
+        "boost-json",
+        "catch2",
+        "commonlibsse-ng-flatrim",
+        {
+            "name": "imgui",
+            "features": [
+                "dx11-binding",
+                "win32-binding"
+            ]
+        }
+    ]
 }

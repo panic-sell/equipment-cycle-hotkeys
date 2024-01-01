@@ -83,7 +83,7 @@ add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 
 # Example contents:
 # set(DLL_FOLDER "C:/mo2_skyrimse/mods/Equipment Cycle Hotkeys/SKSE/Plugins")
-include("misc/dll_folder.cmake" OPTIONAL)
+include("config/dll_folder.cmake" OPTIONAL)
 
 if(DEFINED DLL_FOLDER)
     message(STATUS "SKSE plugin output folder: ${DLL_FOLDER}")

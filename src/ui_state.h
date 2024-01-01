@@ -171,17 +171,18 @@ class UI final {
   public:
     HotkeysUI<EquipsetUI> hotkeys_ui;
 
-    // The hotkey being edited.
+    /// The hotkey being edited.
     size_t hotkey_in_focus = 0;
 
-    // Profile name to use when exporting.
+    /// Profile name to use when exporting.
     std::string export_name;
 
-    // Generic popup for messages.
-    struct StatusMsg final {
+    /// Generic popup for (mainly error) messages.
+    struct Status final {
+        /// Whether to call `ImGui::OpenPopup()`.
         bool show = false;
-        std::string value;
-    } status_msg;
+        std::string msg;
+    } status;
 
     UI(std::string profile_dir = fs::kProfileDir) : profile_dir_(std::move(profile_dir)) {}
 
