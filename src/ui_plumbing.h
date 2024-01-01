@@ -150,8 +150,8 @@ class InputHook final {
             if (!button) {
                 continue;
             }
-            CaptureMouseInput(*button) || CaptureKeyboardInput(*button)
-                || CaptureGamepadInput(*button);
+            CaptureMouseInput(*button) || CaptureGamepadInput(*button)
+                || CaptureKeyboardInput(*button);
         }
         return true;
     }
@@ -164,13 +164,12 @@ class InputHook final {
 
         auto& io = ImGui::GetIO();
         auto scancode = button.GetIDCode();
-        auto is_pressed = button.IsPressed();
 
-        if (scancode < ImGuiMouseButton_COUNT) {  // Ignore keycodes 261-263.
-            io.AddMouseButtonEvent(scancode, is_pressed);
-        } else if (scancode == 8) {  // Keycode 264
+        if (scancode < ImGuiMouseButton_COUNT) {  // ignore keycodes 261-263
+            io.AddMouseButtonEvent(scancode, button.IsPressed());
+        } else if (scancode == 8) {  // keycode 264
             io.AddMouseWheelEvent(0, 1);
-        } else if (scancode == 9) {  // Keycode 265
+        } else if (scancode == 9) {  // keycode 265
             io.AddMouseWheelEvent(0, -1);
         }
         return true;
@@ -181,7 +180,13 @@ class InputHook final {
         if (button.GetDevice() != RE::INPUT_DEVICE::kGamepad) {
             return false;
         }
-        // TODO
+
+        auto& io = ImGui::GetIO();
+        auto keycode = KeycodeFromScancode(button.GetIDCode(), button.GetDevice());
+        auto imgui_key = ImGuiKeyFromKeycode(keycode);
+        if (imgui_key != ImGuiKey_None) {
+            io.AddKeyEvent(imgui_key, button.IsPressed());
+        }
         return true;
     }
 
@@ -194,7 +199,7 @@ class InputHook final {
         auto& io = ImGui::GetIO();
         auto scancode = button.GetIDCode();
         auto is_pressed = button.IsPressed();
-        auto imgui_key = ImGuiKeyFromKeycode(scancode);
+        auto imgui_key = ImGuiKeyFromKeycode(scancode);  // scancode == keycode for keyboard
         if (imgui_key == ImGuiKey_None) {
             return true;
         }
