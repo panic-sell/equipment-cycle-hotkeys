@@ -282,8 +282,8 @@ class UI final {
         return std::format("{}/{}{}", profile_dir_, profile, kExt);
     }
 
-    /// Returns the list of profiles current saved to disk. This cache refreshed on the next call to
-    /// `Activate()`, `Deactivate()`, or `ExportProfile()`.
+    /// Returns the list of profiles current saved to disk. This cache is refreshed on the next call
+    /// to `Activate()`, `Deactivate()`, or `ExportProfile()`.
     const std::vector<std::string>&
     GetSavedProfiles() {
         if (saved_profiles_) {

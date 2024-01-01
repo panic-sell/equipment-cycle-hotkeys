@@ -183,48 +183,43 @@ struct Table final {
 };
 
 inline Action
-DrawImportMenu(UI& ui) {
-    if (!ImGui::BeginMenu("Import")) {
-        return {};
-    }
-
+DrawProfilesMenu(UI& ui) {
     auto action = Action();
-    const auto& profiles = ui.GetSavedProfiles();
-    if (profiles.empty()) {
-        ImGui::Text("No saved profiles.");
-    } else {
-        for (const auto& profile : profiles) {
-            if (!ImGui::MenuItem(profile.c_str())) {
-                continue;
-            }
-            action = [&ui, profile]() {
-                if (!ui.ImportProfile(profile)) {
+    auto confirm_export = false;
+
+    if (ImGui::BeginMenu("Profiles")) {
+        // Export new profile.
+        ImGui::InputTextWithHint("##export_name", "Profile Name", &ui.export_name);
+        if (ImGui::IsItemDeactivated()) {
+            action = [&ui]() { ui.NormalizeExportName(); };
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Export")) {
+            ui.NormalizeExportName();
+            confirm_export = !ui.export_name.empty();
+        }
+
+        // List of importable profiles.
+        auto profiles = ui.GetSavedProfiles();
+        if (!profiles.empty()) {
+            ImGui::SeparatorText("Import");
+            for (const auto& profile : profiles) {
+                if (!ImGui::MenuItem(profile.c_str())) {
+                    continue;
+                }
+                action = [&ui, profile]() {
+                    if (ui.ImportProfile(profile)) {
+                        return;
+                    }
                     SKSE::log::error(
                         "importing '{}' aborted: cannot read '{}'",
                         profile,
                         ui.GetProfilePath(profile)
                     );
-                }
-            };
+                };
+            }
         }
-    }
 
-    ImGui::EndMenu();
-    return action;
-}
-
-inline Action
-DrawExportMenu(UI& ui) {
-    auto action = Action();
-    auto confirm_export = false;
-    if (ImGui::BeginMenu("Export")) {
-        ImGui::InputTextWithHint("##new_profile", "Enter profile name...", &ui.export_name);
-        if (ImGui::IsItemDeactivated()) {
-            action = [&ui]() { ui.NormalizeExportName(); };
-        }
-        if (ImGui::Button("Export Profile")) {
-            confirm_export = !ui.export_name.empty();
-        }
         ImGui::EndMenu();
     }
 
@@ -235,7 +230,7 @@ DrawExportMenu(UI& ui) {
         if (auto existing_profile = ui.GetSavedProfileMatchingExportName()) {
             ImGui::Text("Overwrite profile '%s'?", existing_profile->data());
         } else {
-            ImGui::Text("Save as profile '%s'?", ui.export_name.c_str());
+            ImGui::Text("Save as new profile '%s'?", ui.export_name.c_str());
         }
         if (ImGui::Button("Yes")) {
             action = [&ui]() {
@@ -489,10 +484,7 @@ Draw(UI& ui) {
 
     // Menu bar.
     if (ImGui::BeginMenuBar()) {
-        if (auto a = internal::DrawImportMenu(ui)) {
-            action = a;
-        }
-        if (auto a = internal::DrawExportMenu(ui)) {
+        if (auto a = internal::DrawProfilesMenu(ui)) {
             action = a;
         }
         ImGui::EndMenuBar();
