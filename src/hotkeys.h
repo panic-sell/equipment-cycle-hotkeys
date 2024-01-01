@@ -18,7 +18,7 @@ struct Hotkey final {
 ///
 /// Invariants:
 /// - All hotkeys have at least 1 keyset or at least 1 equipset.
-/// - `selected_ == size_t(-1)` means no hotkeys are selected.
+/// - `selected_ == SIZE_MAX` means no hotkeys are selected.
 /// - Throughout an instance's lifetime, every contained equipset has a stable, distinct pointer.
 ///
 /// This class is templated by "equipset" to facilitate unit testing. We swap out the real Equipset
@@ -29,7 +29,10 @@ class Hotkeys final {
     Hotkeys() = default;
 
     /// `initial_selection` applies AFTER pruning hotkeys.
-    explicit Hotkeys(std::vector<Hotkey<Q>> hotkeys, size_t initial_selection = -1)
+    explicit Hotkeys(
+        std::vector<Hotkey<Q>> hotkeys,
+        size_t initial_selection = std::numeric_limits<size_t>::max()
+    )
         : hotkeys_(std::move(hotkeys)),
           selected_(initial_selection) {
         std::erase_if(hotkeys_, [](const Hotkey<Q>& hk) {
@@ -55,7 +58,7 @@ class Hotkeys final {
     /// equipset".
     Hotkeys&
     Deselect() {
-        selected_ = size_t(-1);
+        selected_ = std::numeric_limits<size_t>::max();
         return *this;
     }
 
@@ -135,7 +138,7 @@ class Hotkeys final {
 
   private:
     std::vector<Hotkey<Q>> hotkeys_;
-    size_t selected_ = size_t(-1);
+    size_t selected_ = std::numeric_limits<size_t>::max();
 };
 
 }  // namespace ech

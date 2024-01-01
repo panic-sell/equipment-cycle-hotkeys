@@ -10,7 +10,6 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 ###########################################################
 
 set(headers
-    "src/dev_util.h"
     "src/equipsets.h"
     "src/event_handler.h"
     "src/fs.h"

@@ -5,9 +5,9 @@
 namespace ech {
 
 enum class Gearslot : uint8_t {
-    /// 1h spells, 1h weapons, torches, shields.
+    /// 1h scrolls/spells/weapons, torches, shields.
     kLeft,
-    /// 1h/2h spells, 1h/2h weapons.
+    /// 1h/2h scrolls/spells/weapons.
     kRight,
     /// Arrows or bolts.
     kAmmo,

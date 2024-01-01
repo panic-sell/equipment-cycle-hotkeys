@@ -17,19 +17,6 @@ TEST_CASE("fs read/write file") {
     REQUIRE(*read_contents == contents);
 }
 
-TEST_CASE("fs remove") {
-    auto td = Tempdir();
-
-    REQUIRE(WriteFile(td.path() + "/file.txt", ""));
-    REQUIRE(Remove(td.path() + "/file.txt"));
-
-    REQUIRE(EnsureDirExists(td.path() + "/unnested_dir"));
-    REQUIRE(Remove(td.path() + "/unnested_dir"));
-
-    REQUIRE(EnsureDirExists(td.path() + "/nested_dir/subdir"));
-    REQUIRE(!Remove(td.path() + "/nested_dir"));
-}
-
 TEST_CASE("fs ListDirectory") {
     auto td = Tempdir();
 

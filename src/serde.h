@@ -289,8 +289,8 @@ tag_invoke(
     }
     const auto& jo = jv.get_object();
 
-    auto selected_hotkey =
-        internal::GetSerObjField<size_t>(jo, "selected_hotkey", ctx).value_or(-1);
+    auto selected_hotkey = internal::GetSerObjField<size_t>(jo, "selected_hotkey", ctx)
+                               .value_or(std::numeric_limits<size_t>::max());
     auto hotkeys = internal::GetSerObjField<std::vector<Hotkey<Q>>>(jo, "hotkeys", ctx)
                        .value_or(std::vector<Hotkey<Q>>());
     return Hotkeys<Q>(std::move(hotkeys), selected_hotkey);

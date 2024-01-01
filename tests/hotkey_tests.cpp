@@ -373,16 +373,13 @@ TEST_CASE("Hotkeys structural equality") {
                 },
                 0
             ),
-            .b = TestHotkeys(
+            .b = TestHotkeys({
                 {
-                    {
-                        .name = "hk2",
-                        .keysets = Keysets({{1}}),
-                        .equipsets = TestEquipsets({"a", "b", "c"}, 1),
-                    },
+                    .name = "hk2",
+                    .keysets = Keysets({{1}}),
+                    .equipsets = TestEquipsets({"a", "b", "c"}, 1),
                 },
-                -1
-            ),
+            }),
             .want = true,
         },
         Testcase{
@@ -397,16 +394,13 @@ TEST_CASE("Hotkeys structural equality") {
                 },
                 0
             ),
-            .b = TestHotkeys(
+            .b = TestHotkeys({
                 {
-                    {
-                        .name = "hk2",
-                        .keysets = Keysets({{1}}),
-                        .equipsets = TestEquipsets({"a", "b", "c"}, 1),
-                    },
+                    .name = "hk2",
+                    .keysets = Keysets({{1}}),
+                    .equipsets = TestEquipsets({"a", "b", "c"}, 1),
                 },
-                -1
-            ),
+            }),
             .want = false,
         },
         Testcase{
@@ -421,31 +415,25 @@ TEST_CASE("Hotkeys structural equality") {
                 },
                 0
             ),
-            .b = TestHotkeys(
+            .b = TestHotkeys({
                 {
-                    {
-                        .name = "hk2",
-                        .keysets = Keysets({{1}}),
-                        .equipsets = TestEquipsets({"a", "b", "c"}, 1),
-                    },
+                    .name = "hk2",
+                    .keysets = Keysets({{1}}),
+                    .equipsets = TestEquipsets({"a", "b", "c"}, 1),
                 },
-                -1
-            ),
+            }),
             .want = false,
         },
         Testcase{
             .name = "different_hotkeys",
             .a = {},
-            .b = TestHotkeys(
+            .b = TestHotkeys({
                 {
-                    {
-                        .name = "hk2",
-                        .keysets = Keysets({{1}}),
-                        .equipsets = TestEquipsets({"a", "b", "c"}, 1),
-                    },
+                    .name = "hk2",
+                    .keysets = Keysets({{1}}),
+                    .equipsets = TestEquipsets({"a", "b", "c"}, 1),
                 },
-                -1
-            ),
+            }),
             .want = false,
         }
     );

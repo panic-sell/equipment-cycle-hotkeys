@@ -10,9 +10,9 @@ namespace internal {
 using Action = std::function<void()>;
 
 struct TableRowChanges final {
-    size_t remove = size_t(-1);
-    size_t drag_source = size_t(-1);
-    size_t drag_target = size_t(-1);
+    size_t remove = std::numeric_limits<size_t>::max();
+    size_t drag_source = std::numeric_limits<size_t>::max();
+    size_t drag_target = std::numeric_limits<size_t>::max();
 };
 
 /// A table where rows can be reordered and deleted. Control buttons are located in the rightmost
@@ -140,7 +140,7 @@ struct Table final {
     std::pair<Action, TableRowChanges>
     DrawDragButton(size_t row, ImGuiDir dir) const {
         auto action = Action();
-        TableRowChanges trc;
+        auto trc = TableRowChanges();
         if (dir == ImGuiDir_Up) {
             if (ImGui::ArrowButton("up", dir) && row > 0) {
                 action = [&viewmodel = viewmodel, row]() {

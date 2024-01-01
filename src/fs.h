@@ -70,17 +70,6 @@ WriteFile(std::string_view path, std::string_view contents) {
     return true;
 }
 
-/// Returns false on failure (including file-does-not-exist).
-[[nodiscard]] inline bool
-Remove(std::string_view path) {
-    auto fp = PathFromStr(path);
-    if (!fp) {
-        return false;
-    }
-    std::error_code ec;
-    return std::filesystem::remove(*fp, ec);
-}
-
 /// Will create intermediate directories as needed. Returns false on failure.
 [[nodiscard]] inline bool
 EnsureDirExists(std::string_view path) {
