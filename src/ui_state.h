@@ -170,10 +170,18 @@ class HotkeysUI final : public std::vector<HotkeyUI<Q>> {
 class UI final {
   public:
     HotkeysUI<EquipsetUI> hotkeys_ui;
-    // The hotkey being edited. Persists between activation state changes.
+
+    // The hotkey being edited.
     size_t hotkey_in_focus = 0;
-    // Profile name to use when exporting. Persists between activation state changes.
+
+    // Profile name to use when exporting.
     std::string export_name;
+
+    // Generic popup for messages.
+    struct StatusMsg final {
+        bool show = false;
+        std::string value;
+    } status_msg;
 
     UI(std::string profile_dir = fs::kProfileDir) : profile_dir_(std::move(profile_dir)) {}
 
@@ -335,6 +343,17 @@ class UI final {
             }
         }
         return std::nullopt;
+    }
+
+    static ImVec2
+    GetViewportSize() {
+        static auto sz = std::optional<ImVec2>();
+        if (!sz) {
+            if (const auto* main_viewport = ImGui::GetMainViewport()) {
+                sz.emplace(main_viewport->WorkSize);
+            }
+        }
+        return sz ? *sz : ImVec2(800, 600);
     }
 
   private:

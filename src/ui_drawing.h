@@ -195,7 +195,6 @@ DrawProfilesMenu(UI& ui) {
         }
         ImGui::SameLine();
         if (ImGui::Button("Export")) {
-            ui.NormalizeExportName();
             confirm_export = !ui.export_name.empty();
         }
 
@@ -208,14 +207,14 @@ DrawProfilesMenu(UI& ui) {
                     continue;
                 }
                 action = [&ui, profile]() {
+                    ui.status_msg.show = true;
                     if (ui.ImportProfile(profile)) {
+                        ui.status_msg.value = std::format("Profile '{}' imported.", profile);
                         return;
                     }
-                    SKSE::log::error(
-                        "importing '{}' aborted: cannot read '{}'",
-                        profile,
-                        ui.GetProfilePath(profile)
-                    );
+                    auto fp = ui.GetProfilePath(profile);
+                    ui.status_msg.value = std::format("FILESYSTEM ERROR: Failed to read '{}'", fp);
+                    SKSE::log::error("importing '{}' aborted: cannot read '{}'", profile, fp);
                 };
             }
         }
@@ -234,13 +233,14 @@ DrawProfilesMenu(UI& ui) {
         }
         if (ImGui::Button("Yes")) {
             action = [&ui]() {
-                if (!ui.ExportProfile()) {
-                    SKSE::log::error(
-                        "exporting '{}' aborted: cannot write to '{}'",
-                        ui.export_name,
-                        ui.GetProfilePath(ui.export_name)
-                    );
+                ui.status_msg.show = true;
+                if (ui.ExportProfile()) {
+                    ui.status_msg.value = std::format("Profile '{}' exported.", ui.export_name);
+                    return;
                 }
+                auto fp = ui.GetProfilePath(ui.export_name);
+                ui.status_msg.value = std::format("FILESYSTEM ERROR: Failed to write '{}'", fp);
+                SKSE::log::error("exporting '{}' aborted: cannot write '{}'", ui.export_name, fp);
             };
             ImGui::CloseCurrentPopup();
         }
@@ -362,8 +362,7 @@ DrawKeysets(std::vector<Keyset>& keysets) {
     ImGui::SeparatorText("Keysets");
     auto action = table.Draw().first;
     if (ImGui::Button("New", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        auto& keysets_mut = const_cast<std::vector<Keyset>&>(keysets);
-        action = [&keysets_mut]() { keysets_mut.emplace_back(); };
+        action = [&keysets]() { keysets.emplace_back(); };
     }
     return action;
 }
@@ -437,19 +436,32 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
     ImGui::SeparatorText("Equipsets");
     auto action = table.Draw().first;
     if (ImGui::Button("Add Currently Equipped", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        auto& equipset_mut = const_cast<std::vector<EquipsetUI>&>(equipsets);
-        action = [&equipset_mut]() {
+        action = [&equipsets]() {
 #ifndef ECH_UI_DEV
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (!player) {
                 SKSE::log::error("cannot get RE::PlayerCharacter instance");
                 return;
             }
-            equipset_mut.push_back(EquipsetUI::From(Equipset::FromEquipped(*player)));
+            equipsets.push_back(EquipsetUI::From(Equipset::FromEquipped(*player)));
 #else
-            equipset_mut.emplace_back();
+            equipsets.emplace_back();
 #endif
         };
+    }
+    return action;
+}
+
+inline Action
+DrawStatusPopup(UI::StatusMsg& status_msg) {
+    auto action = Action();
+    if (status_msg.show) {
+        action = [&status_msg]() { status_msg.show = false; };
+        ImGui::OpenPopup("status");
+    }
+    if (ImGui::BeginPopup("status")) {
+        ImGui::Text(status_msg.value.c_str());
+        ImGui::EndPopup();
     }
     return action;
 }
@@ -458,29 +470,23 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets) {
 
 inline void
 Draw(UI& ui) {
-    const auto* main_viewport = ImGui::GetMainViewport();
-    if (!main_viewport) {
-        return;
-    }
-    const auto viewport_size = main_viewport->WorkSize;
-
-    const auto window_initial_pos = viewport_size * ImVec2(.1f, .1f);
-    const auto window_initial_size = viewport_size * ImVec2(.5f, .8f);
-    const auto window_min_size = viewport_size * ImVec2(.25f, .25f);
-    const auto hotkeylist_initial_size = viewport_size * ImVec2(.15f, .0f);
-    const auto hotkeylist_min_size = viewport_size * ImVec2(.15f, .0f);
-    constexpr auto max_size =
+    constexpr auto max_dims =
         ImVec2(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+    const auto window_initial_pos = UI::GetViewportSize() * ImVec2(.4f, .1f);
+    const auto window_initial_size = UI::GetViewportSize() * ImVec2(.5f, .8f);
+    const auto window_min_size = UI::GetViewportSize() * ImVec2(.25f, .25f);
+    const auto hotkeylist_initial_size = UI::GetViewportSize() * ImVec2(.15f, .0f);
+    const auto hotkeylist_min_size = UI::GetViewportSize() * ImVec2(.15f, .0f);
+
+    auto action = internal::Action();
 
     // Set up main window.
     ImGui::SetNextWindowPos(window_initial_pos, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(window_initial_size, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(window_min_size, max_size);
+    ImGui::SetNextWindowSizeConstraints(window_min_size, max_dims);
     ImGui::Begin(
         "Equipment Cycle Hotkeys", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
     );
-
-    auto action = internal::Action();
 
     // Menu bar.
     if (ImGui::BeginMenuBar()) {
@@ -491,7 +497,7 @@ Draw(UI& ui) {
     }
 
     // List of hotkeys.
-    ImGui::SetNextWindowSizeConstraints(hotkeylist_min_size, max_size);
+    ImGui::SetNextWindowSizeConstraints(hotkeylist_min_size, max_dims);
     ImGui::BeginChild(
         "hotkey_list", hotkeylist_initial_size, ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX
     );
@@ -517,6 +523,10 @@ Draw(UI& ui) {
         }
     }
     ImGui::EndChild();
+
+    if (auto a = internal::DrawStatusPopup(ui.status_msg)) {
+        action = a;
+    }
 
     ImGui::End();
     if (action) {
