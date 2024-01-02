@@ -214,7 +214,7 @@ class Gear final {
         });
     }
 
-    /// Returns nullopt if `slot` is empty or contains an unsupported gear type.
+    /// Returns nullopt if `slot` is empty.
     ///
     /// This function does not check if the equipped item is in the player's inventory. Suppose the
     /// equipped item is a summoned bound sword; attempting to equip that later (equipping does
@@ -225,35 +225,24 @@ class Gear final {
     /// summoned bound sword to the bound sword spell.
     static std::optional<Gear>
     FromEquipped(RE::Actor& actor, Gearslot slot) {
-        std::optional<Gear> gear;
         switch (slot) {
             case Gearslot::kLeft:
                 // Scroll handling must precede spell handling since scroll subclasses spell.
-                gear = FromEquippedScroll(actor, true)
-                           .or_else([&]() { return FromEquippedSpell(actor, true); })
-                           .or_else([&]() { return FromEquippedWeapon(actor, true); })
-                           .or_else([&]() { return FromEquippedTorch(actor); })
-                           .or_else([&]() { return FromEquippedShield(actor); });
-                break;
+                return FromEquippedScroll(actor, true)
+                    .or_else([&]() { return FromEquippedSpell(actor, true); })
+                    .or_else([&]() { return FromEquippedWeapon(actor, true); })
+                    .or_else([&]() { return FromEquippedTorch(actor); })
+                    .or_else([&]() { return FromEquippedShield(actor); });
             case Gearslot::kRight:
-                gear = FromEquippedScroll(actor, false)
-                           .or_else([&]() { return FromEquippedSpell(actor, false); })
-                           .or_else([&]() { return FromEquippedWeapon(actor, false); });
-                break;
+                return FromEquippedScroll(actor, false)
+                    .or_else([&]() { return FromEquippedSpell(actor, false); })
+                    .or_else([&]() { return FromEquippedWeapon(actor, false); });
             case Gearslot::kAmmo:
-                gear = New(actor.GetCurrentAmmo());
-                break;
+                return New(actor.GetCurrentAmmo());
             case Gearslot::kShout:
-                gear = New(actor.GetActorRuntimeData().selectedPower);
-                break;
+                return New(actor.GetActorRuntimeData().selectedPower);
         }
-
-        if (gear) {
-            SKSE::log::trace("{} contains {}", slot, gear->form());
-        } else {
-            SKSE::log::trace("{} is empty or contains unsupported gear", slot);
-        }
-        return gear;
+        return std::nullopt;
     }
 
     /// When equipping 1h scrolls and weapons, there exists an edge case where if player swaps an

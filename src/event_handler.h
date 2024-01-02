@@ -13,7 +13,7 @@ namespace internal {
 inline void
 InspectEquipped(std::span<const Keystroke> keystrokes, RE::Actor& actor) {
     static const auto keysets = Keysets({{KeycodeFromName("/"), KeycodeFromName("'")}});
-    if (keysets.Match(keystrokes) != Keysets::MatchResult::kPress) {
+    if (keysets.Match(keystrokes) != Keypress::kPress) {
         return;
     }
 
@@ -131,9 +131,12 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*> {
 
         auto lock = std::lock_guard(*hotkeys_mutex_);
         const auto* orig = hotkeys_->GetSelectedEquipset();
-        hotkeys_->SelectNextEquipset(keystroke_buf_);
+        auto press_type = hotkeys_->SelectNextEquipset(keystroke_buf_);
+        if (press_type == Keypress::kNone || press_type == Keypress::kSemihold) {
+            return;
+        }
         const auto* current = hotkeys_->GetSelectedEquipset();
-        if (!current || orig == current) {
+        if (!current || (orig == current && press_type == Keypress::kHold)) {
             return;
         }
         current->Apply(*aem, *player);

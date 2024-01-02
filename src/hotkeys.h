@@ -56,10 +56,9 @@ class Hotkeys final {
 
     /// Ensures no hotkey is selected. Note that this does not change any hotkey's "selected
     /// equipset".
-    Hotkeys&
+    void
     Deselect() {
         selected_ = std::numeric_limits<size_t>::max();
-        return *this;
     }
 
     /// Returns the selected hotkey's selected equipset. Returns nullptr if:
@@ -83,35 +82,35 @@ class Hotkeys final {
     /// hotkey's next ordered equipset.
     /// - If the matching `keystroke` is a press and the hotkey was not already selected, don't
     /// change the selected equipset.
-    Hotkeys&
+    Keypress
     SelectNextEquipset(std::span<const Keystroke> keystrokes) {
         if (keystrokes.empty()) {
-            return *this;
+            return Keypress::kNone;
         }
 
-        auto match_res = Keysets::MatchResult::kNone;
+        auto match_res = Keypress::kNone;
         auto it = std::find_if(hotkeys_.begin(), hotkeys_.end(), [&](const Hotkey<Q>& hotkey) {
             if (hotkey.equipsets.vec().empty()) {
                 return false;
             }
             match_res = hotkey.keysets.Match(keystrokes);
-            return match_res != Keysets::MatchResult::kNone;
+            return match_res != Keypress::kNone;
         });
-        if (it == hotkeys_.end() || match_res == Keysets::MatchResult::kSemihold) {
-            return *this;
+        if (it == hotkeys_.end() || match_res == Keypress::kSemihold) {
+            return match_res;
         }
 
         Hotkey<Q>& hk = *it;
         auto orig_selected = selected_;
         selected_ = it - hotkeys_.begin();
 
-        if (match_res == Keysets::MatchResult::kHold) {
+        if (match_res == Keypress::kHold) {
             hk.equipsets.SelectFirst();
         } else if (selected_ == orig_selected) {
             hk.equipsets.SelectNext();
         }
 
-        return *this;
+        return match_res;
     }
 
     /// Checks for equality of names, keysets data, and equipset data. Ignores hotkey/equipset

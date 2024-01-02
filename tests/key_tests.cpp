@@ -115,7 +115,7 @@ TEST_CASE("Keysets ctor") {
 TEST_CASE("Keysets match") {
     struct Testcase {
         std::string_view name;
-        Keysets::MatchResult want;
+        Keypress want;
         Keysets keysets;
         std::vector<Keystroke> keystrokes;
     };
@@ -123,19 +123,19 @@ TEST_CASE("Keysets match") {
     auto testcase = GENERATE(
         Testcase{
             .name = "both_empty",
-            .want = Keysets::MatchResult::kNone,
+            .want = Keypress::kNone,
             .keysets = {},
             .keystrokes = {},
         },
         Testcase{
             .name = "empty_keystrokes",
-            .want = Keysets::MatchResult::kNone,
+            .want = Keypress::kNone,
             .keysets = Keysets({{1}}),
             .keystrokes = {},
         },
         Testcase{
             .name = "empty_keyset",
-            .want = Keysets::MatchResult::kNone,
+            .want = Keypress::kNone,
             .keysets = {},
             .keystrokes{
                 *Keystroke::New(1, 0.f),
@@ -143,7 +143,7 @@ TEST_CASE("Keysets match") {
         },
         Testcase{
             .name = "keyset_not_subset_of_keystrokes",
-            .want = Keysets::MatchResult::kNone,
+            .want = Keypress::kNone,
             .keysets = Keysets({
                 {1, 2},
                 {4},
@@ -155,56 +155,56 @@ TEST_CASE("Keysets match") {
         },
         Testcase{
             .name = "match_hold",
-            .want = Keysets::MatchResult::kHold,
+            .want = Keypress::kHold,
             .keysets = Keysets({
                 {2, 3, 4},
             }),
             .keystrokes{
-                *Keystroke::New(1, Keysets::kHoldThreshold),
-                *Keystroke::New(2, Keysets::kHoldThreshold),
-                *Keystroke::New(3, Keysets::kHoldThreshold),
-                *Keystroke::New(4, Keysets::kHoldThreshold),
+                *Keystroke::New(1, kKeypressHoldThreshold),
+                *Keystroke::New(2, kKeypressHoldThreshold),
+                *Keystroke::New(3, kKeypressHoldThreshold),
+                *Keystroke::New(4, kKeypressHoldThreshold),
                 *Keystroke::New(5, 0.f),
             },
         },
         Testcase{
             .name = "match_semihold",
-            .want = Keysets::MatchResult::kSemihold,
+            .want = Keypress::kSemihold,
             .keysets = Keysets({
                 {2, 3, 4},
             }),
             .keystrokes{
-                *Keystroke::New(1, Keysets::kHoldThreshold),
-                *Keystroke::New(2, Keysets::kHoldThreshold),
-                *Keystroke::New(3, Keysets::kHoldThreshold),
-                *Keystroke::New(4, Keysets::kHoldThreshold - .01f),
+                *Keystroke::New(1, kKeypressHoldThreshold),
+                *Keystroke::New(2, kKeypressHoldThreshold),
+                *Keystroke::New(3, kKeypressHoldThreshold),
+                *Keystroke::New(4, kKeypressHoldThreshold - .01f),
                 *Keystroke::New(5, 0.f),
             },
         },
         Testcase{
             .name = "match_press",
-            .want = Keysets::MatchResult::kPress,
+            .want = Keypress::kPress,
             .keysets = Keysets({
                 {2, 3, 4},
             }),
             .keystrokes{
-                *Keystroke::New(1, Keysets::kHoldThreshold),
+                *Keystroke::New(1, kKeypressHoldThreshold),
                 *Keystroke::New(2, 0.f),
-                *Keystroke::New(3, Keysets::kHoldThreshold),
-                *Keystroke::New(4, Keysets::kHoldThreshold - .01f),
+                *Keystroke::New(3, kKeypressHoldThreshold),
+                *Keystroke::New(4, kKeypressHoldThreshold - .01f),
                 *Keystroke::New(5, 0.f),
             },
         },
         Testcase{
             .name = "match_multiple_keyset_candidates",
-            .want = Keysets::MatchResult::kPress,
+            .want = Keypress::kPress,
             .keysets = Keysets({
                 {6},
                 {4},  // this gets matched since it precedes "1"
                 {1},
             }),
             .keystrokes{
-                *Keystroke::New(1, Keysets::kHoldThreshold),
+                *Keystroke::New(1, kKeypressHoldThreshold),
                 *Keystroke::New(2, 3.f),
                 *Keystroke::New(3, 2.f),
                 *Keystroke::New(4, 0.f),

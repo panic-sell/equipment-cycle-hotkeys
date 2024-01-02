@@ -34,9 +34,14 @@ class Equipset final {
         });
     }
 
+    const std::vector<GearOrSlot>&
+    vec() const {
+        return items_;
+    }
+
     static Equipset
     FromEquipped(RE::Actor& actor, bool unequip_empty_slots = false) {
-        std::vector<GearOrSlot> items;
+        auto items = std::vector<GearOrSlot>();
         for (auto slot : kGearslots) {
             auto gear = Gear::FromEquipped(actor, slot);
             if (gear) {
@@ -48,9 +53,13 @@ class Equipset final {
         return Equipset(std::move(items));
     }
 
-    const std::vector<GearOrSlot>&
-    vec() const {
-        return items_;
+    bool
+    IsEquipped(RE::Actor& actor) const {
+        auto equipped = FromEquipped(actor, true);
+        return std::all_of(items_.cbegin(), items_.cend(), [&](const GearOrSlot& item) {
+            return std::find(equipped.vec().cbegin(), equipped.vec().cend(), item)
+                   != equipped.vec().cend();
+        });
     }
 
     void

@@ -20,8 +20,9 @@ class RenderHook final {
 
         auto loc = REL::Relocation<uintptr_t>(REL::RelocationID(75461, 77246), REL::Offset(0x9));
         SKSE::AllocTrampoline(14);
-        instance.orig_render_ =
-            SKSE::GetTrampoline().write_call<5>(loc.address(), (void (*)(uint32_t))hook);
+        instance.orig_render_ = SKSE::GetTrampoline().write_call<5>(
+            loc.address(), (void (*)(uint32_t))hook
+        );
     }
 
   private:
@@ -67,8 +68,9 @@ class InputHook final {
         std::mutex& hotkeys_mutex,
         Keysets toggle_keysets
     ) {
-        static auto instance =
-            InputHook(ui, ui_mutex, hotkeys, hotkeys_mutex, std::move(toggle_keysets));
+        static auto instance = InputHook(
+            ui, ui_mutex, hotkeys, hotkeys_mutex, std::move(toggle_keysets)
+        );
         static constexpr auto hook = [](RE::BSTEventSource<RE::InputEvent*>* event_src,
                                         RE::InputEvent* const* events) {
             instance.Input(event_src, events);
@@ -117,7 +119,7 @@ class InputHook final {
     ToggleUI(const RE::InputEvent* events) {
         keystroke_buf_.clear();
         Keystroke::InputEventsToBuffer(events, keystroke_buf_);
-        if (toggle_keysets_.Match(keystroke_buf_) != Keysets::MatchResult::kPress) {
+        if (toggle_keysets_.Match(keystroke_buf_) != Keypress::kPress) {
             return false;
         }
 
@@ -247,8 +249,9 @@ class InputHook final {
 
         uint32_t vk = ::MapVirtualKeyW(scancode, MAPVK_VSC_TO_VK);
         auto buf = std::array<wchar_t, 4>{0};
-        int count =
-            ::ToUnicode(vk, scancode, &vk_keystate[0], &buf[0], static_cast<int>(buf.size()), 0);
+        int count = ::ToUnicode(
+            vk, scancode, &vk_keystate[0], &buf[0], static_cast<int>(buf.size()), 0
+        );
         for (int i = 0; i < count; i++) {
             io.AddInputCharacterUTF16(buf[i]);
         }

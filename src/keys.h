@@ -413,6 +413,17 @@ KeysetNormalized(Keyset keyset) {
     return keyset;
 }
 
+/// Time (in seconds) a button must be pressed in order to be considered a "hold".
+inline constexpr float kKeypressHoldThreshold = .5f;
+
+/// Button press type.
+enum class Keypress {
+    kNone,
+    kPress,
+    kSemihold,
+    kHold,
+};
+
 /// An ordered collection of 0 or more keysets.
 ///
 /// Invariants:
@@ -420,16 +431,6 @@ KeysetNormalized(Keyset keyset) {
 /// - All keysets are normalized.
 class Keysets final {
   public:
-    enum class MatchResult {
-        kNone,
-        kPress,
-        kSemihold,
-        kHold,
-    };
-
-    /// Time (in seconds) a button must be pressed in order to be considered a "hold".
-    static constexpr float kHoldThreshold = .5f;
-
     Keysets() = default;
 
     explicit Keysets(std::vector<Keyset> keysets) : keysets_(std::move(keysets)) {
@@ -446,19 +447,19 @@ class Keysets final {
 
     /// Finds the first keyset matching `keystrokes`, then returns the nature of that
     /// match.
-    MatchResult
+    Keypress
     Match(std::span<const Keystroke> keystrokes) const {
         for (const auto& keyset : keysets_) {
             auto res = MatchOne(keyset, keystrokes);
-            if (res != MatchResult::kNone) {
+            if (res != Keypress::kNone) {
                 return res;
             }
         }
-        return MatchResult::kNone;
+        return Keypress::kNone;
     }
 
   private:
-    static MatchResult
+    static Keypress
     MatchOne(const Keyset& keyset, std::span<const Keystroke> keystrokes) {
         constexpr auto inf = std::numeric_limits<float>::infinity();
         auto min_heldsecs = inf;
@@ -474,7 +475,7 @@ class Keysets final {
             auto it = std::find_if(keystrokes.cbegin(), keystrokes.cend(), keystroke_is_matching);
             if (it == keystrokes.cend()) {
                 // Current keyset keycode does not match any keystroke.
-                return MatchResult::kNone;
+                return Keypress::kNone;
             }
             if (it->heldsecs() < min_heldsecs) {
                 min_heldsecs = it->heldsecs();
@@ -482,13 +483,13 @@ class Keysets final {
         }
 
         if (min_heldsecs == inf) {
-            return MatchResult::kNone;
-        } else if (min_heldsecs >= kHoldThreshold) {
-            return MatchResult::kHold;
+            return Keypress::kNone;
+        } else if (min_heldsecs >= kKeypressHoldThreshold) {
+            return Keypress::kHold;
         } else if (min_heldsecs > .0f) {
-            return MatchResult::kSemihold;
+            return Keypress::kSemihold;
         } else {
-            return MatchResult::kPress;
+            return Keypress::kPress;
         }
     }
 
