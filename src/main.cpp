@@ -89,7 +89,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
             return;
         }
 
-        SKSE::log::debug("active hotkeys data saved to SKSE cosave");
+        SKSE::log::debug("active hotkeys saved to SKSE cosave");
     };
 
     static constexpr auto on_load = [](SKSE::SerializationInterface* si) {
@@ -122,7 +122,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
                 continue;
             }
             gHotkeys = std::move(*hotkeys);
-            SKSE::log::debug("active hotkeys data loaded from SKSE cosave");
+            SKSE::log::debug("active hotkeys loaded from SKSE cosave");
         }
 
         gUI.Deactivate();
@@ -139,7 +139,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
         gHotkeys = {};
         gUI.Deactivate();
         gUI.hotkey_in_focus = 0;
-        SKSE::log::debug("active hotkeys data reverted");
+        SKSE::log::debug("active hotkeys discarded");
     };
 
     si.SetUniqueID('ECH?');

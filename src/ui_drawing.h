@@ -437,7 +437,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
         action = [&equipsets, &status]() {
 #ifndef ECH_UI_DEV
             auto* player = RE::PlayerCharacter::GetSingleton();
-            if (!player) {
+            if (player) {
                 equipsets.push_back(EquipsetUI::From(Equipset::FromEquipped(*player)));
                 return;
             }

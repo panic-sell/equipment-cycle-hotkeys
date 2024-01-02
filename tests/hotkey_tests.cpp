@@ -375,12 +375,33 @@ TEST_CASE("Hotkeys structural equality") {
             ),
             .b = TestHotkeys({
                 {
-                    .name = "hk2",
+                    .name = "hk1",
                     .keysets = Keysets({{1}}),
                     .equipsets = TestEquipsets({"a", "b", "c"}, 1),
                 },
             }),
             .want = true,
+        },
+        Testcase{
+            .name = "different_names",
+            .a = TestHotkeys(
+                {
+                    {
+                        .name = "hk1",
+                        .keysets = Keysets({{1}}),
+                        .equipsets = TestEquipsets({"a", "b", "c"}, 0),
+                    },
+                },
+                0
+            ),
+            .b = TestHotkeys({
+                {
+                    .name = "hk2",
+                    .keysets = Keysets({{1}}),
+                    .equipsets = TestEquipsets({"a", "b", "c"}, 1),
+                },
+            }),
+            .want = false,
         },
         Testcase{
             .name = "different_keysets",
@@ -396,7 +417,7 @@ TEST_CASE("Hotkeys structural equality") {
             ),
             .b = TestHotkeys({
                 {
-                    .name = "hk2",
+                    .name = "hk1",
                     .keysets = Keysets({{1}}),
                     .equipsets = TestEquipsets({"a", "b", "c"}, 1),
                 },
@@ -417,7 +438,7 @@ TEST_CASE("Hotkeys structural equality") {
             ),
             .b = TestHotkeys({
                 {
-                    .name = "hk2",
+                    .name = "hk1",
                     .keysets = Keysets({{1}}),
                     .equipsets = TestEquipsets({"a", "b", "c"}, 1),
                 },

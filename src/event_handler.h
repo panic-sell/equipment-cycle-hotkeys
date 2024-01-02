@@ -137,10 +137,14 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             return;
         }
         current->Apply(*aem, *player);
+        const auto& hkname = hotkeys_->vec()[hotkeys_->selected()].name;
         SKSE::log::debug(
-            "selected hotkey {} ({}) equipset {}",
+            "selected hotkey {}{}{}{}{} equipset {}",
             hotkeys_->selected() + 1,
-            hotkeys_->vec()[hotkeys_->selected()].name,
+            hkname.empty() ? "" : " ",
+            hkname.empty() ? "" : "(",
+            hkname.empty() ? "" : hkname.c_str(),
+            hkname.empty() ? "" : ")",
             hotkeys_->vec()[hotkeys_->selected()].equipsets.selected() + 1
         );
     }
