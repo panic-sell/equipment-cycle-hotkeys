@@ -105,7 +105,18 @@ class InputHook final {
 
     void
     Input(RE::BSTEventSource<RE::InputEvent*>* event_src, RE::InputEvent* const* events) {
-        if (events && (ToggleUI(*events) || CaptureInputs(*events))) {
+        if (!events) {
+            orig_input_(event_src, events);
+            return;
+        }
+
+        auto consumed_input = false;
+        {
+            auto lock = std::scoped_lock(*ui_mutex_, *hotkeys_mutex_);
+            consumed_input = ToggleUI(*events) || CaptureInputs(*events);
+        }
+
+        if (consumed_input) {
             constexpr auto dummy_events = std::array{static_cast<RE::InputEvent*>(nullptr)};
             orig_input_(event_src, &dummy_events[0]);
         } else {
@@ -117,33 +128,28 @@ class InputHook final {
     /// false if UI was not toggled.
     bool
     ToggleUI(const RE::InputEvent* events) {
-        keystroke_buf_.clear();
-        Keystroke::InputEventsToBuffer(events, keystroke_buf_);
-        if (toggle_keysets_.Match(keystroke_buf_) != Keypress::kPress) {
-            return false;
+        if (!ui_->should_show && ui_->IsActive()) {
+            ui_->Deactivate(hotkeys_);
+            return true;
         }
 
-        auto lock = std::scoped_lock(*ui_mutex_, *hotkeys_mutex_);
-        auto& io = ImGui::GetIO();
-        if (ui_->IsActive()) {
-            auto new_hotkeys = ui_->Deactivate();
-            if (!hotkeys_->StructurallyEquals(new_hotkeys)) {
-                // This also resets selected hotkey/equipset state.
-                *hotkeys_ = std::move(new_hotkeys);
-                SKSE::log::debug("active hotkeys modified");
+        keystroke_buf_.clear();
+        Keystroke::InputEventsToBuffer(events, keystroke_buf_);
+        if (toggle_keysets_.Match(keystroke_buf_) == Keypress::kPress) {
+            if (ui_->IsActive()) {
+                ui_->Deactivate(hotkeys_);
+            } else {
+                ui_->Activate(*hotkeys_);
             }
-            io.MouseDrawCursor = false;
-        } else {
-            ui_->Activate(*hotkeys_);
-            io.MouseDrawCursor = true;
+            return true;
         }
-        return true;
+
+        return false;
     }
 
     /// Forwards inputs to ImGui. Returns false if UI is not active.
     bool
     CaptureInputs(const RE::InputEvent* events) {
-        auto lock = std::lock_guard(*ui_mutex_);
         if (!ui_->IsActive()) {
             return false;
         }

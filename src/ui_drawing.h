@@ -210,9 +210,8 @@ DrawProfilesMenu(UI& ui) {
                     if (ui.ImportProfile(profile)) {
                         return;
                     }
-                    ui.status.show = true;
                     auto fp = ui.GetProfilePath(profile);
-                    ui.status.msg = std::format("FILESYSTEM ERROR: Failed to read '{}'", fp);
+                    ui.status.SetMsg(std::format("FILESYSTEM ERROR: Failed to read '{}'", fp));
                     SKSE::log::error("importing '{}' aborted: cannot read '{}'", profile, fp);
                 };
             }
@@ -235,9 +234,8 @@ DrawProfilesMenu(UI& ui) {
                 if (ui.ExportProfile()) {
                     return;
                 }
-                ui.status.show = true;
                 auto fp = ui.GetProfilePath(ui.export_name);
-                ui.status.msg = std::format("FILESYSTEM ERROR: Failed to write '{}'", fp);
+                ui.status.SetMsg(std::format("FILESYSTEM ERROR: Failed to write '{}'", fp));
                 SKSE::log::error("exporting '{}' aborted: cannot write '{}'", ui.export_name, fp);
             };
             ImGui::CloseCurrentPopup();
@@ -320,8 +318,8 @@ DrawKeysets(std::vector<Keyset>& keysets) {
         .draw_cell = [](const Keyset& keyset, size_t, size_t col) -> Action {
             auto keycode = keyset[col];
             const char* preview = keycode_names[KeycodeNormalized(keycode)];
-            constexpr auto combo_flags =
-                ImGuiComboFlags_HeightLarge | ImGuiComboFlags_NoArrowButton;
+            constexpr auto combo_flags = ImGuiComboFlags_HeightLarge
+                                         | ImGuiComboFlags_NoArrowButton;
             if (!ImGui::BeginCombo("##dropdown", preview, combo_flags)) {
                 return {};
             }
@@ -388,8 +386,8 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
         .draw_cell = [](const EquipsetUI& equipset, size_t, size_t col) -> Action {
             const auto& item = equipset[col];
             const char* preview = item_to_str(item);
-            constexpr auto combo_flags =
-                ImGuiComboFlags_HeightLarge | ImGuiComboFlags_NoArrowButton;
+            constexpr auto combo_flags = ImGuiComboFlags_HeightLarge
+                                         | ImGuiComboFlags_NoArrowButton;
             if (!ImGui::BeginCombo("##dropdown", preview, combo_flags)) {
                 return {};
             }
@@ -441,8 +439,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
                 equipsets.push_back(EquipsetUI::From(Equipset::FromEquipped(*player)));
                 return;
             }
-            status.show = true;
-            status.msg = "INTERNAL ERROR: Failed to get RE::PlayerCharacter instance.";
+            status.SetMsg("INTERNAL ERROR: Failed to get RE::PlayerCharacter instance.");
             SKSE::log::error("cannot get RE::PlayerCharacter instance");
 #else
             equipsets.emplace_back();
@@ -455,8 +452,8 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
 inline Action
 DrawStatusPopup(UI::Status& status) {
     auto action = Action();
-    if (status.show) {
-        action = [&status]() { status.show = false; };
+    if (status.should_show) {
+        action = [&status]() { status.should_show = false; };
         ImGui::OpenPopup("status");
     }
     if (ImGui::BeginPopup("status")) {
@@ -470,8 +467,9 @@ DrawStatusPopup(UI::Status& status) {
 
 inline void
 Draw(UI& ui) {
-    constexpr auto max_dims =
-        ImVec2(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+    constexpr auto max_dims = ImVec2(
+        std::numeric_limits<float>::max(), std::numeric_limits<float>::max()
+    );
     const auto window_initial_pos = UI::GetViewportSize() * ImVec2(.4f, .1f);
     const auto window_initial_size = UI::GetViewportSize() * ImVec2(.5f, .8f);
     const auto window_min_size = UI::GetViewportSize() * ImVec2(.25f, .25f);
@@ -485,7 +483,9 @@ Draw(UI& ui) {
     ImGui::SetNextWindowSize(window_initial_size, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(window_min_size, max_dims);
     ImGui::Begin(
-        "Equipment Cycle Hotkeys", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
+        "Equipment Cycle Hotkeys",
+        &ui.should_show,
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
     );
 
     // Menu bar.

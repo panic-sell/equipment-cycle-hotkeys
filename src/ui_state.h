@@ -180,9 +180,17 @@ class UI final {
     /// Generic popup for (mainly error) messages.
     struct Status final {
         /// Whether to call `ImGui::OpenPopup()`.
-        bool show = false;
+        bool should_show = false;
         std::string msg;
+
+        void
+        SetMsg(std::string s) {
+            msg = std::move(s);
+        }
     } status;
+
+    /// p_open arg for `ImGui::Begin()`.
+    bool should_show = true;
 
     UI(std::string profile_dir = fs::kProfileDir) : profile_dir_(std::move(profile_dir)) {}
 
@@ -200,17 +208,23 @@ class UI final {
             hotkey_in_focus = 0;
         }
         saved_profiles_.reset();
-        active_ = true;
+        ImGui::GetIO().MouseDrawCursor = should_show = active_ = true;
     }
 
     /// Returns UI data converted to Hotkeys data. UI data is then discarded.
-    Hotkeys<>
-    Deactivate() {
-        auto hotkeys = hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
+    void
+    Deactivate(Hotkeys<>* hotkeys = nullptr) {
+        if (hotkeys) {
+            auto new_hotkeys = hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
+            if (!hotkeys->StructurallyEquals(new_hotkeys)) {
+                // This also resets selected hotkey/equipset state.
+                *hotkeys = std::move(new_hotkeys);
+                SKSE::log::debug("active hotkeys modified");
+            }
+        }
         hotkeys_ui = {};
         saved_profiles_.reset();
-        active_ = false;
-        return hotkeys;
+        ImGui::GetIO().MouseDrawCursor = should_show = active_ = false;
     }
 
     /// Returns false on failing to read the profile's file.
