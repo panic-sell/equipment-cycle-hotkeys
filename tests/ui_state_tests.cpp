@@ -155,6 +155,8 @@ TEST_CASE("UI tests") {
     auto td = Tempdir();
     auto ui = UI(td.path());
     auto ui_nonexistent_profile_dir = UI("8df229d6-f338-4308-9fc4-e1f3c3e188cf");
+    ui.Activate();
+    ui_nonexistent_profile_dir.Activate();
 
     SECTION("GetProfilePath") {
         REQUIRE(ui.GetProfilePath("") == td.path() + "/.json");

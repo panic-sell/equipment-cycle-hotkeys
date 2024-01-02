@@ -245,7 +245,7 @@ main(int, char**) {
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     auto ui = UI();
-    ui.Activate(Hotkeys<>({
+    auto hotkeys = Hotkeys<>({
         {
             .name = "asdf",
             .keysets = Keysets({
@@ -257,7 +257,8 @@ main(int, char**) {
                 {0},
             }),
         },
-    }));
+    });
+    ui.Activate(&hotkeys);
 
     // Main loop
     bool done = false;

@@ -169,67 +169,87 @@ class HotkeysUI final : public std::vector<HotkeyUI<Q>> {
 /// Main container for all UI-related state.
 class UI final {
   public:
-    HotkeysUI<EquipsetUI> hotkeys_ui;
-
-    /// The hotkey being edited.
-    size_t hotkey_in_focus = 0;
-
-    /// Profile name to use when exporting.
-    std::string export_name;
-
-    /// Generic popup for (mainly error) messages.
+    /// Popup for (mainly error) messages.
     struct Status final {
-        /// Whether to call `ImGui::OpenPopup()`.
-        bool should_show = false;
+        bool should_call_imgui_open_popup = false;
         std::string msg;
 
         void
         SetMsg(std::string s) {
+            should_call_imgui_open_popup = true;
             msg = std::move(s);
         }
-    } status;
+    };
 
-    /// p_open arg for `ImGui::Begin()`.
-    bool should_show = true;
+    /// State that gets created/destroyed on UI activation/deactivation. The parent UI class holds
+    /// state that persists across UI activations.
+    class StateEphemeral final {
+      public:
+        Status status;
+        HotkeysUI<EquipsetUI> hotkeys_ui;
+        /// This becomes false when user clicks the "close" widget on the UI window.
+        bool imgui_begin_p_open = true;
 
-    UI(std::string profile_dir = fs::kProfileDir) : profile_dir_(std::move(profile_dir)) {}
+      private:
+        friend class UI;
 
-    /// Intent for UI visibility. Something else has to realize this intent.
-    bool
-    IsActive() const {
-        return active_;
-    }
+        std::optional<std::vector<std::string>> saved_profiles_;
+    };
+
+    static constexpr std::string_view kProfileExt = ".json";
+
+    /// UI active state is indicated by the truthiness of this value.
+    std::optional<StateEphemeral> eph;
+    size_t hotkey_in_focus = 0;
+    std::string export_name;
+    const std::string profile_dir;
+
+    UI(std::string profile_dir = fs::kProfileDir) : profile_dir(std::move(profile_dir)) {}
 
     /// `hotkeys` is used to populate UI data.
     void
-    Activate(const Hotkeys<>& hotkeys) {
-        hotkeys_ui = HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
-        if (hotkey_in_focus >= hotkeys_ui.size()) {
+    Activate(const Hotkeys<>* hotkeys = nullptr) {
+        eph.emplace();
+        if (hotkeys) {
+            eph->hotkeys_ui = HotkeysUI(*hotkeys).ConvertEquipset(EquipsetUI::From);
+        }
+        if (hotkey_in_focus >= eph->hotkeys_ui.size()) {
             hotkey_in_focus = 0;
         }
-        saved_profiles_.reset();
-        ImGui::GetIO().MouseDrawCursor = should_show = active_ = true;
+#ifndef ECH_TEST
+        ImGui::GetIO().MouseDrawCursor = true;
+#endif
     }
 
-    /// Returns UI data converted to Hotkeys data. UI data is then discarded.
+    /// Syncs `hotkeys` with UI data (if `hotkeys` is non-null), then destroys all ephemeral data.
     void
     Deactivate(Hotkeys<>* hotkeys = nullptr) {
+#ifndef ECH_TEST
+        ImGui::GetIO().MouseDrawCursor = false;
+#endif
+        if (!eph) {
+            return;
+        }
         if (hotkeys) {
-            auto new_hotkeys = hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
+            auto new_hotkeys = eph->hotkeys_ui.ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
             if (!hotkeys->StructurallyEquals(new_hotkeys)) {
                 // This also resets selected hotkey/equipset state.
                 *hotkeys = std::move(new_hotkeys);
                 SKSE::log::debug("active hotkeys modified");
             }
         }
-        hotkeys_ui = {};
-        saved_profiles_.reset();
-        ImGui::GetIO().MouseDrawCursor = should_show = active_ = false;
+        eph.reset();
     }
 
     /// Returns false on failing to read the profile's file.
+    ///
+    /// No-op and returns true if UI is not active.
     [[nodiscard]] bool
     ImportProfile(std::string_view profile) {
+        if (!eph) {
+            return true;
+        }
+
         auto p = GetProfilePath(profile);
         // clang-format off
         auto hksui = fs::ReadFile(p)
@@ -241,22 +261,29 @@ class UI final {
         if (!hksui) {
             return false;
         }
-        hotkeys_ui = std::move(*hksui);
+        eph->hotkeys_ui = std::move(*hksui);
         hotkey_in_focus = 0;
         return true;
     }
 
     /// Returns false on failing to write the profile's file.
+    ///
+    /// No-op and returns true if UI is not active.
     [[nodiscard]] bool
     ExportProfile() {
-        auto hotkeys = HotkeysUI(hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
+        if (!eph) {
+            return true;
+        }
+
+        auto hotkeys =
+            HotkeysUI(eph->hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
         auto s = Serialize<Hotkeys<>>(hotkeys);
         NormalizeExportName();
         auto p = GetProfilePath(export_name);
         if (!fs::WriteFile(p, s)) {
             return false;
         }
-        saved_profiles_.reset();
+        eph->saved_profiles_.reset();
         return true;
     }
 
@@ -302,37 +329,45 @@ class UI final {
 
     std::string
     GetProfilePath(std::string_view profile) const {
-        return std::format("{}/{}{}", profile_dir_, profile, kExt);
+        return std::format("{}/{}{}", profile_dir, profile, kProfileExt);
     }
 
     /// Returns the list of profiles current saved to disk. This cache is refreshed on the next call
     /// to `Activate()`, `Deactivate()`, or `ExportProfile()`.
+    ///
+    /// Returns an empty vec if UI is not active.
     const std::vector<std::string>&
     GetSavedProfiles() {
-        if (saved_profiles_) {
-            return *saved_profiles_;
+        static const auto empty = std::vector<std::string>();
+        if (!eph) {
+            return empty;
         }
 
-        saved_profiles_.emplace();
-        if (!fs::ListDirToBuf(profile_dir_, *saved_profiles_)) {
-            SKSE::log::error("cannot iterate list of profiles in '{}'", profile_dir_);
+        if (eph->saved_profiles_) {
+            return *eph->saved_profiles_;
         }
-        std::erase_if(*saved_profiles_, [](std::string_view s) {
-            if (s.size() <= kExt.size()) {
+
+        auto v = std::vector<std::string>();
+        if (!fs::ListDirToBuf(profile_dir, v)) {
+            SKSE::log::error("cannot iterate list of profiles in '{}'", profile_dir);
+        }
+        std::erase_if(v, [](std::string_view s) {
+            if (s.size() <= kProfileExt.size()) {
                 return true;
             }
-            for (size_t i = 0; i < kExt.size(); i++) {
-                auto ch_lower = s[s.size() - kExt.size() + i] | (1 << 5);
-                if (ch_lower != kExt[i]) {
+            for (size_t i = 0; i < kProfileExt.size(); i++) {
+                auto ch_lower = s[s.size() - kProfileExt.size() + i] | (1 << 5);
+                if (ch_lower != kProfileExt[i]) {
                     return true;
                 }
             }
             return false;
         });
-        for (auto& s : *saved_profiles_) {
-            s.erase(s.end() - kExt.size(), s.end());
+        for (auto& s : v) {
+            s.erase(s.end() - kProfileExt.size(), s.end());
         }
-        return *saved_profiles_;
+        eph->saved_profiles_.emplace(v);
+        return *eph->saved_profiles_;
     }
 
     /// Returned string_view is guaranteed to point to a std::string (meaning the underlying char
@@ -359,24 +394,6 @@ class UI final {
         }
         return std::nullopt;
     }
-
-    static ImVec2
-    GetViewportSize() {
-        static auto sz = std::optional<ImVec2>();
-        if (!sz) {
-            if (const auto* main_viewport = ImGui::GetMainViewport()) {
-                sz.emplace(main_viewport->WorkSize);
-            }
-        }
-        return sz ? *sz : ImVec2(800, 600);
-    }
-
-  private:
-    static constexpr std::string_view kExt = ".json";
-
-    bool active_ = false;
-    std::string profile_dir_ = fs::kProfileDir;
-    std::optional<std::vector<std::string>> saved_profiles_;
 };
 
 }  // namespace ech

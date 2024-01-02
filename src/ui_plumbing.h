@@ -38,7 +38,7 @@ class RenderHook final {
         orig_render_(n);
 
         auto lock = std::lock_guard(*ui_mutex_);
-        if (!ui_->IsActive()) {
+        if (!ui_->eph) {
             return;
         }
 
@@ -128,7 +128,7 @@ class InputHook final {
     /// false if UI was not toggled.
     bool
     ToggleUI(const RE::InputEvent* events) {
-        if (!ui_->should_show && ui_->IsActive()) {
+        if (ui_->eph && !ui_->eph->imgui_begin_p_open) {
             ui_->Deactivate(hotkeys_);
             return true;
         }
@@ -136,10 +136,10 @@ class InputHook final {
         keystroke_buf_.clear();
         Keystroke::InputEventsToBuffer(events, keystroke_buf_);
         if (toggle_keysets_.Match(keystroke_buf_) == Keypress::kPress) {
-            if (ui_->IsActive()) {
+            if (ui_->eph) {
                 ui_->Deactivate(hotkeys_);
             } else {
-                ui_->Activate(*hotkeys_);
+                ui_->Activate(hotkeys_);
             }
             return true;
         }
@@ -150,7 +150,7 @@ class InputHook final {
     /// Forwards inputs to ImGui. Returns false if UI is not active.
     bool
     CaptureInputs(const RE::InputEvent* events) {
-        if (!ui_->IsActive()) {
+        if (!ui_->eph) {
             return false;
         }
         for (; events; events = events->next) {

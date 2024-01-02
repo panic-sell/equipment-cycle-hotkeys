@@ -184,6 +184,10 @@ struct Table final {
 
 inline Action
 DrawProfilesMenu(UI& ui) {
+    if (!ui.eph) {
+        return {};
+    }
+
     auto action = Action();
     auto confirm_export = false;
 
@@ -211,7 +215,7 @@ DrawProfilesMenu(UI& ui) {
                         return;
                     }
                     auto fp = ui.GetProfilePath(profile);
-                    ui.status.SetMsg(std::format("FILESYSTEM ERROR: Failed to read '{}'", fp));
+                    ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to read '{}'", fp));
                     SKSE::log::error("importing '{}' aborted: cannot read '{}'", profile, fp);
                 };
             }
@@ -235,7 +239,7 @@ DrawProfilesMenu(UI& ui) {
                     return;
                 }
                 auto fp = ui.GetProfilePath(ui.export_name);
-                ui.status.SetMsg(std::format("FILESYSTEM ERROR: Failed to write '{}'", fp));
+                ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to write '{}'", fp));
                 SKSE::log::error("exporting '{}' aborted: cannot write '{}'", ui.export_name, fp);
             };
             ImGui::CloseCurrentPopup();
@@ -252,10 +256,14 @@ DrawProfilesMenu(UI& ui) {
 
 inline Action
 DrawHotkeyList(UI& ui) {
+    if (!ui.eph) {
+        return {};
+    }
+
     auto table = Table<HotkeyUI<EquipsetUI>, 1>{
         .id = "hotkeys_list",
         .headers = std::array{""},
-        .viewmodel = ui.hotkeys_ui,
+        .viewmodel = ui.eph->hotkeys_ui,
         .draw_cell = [&ui](const HotkeyUI<EquipsetUI>& hotkey, size_t row, size_t) -> Action {
             auto a = Action();
             if (ImGui::RadioButton("##hotkey_radio", row == ui.hotkey_in_focus)) {
@@ -275,9 +283,9 @@ DrawHotkeyList(UI& ui) {
     auto atrc = table.Draw();
     if (ImGui::Button("New Hotkey", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         auto a = [&ui]() {
-            ui.hotkeys_ui.emplace_back();
+            ui.eph->hotkeys_ui.emplace_back();
             // Adding a new hotkey puts that hotkey in focus.
-            ui.hotkey_in_focus = ui.hotkeys_ui.size() - 1;
+            ui.hotkey_in_focus = ui.eph->hotkeys_ui.size() - 1;
         };
         atrc = {std::move(a), {}};
     }
@@ -287,17 +295,17 @@ DrawHotkeyList(UI& ui) {
 
     return [atrc, &ui]() {
         const auto& [a, trc] = atrc;
-        if (trc.remove < ui.hotkeys_ui.size()) {
+        if (trc.remove < ui.eph->hotkeys_ui.size()) {
             // If the in-focus hotkey is below the removed hotkey, then move focus upward.
             if (trc.remove < ui.hotkey_in_focus) {
                 ui.hotkey_in_focus--;
             }
-        } else if (trc.drag_source < ui.hotkeys_ui.size() && trc.drag_target < ui.hotkeys_ui.size()) {
+        } else if (trc.drag_source < ui.eph->hotkeys_ui.size() && trc.drag_target < ui.eph->hotkeys_ui.size()) {
             // Focus on the row that was dragged.
             ui.hotkey_in_focus = trc.drag_target;
         }
         a();
-        if (ui.hotkey_in_focus >= ui.hotkeys_ui.size() && ui.hotkey_in_focus > 0) {
+        if (ui.hotkey_in_focus >= ui.eph->hotkeys_ui.size() && ui.hotkey_in_focus > 0) {
             ui.hotkey_in_focus--;
         }
     };
@@ -433,7 +441,9 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
     auto action = table.Draw().first;
     if (ImGui::Button("Add Currently Equipped", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         action = [&equipsets, &status]() {
-#ifndef ECH_UI_DEV
+#ifdef ECH_UI_DEV
+            equipsets.emplace_back();
+#else
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (player) {
                 equipsets.push_back(EquipsetUI::From(Equipset::FromEquipped(*player)));
@@ -441,8 +451,6 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
             }
             status.SetMsg("INTERNAL ERROR: Failed to get RE::PlayerCharacter instance.");
             SKSE::log::error("cannot get RE::PlayerCharacter instance");
-#else
-            equipsets.emplace_back();
 #endif
         };
     }
@@ -452,8 +460,8 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
 inline Action
 DrawStatusPopup(UI::Status& status) {
     auto action = Action();
-    if (status.should_show) {
-        action = [&status]() { status.should_show = false; };
+    if (status.should_call_imgui_open_popup) {
+        action = [&status]() { status.should_call_imgui_open_popup = false; };
         ImGui::OpenPopup("status");
     }
     if (ImGui::BeginPopup("status")) {
@@ -462,19 +470,27 @@ DrawStatusPopup(UI::Status& status) {
     }
     return action;
 }
-
 }  // namespace internal
 
 inline void
 Draw(UI& ui) {
+    if (!ui.eph) {
+        return;
+    }
+
     constexpr auto max_dims = ImVec2(
         std::numeric_limits<float>::max(), std::numeric_limits<float>::max()
     );
-    const auto window_initial_pos = UI::GetViewportSize() * ImVec2(.4f, .1f);
-    const auto window_initial_size = UI::GetViewportSize() * ImVec2(.5f, .8f);
-    const auto window_min_size = UI::GetViewportSize() * ImVec2(.25f, .25f);
-    const auto hotkeylist_initial_size = UI::GetViewportSize() * ImVec2(.15f, .0f);
-    const auto hotkeylist_min_size = UI::GetViewportSize() * ImVec2(.15f, .0f);
+
+    const auto* main_viewport = ImGui::GetMainViewport();
+    if (!main_viewport) {
+        return;
+    }
+    const auto window_initial_pos = main_viewport->WorkSize * ImVec2(.4f, .1f);
+    const auto window_initial_size = main_viewport->WorkSize * ImVec2(.5f, .8f);
+    const auto window_min_size = main_viewport->WorkSize * ImVec2(.25f, .25f);
+    const auto hotkeylist_initial_size = main_viewport->WorkSize * ImVec2(.15f, .0f);
+    const auto hotkeylist_min_size = main_viewport->WorkSize * ImVec2(.15f, .0f);
 
     auto action = internal::Action();
 
@@ -484,7 +500,7 @@ Draw(UI& ui) {
     ImGui::SetNextWindowSizeConstraints(window_min_size, max_dims);
     ImGui::Begin(
         "Equipment Cycle Hotkeys",
-        &ui.should_show,
+        &ui.eph->imgui_begin_p_open,
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
     );
 
@@ -510,21 +526,21 @@ Draw(UI& ui) {
 
     // Hotkey details.
     ImGui::BeginChild("hotkey_in_focus", ImVec2(.0f, .0f));
-    if (ui.hotkey_in_focus < ui.hotkeys_ui.size()) {
-        auto& hotkey = ui.hotkeys_ui[ui.hotkey_in_focus];
+    if (ui.hotkey_in_focus < ui.eph->hotkeys_ui.size()) {
+        auto& hotkey = ui.eph->hotkeys_ui[ui.hotkey_in_focus];
 
         if (auto a = internal::DrawKeysets(hotkey.keysets)) {
             action = a;
         }
 
         ImGui::Dummy(ImVec2(.0f, ImGui::GetTextLineHeight()));
-        if (auto a = internal::DrawEquipsets(hotkey.equipsets, ui.status)) {
+        if (auto a = internal::DrawEquipsets(hotkey.equipsets, ui.eph->status)) {
             action = a;
         }
     }
     ImGui::EndChild();
 
-    if (auto a = internal::DrawStatusPopup(ui.status)) {
+    if (auto a = internal::DrawStatusPopup(ui.eph->status)) {
         action = a;
     }
 

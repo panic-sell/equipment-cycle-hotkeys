@@ -214,6 +214,13 @@ class Gear final {
         });
     }
 
+#ifdef ECH_TEST
+    static Gear
+    NewForTest(Gearslot slot) {
+        return Gear(nullptr, slot, 0.f, nullptr);
+    }
+#endif
+
     /// Returns nullopt if `slot` is empty.
     ///
     /// This function does not check if the equipped item is in the player's inventory. Suppose the
@@ -657,8 +664,6 @@ class Gear final {
     Gearslot slot_;
     float extra_health_;
     RE::EnchantmentItem* extra_ench_;
-
-    friend Gear GearForTest(Gearslot);
 };
 
 /// Like a `std::variant<Gear, Gearslot>`.
