@@ -105,9 +105,9 @@ UnequipHand(RE::ActorEquipManager& aem, RE::Actor& actor, bool left_hand) {
             tes_util::kWeapDummy
         );
     }
-    //                                              queue, force, sounds
-    aem.EquipObject(&actor, dummy, nullptr, 1, slot, false, false, false);
-    aem.UnequipObject(&actor, dummy, nullptr, 1, slot, false, false, false);
+    //                                              queue, force, sounds, apply_now
+    aem.EquipObject(&actor, dummy, nullptr, 1, slot, false, false, false, true);
+    aem.UnequipObject(&actor, dummy, nullptr, 1, slot, false, false, false, true);
 }
 
 inline void
@@ -171,6 +171,7 @@ UnequipGear(RE::ActorEquipManager& aem, RE::Actor& actor, Gearslot slot) {
 /// - `form_` is of a supported gear type per `GetExpectedGearslot()`.
 /// - `extra_health == NaN` indicates weapon/shield has not been improved.
 /// - `extra_ench == nullptr` indicates weapon/shield does not have custom enchantment.
+/// - A 2h scroll/spell/weapon will always be assigned `Gearslot::kRight`.
 class Gear final {
   public:
     const RE::TESForm&
@@ -255,6 +256,9 @@ class Gear final {
         return gear;
     }
 
+    /// When equipping 1h scrolls and weapons, there exists an edge case where if player swaps an
+    /// item between hands, they will end up equipping in both hands even if only 1 item exists in
+    /// inventory. This specific case is handled by unequipping the other hand first.
     void
     Equip(RE::ActorEquipManager& aem, RE::Actor& actor) const {
         auto success = false;
@@ -398,8 +402,8 @@ class Gear final {
         if (!scroll) {
             return false;
         }
-        auto count = FindInventoryData(actor).first;
-        if (count <= 0) {
+        auto invdata = FindMatchingInventoryData(actor);
+        if (invdata.count <= 0) {
             return false;
         }
         const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
@@ -408,7 +412,15 @@ class Gear final {
         if (!slot) {
             return false;
         }
-        aem.EquipObject(&actor, scroll, nullptr, 1, slot);
+
+        if (invdata.non_xl_count() <= 0 && !invdata.xls.unworn) {
+            if (slot_ == Gearslot::kLeft && !invdata.xls.wornleft) {
+                UnequipGear(aem, actor, Gearslot::kRight);
+            } else if (slot_ == Gearslot::kRight && !invdata.xls.worn) {
+                UnequipGear(aem, actor, Gearslot::kLeft);
+            }
+        }
+        aem.EquipObject(&actor, scroll, nullptr, 1, slot, false, false, true, true);
         return true;
     }
 
@@ -433,8 +445,8 @@ class Gear final {
         if (!form_->IsWeapon()) {
             return false;
         }
-        const auto& [count, xl] = FindInventoryData(actor);
-        if (count <= 0) {
+        auto invdata = FindMatchingInventoryData(actor);
+        if (invdata.count <= 0) {
             return false;
         }
         const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
@@ -443,7 +455,27 @@ class Gear final {
         if (!slot) {
             return false;
         }
-        aem.EquipObject(&actor, form_->As<RE::TESBoundObject>(), xl, 1, slot);
+
+        if (invdata.non_xl_count() <= 0 && !invdata.xls.unworn) {
+            if (slot_ == Gearslot::kLeft && !invdata.xls.wornleft) {
+                UnequipGear(aem, actor, Gearslot::kRight);
+                invdata = FindMatchingInventoryData(actor);
+            } else if (slot_ == Gearslot::kRight && !invdata.xls.worn) {
+                UnequipGear(aem, actor, Gearslot::kLeft);
+                invdata = FindMatchingInventoryData(actor);
+            }
+        }
+        aem.EquipObject(
+            &actor,
+            form_->As<RE::TESBoundObject>(),
+            invdata.xls.unworn,
+            1,
+            slot,
+            false,
+            false,
+            true,
+            true
+        );
         return true;
     }
 
@@ -452,8 +484,7 @@ class Gear final {
         if (!form_->Is(RE::FormType::Light)) {
             return false;
         }
-        auto count = FindInventoryData(actor).first;
-        if (count <= 0) {
+        if (FindMatchingInventoryData(actor).count <= 0) {
             return false;
         }
         aem.EquipObject(&actor, form_->As<RE::TESBoundObject>());
@@ -465,14 +496,14 @@ class Gear final {
         if (!tes_util::IsShield(form_)) {
             return false;
         }
-        const auto& [count, xl] = FindInventoryData(actor);
-        if (count <= 0) {
+        auto invdata = FindMatchingInventoryData(actor);
+        if (invdata.count <= 0) {
             return false;
         }
         aem.EquipObject(
             &actor,
             form_->As<RE::TESBoundObject>(),
-            xl,
+            invdata.xls.first(),
             1,
             form_->As<RE::TESObjectARMO>()->GetEquipSlot()
         );
@@ -484,12 +515,12 @@ class Gear final {
         if (!form_->IsAmmo()) {
             return false;
         }
-        auto count = FindInventoryData(actor).first;
-        if (count <= 0) {
+        auto invdata = FindMatchingInventoryData(actor);
+        if (invdata.count <= 0) {
             return false;
         }
         aem.EquipObject(
-            &actor, form_->As<RE::TESBoundObject>(), nullptr, static_cast<uint32_t>(count)
+            &actor, form_->As<RE::TESBoundObject>(), nullptr, static_cast<uint32_t>(invdata.count)
         );
         return true;
     }
@@ -517,6 +548,42 @@ class Gear final {
         return false;
     }
 
+    /// Extra lists in player inventory that match the current gear.
+    struct MatchingExtraLists final {
+        RE::ExtraDataList* unworn = nullptr;
+        RE::ExtraDataList* worn = nullptr;
+        RE::ExtraDataList* wornleft = nullptr;
+
+        /// Returns the sum of each extra list's `GetCount()` result.
+        int32_t
+        count() const {
+            return (unworn ? unworn->GetCount() : 0) + (worn ? worn->GetCount() : 0)
+                   + (wornleft ? wornleft->GetCount() : 0);
+        }
+
+        /// Returns the first non-null extra list.
+        RE::ExtraDataList*
+        first() const {
+            if (unworn) {
+                return worn;
+            }
+            if (worn) {
+                return worn;
+            }
+            return wornleft;
+        }
+    };
+
+    struct MatchingInventoryData final {
+        int32_t count = 0;
+        MatchingExtraLists xls;
+
+        int32_t
+        non_xl_count() const {
+            return count - xls.count();
+        }
+    };
+
     bool
     MatchesExtraList(const RE::ExtraDataList& xl) const {
         const auto* xl_extra_health = xl.GetByType<RE::ExtraHealth>();
@@ -537,48 +604,56 @@ class Gear final {
 
     /// Returns the first matching `RE::ExtraDataList` from `ied` along with the number of extra
     /// lists searched up to that point.
-    RE::ExtraDataList*
-    FindMatchingExtraList(const RE::InventoryEntryData* ied) const {
-        RE::ExtraDataList* outer_xl = nullptr;
+    MatchingExtraLists
+    FindMatchingExtraLists(const RE::InventoryEntryData* ied) const {
+        auto matches = MatchingExtraLists();
         tes_util::ForEachExtraList(ied, [&](RE::ExtraDataList& xl) {
-            if (MatchesExtraList(xl)) {
-                outer_xl = &xl;
-                return tes_util::ForEachExtraListControl::kBreak;
+            if (!MatchesExtraList(xl)) {
+                return tes_util::ForEachExtraListControl::kContinue;
             }
+
+            matches.unworn = &xl;
+            if (xl.GetByType<RE::ExtraWorn>()) {
+                matches.worn = &xl;
+                matches.unworn = nullptr;
+            }
+            if (xl.GetByType<RE::ExtraWornLeft>()) {
+                matches.wornleft = &xl;
+                matches.unworn = nullptr;
+            }
+
             return tes_util::ForEachExtraListControl::kContinue;
         });
-        return outer_xl;
+        return matches;
     }
 
-    /// Returns (1) count of matching inventory items and (2) the specific matching extra list.
+    /// Returns (1) count of matching inventory items and (2) the specific matching extra lists. #1
+    /// can be greater than #2's `count()` if the gear has no extra data and matches inventory
+    /// entries with no extra lists.
     ///
     /// A nonpositive count indicates "gear not found in inventory".
     ///
-    /// This function is only meant for weapons, shields, and ammo (i.e. not for spells or shouts).
-    std::pair<int32_t, RE::ExtraDataList*>
-    FindInventoryData(RE::Actor& actor) const {
+    /// This function is only meant for weapons, scrolls, shields, and ammo (i.e. not for spells or
+    /// shouts).
+    MatchingInventoryData
+    FindMatchingInventoryData(RE::Actor& actor) const {
         auto inv = actor.GetInventory([&](const RE::TESBoundObject& obj) { return &obj == form_; });
         auto it = inv.cbegin();
         if (it == inv.cend()) {
-            return {0, nullptr};
+            return {.count = 0};
         }
         const auto& [tot_count, ied] = it->second;
         if (tot_count <= 0) {
-            return {tot_count, nullptr};
+            return {.count = tot_count};
         }
 
-        auto* xl = FindMatchingExtraList(ied.get());
-        if (xl) {
-            return {xl->GetCount(), xl};
+        auto matching_xls = FindMatchingExtraLists(ied.get());
+        auto matching_count = matching_xls.count();
+        // Gear with no extra data should also match inventory entries with no extra lists.
+        if (extra_ench_ == nullptr && std::isnan(extra_health_)) {
+            matching_count += tot_count - tes_util::SumExtraListCounts(ied.get());
         }
-
-        // At this point, gear doesn't match any inventory extra lists, so the only possible match
-        // is between {gear with no extra data} and {inventory entry with no extra list}.
-        if (extra_ench_ != nullptr || !std::isnan(extra_health_)) {
-            return {0, nullptr};
-        }
-        auto xl_count = tes_util::GetExtraListCount(ied.get());
-        return {tot_count - xl_count, nullptr};
+        return {.count = matching_count, .xls = matching_xls};
     }
 
     explicit Gear(

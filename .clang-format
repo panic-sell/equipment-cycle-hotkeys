@@ -22,7 +22,7 @@ PointerAlignment: Left
 SeparateDefinitionBlocks: Always
 ShortNamespaceLines: 0
 
-PenaltyBreakAssignment: 0
+PenaltyBreakAssignment: 100
 PenaltyBreakBeforeFirstCallParameter: 0
 PenaltyBreakOpenParenthesis: 0
 PenaltyBreakString: 100

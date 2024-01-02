@@ -109,37 +109,6 @@ GetNamedFormID(const RE::TESForm& form) {
     return {file->GetFilename(), form.GetLocalFormID()};
 }
 
-enum class ForEachExtraListControl {
-    kContinue,
-    kBreak,
-};
-
-/// Performs `action` on all non-null extra lists of `ied`.
-inline void
-ForEachExtraList(
-    const RE::InventoryEntryData* ied,
-    std::function<ForEachExtraListControl(RE::ExtraDataList&)> action
-) {
-    if (!ied || !ied->extraLists) {
-        return;
-    }
-    for (auto* xl : *ied->extraLists) {
-        if (xl && action(*xl) == ForEachExtraListControl::kBreak) {
-            return;
-        }
-    }
-}
-
-inline int32_t
-GetExtraListCount(RE::InventoryEntryData* ied) {
-    int32_t count = 0;
-    ForEachExtraList(ied, [&](RE::ExtraDataList& xl) {
-        count += xl.GetCount();
-        return ForEachExtraListControl::kContinue;
-    });
-    return count;
-}
-
 inline bool
 IsVoiceEquippable(const RE::TESForm* form) {
     const auto* eqt = form ? form->As<RE::BGSEquipType>() : nullptr;
@@ -164,6 +133,37 @@ inline bool
 IsShield(const RE::TESForm* form) {
     const auto* armor = form ? form->As<RE::TESObjectARMO>() : nullptr;
     return armor && armor->HasPartOf(RE::BGSBipedObjectForm::BipedObjectSlot::kShield);
+}
+
+enum class ForEachExtraListControl {
+    kContinue,
+    kBreak,
+};
+
+/// Performs `action` on all non-null extra lists of `ied`.
+inline void
+ForEachExtraList(
+    const RE::InventoryEntryData* ied,
+    std::function<ForEachExtraListControl(RE::ExtraDataList&)> action
+) {
+    if (!ied || !ied->extraLists) {
+        return;
+    }
+    for (auto* xl : *ied->extraLists) {
+        if (xl && action(*xl) == ForEachExtraListControl::kBreak) {
+            return;
+        }
+    }
+}
+
+inline int32_t
+SumExtraListCounts(RE::InventoryEntryData* ied) {
+    int32_t count = 0;
+    ForEachExtraList(ied, [&](RE::ExtraDataList& xl) {
+        count += xl.GetCount();
+        return ForEachExtraListControl::kContinue;
+    });
+    return count;
 }
 
 }  // namespace tes_util
