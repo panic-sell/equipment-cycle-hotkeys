@@ -65,7 +65,8 @@ InspectEquipped(std::span<const Keystroke> keystrokes, RE::Actor& actor) {
 
 }  // namespace internal
 
-class EventHandler final : public RE::BSTEventSink<RE::InputEvent*> {
+/// Handles hotkey activations. Does not handle UI toggling; see InputHook instead.
+class InputHandler final : public RE::BSTEventSink<RE::InputEvent*> {
   public:
     [[nodiscard]] static std::expected<void, std::string_view>
     Init(Hotkeys<>& hotkeys, std::mutex& hotkeys_mutex) {
@@ -74,7 +75,7 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             return std::unexpected("cannot get input event source");
         }
 
-        static auto instance = EventHandler(hotkeys, hotkeys_mutex);
+        static auto instance = InputHandler(hotkeys, hotkeys_mutex);
         idm->AddEventSink<RE::InputEvent*>(&instance);
         return {};
     }
@@ -86,15 +87,15 @@ class EventHandler final : public RE::BSTEventSink<RE::InputEvent*> {
     }
 
   private:
-    EventHandler(Hotkeys<>& hotkeys, std::mutex& hotkeys_mutex)
+    InputHandler(Hotkeys<>& hotkeys, std::mutex& hotkeys_mutex)
         : RE::BSTEventSink<RE::InputEvent*>(),
           hotkeys_(&hotkeys),
           hotkeys_mutex_(&hotkeys_mutex) {}
 
-    EventHandler(const EventHandler&) = delete;
-    EventHandler& operator=(const EventHandler&) = delete;
-    EventHandler(EventHandler&&) = delete;
-    EventHandler& operator=(EventHandler&&) = delete;
+    InputHandler(const InputHandler&) = delete;
+    InputHandler& operator=(const InputHandler&) = delete;
+    InputHandler(InputHandler&&) = delete;
+    InputHandler& operator=(InputHandler&&) = delete;
 
     void
     HandleInputEvents(RE::InputEvent* const* events) {

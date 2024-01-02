@@ -1,7 +1,7 @@
 // SKSE plugin entry point.
-#include "event_handler.h"
 #include "fs.h"
 #include "hotkeys.h"
+#include "input_handler.h"
 #include "serde.h"
 #include "settings.h"
 #include "ui_plumbing.h"
@@ -61,7 +61,7 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
         if (auto res = ui::Init(gHotkeys, gHotkeysMutex, gUI, gUIMutex, gSettings); !res) {
             SKSE::stl::report_and_fail(res.error());
         }
-        if (auto res = EventHandler::Init(gHotkeys, gHotkeysMutex); !res) {
+        if (auto res = InputHandler::Init(gHotkeys, gHotkeysMutex); !res) {
             SKSE::stl::report_and_fail(res.error());
         }
     };

@@ -584,7 +584,7 @@ Configure(const Settings& settings) {
 
 [[nodiscard]] inline std::expected<void, std::string_view>
 Init(
-    /// The Hotkeys object that EventHandler uses. On closing menu, InputHook will sync this with
+    /// The Hotkeys object that InputHandler uses. On closing menu, InputHook will sync this with
     /// `ui` before clearing `ui` data.
     Hotkeys<>& hotkeys,
     std::mutex& hotkeys_mutex,

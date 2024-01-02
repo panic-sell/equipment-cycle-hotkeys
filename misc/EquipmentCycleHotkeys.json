@@ -17,7 +17,7 @@
     "menu_color_style": "dark",
 
     // Default: Shift+\
-    // See https://github.com/panic-sell/equipment-cycle-hotkeys/blob/1d63629c369c1c64f3c7a1f44550ed572d92072c/src/keys.h#L6 for all key names.
+    // See https://github.com/panic-sell/equipment-cycle-hotkeys/blob/1d63629c369c1c64f3c7a1f44550ed572d92072c/src/keys.h#L6 for all key names. Names are case-sensitive!
     "menu_toggle_keysets": [
         ["LShift", "\\"],
         ["RShift", "\\"]

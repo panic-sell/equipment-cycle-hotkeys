@@ -11,10 +11,10 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 
 set(headers
     "src/equipsets.h"
-    "src/event_handler.h"
     "src/fs.h"
     "src/gear.h"
     "src/hotkeys.h"
+    "src/input_handler.h"
     "src/keys.h"
     "src/serde.h"
     "src/settings.h"
