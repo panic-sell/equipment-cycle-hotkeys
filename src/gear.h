@@ -169,11 +169,35 @@ UnequipGear(RE::ActorEquipManager& aem, RE::Actor& actor, Gearslot slot) {
 /// Invariants:
 /// - `form_` is non-null.
 /// - `form_` is of a supported gear type per `GetExpectedGearslot()`.
-/// - `extra_health == NaN` indicates weapon/shield has not been improved.
-/// - `extra_ench == nullptr` indicates weapon/shield does not have custom enchantment.
+/// - `extra_.health == NaN` indicates weapon/shield has not been improved.
+/// - `extra_.ench == nullptr` indicates weapon/shield does not have custom enchantment.
 /// - A 2h scroll/spell/weapon will always be assigned `Gearslot::kRight`.
 class Gear final {
   public:
+    struct Extra final {
+        float health = std::numeric_limits<float>::quiet_NaN();
+        RE::EnchantmentItem* ench = nullptr;
+
+        bool
+        operator==(const Extra& other) const {
+            return internal::ExtraHealthEq(health, other.health) && ench == other.ench;
+        }
+
+        static Extra
+        FromXL(RE::ExtraDataList* xl) {
+            auto extra = Extra();
+            if (xl) {
+                if (const auto* xhealth = xl->GetByType<RE::ExtraHealth>()) {
+                    extra.health = xhealth->health;
+                }
+                if (const auto* xench = xl->GetByType<RE::ExtraEnchantment>()) {
+                    extra.ench = xench->enchantment;
+                }
+            }
+            return extra;
+        }
+    };
+
     const RE::TESForm&
     form() const {
         return *form_;
@@ -184,52 +208,66 @@ class Gear final {
         return slot_;
     }
 
-    float
-    extra_health() const {
-        return extra_health_;
+    /// Display name.
+    const std::string&
+    name() const {
+        return name_;
     }
 
-    const RE::EnchantmentItem*
-    extra_ench() const {
-        return extra_ench_;
+    const Extra&
+    extra() const {
+        return extra_;
     }
 
     bool
     operator==(const Gear& other) const {
-        return form_ == other.form_ && slot_ == other.slot_
-               && internal::ExtraHealthEq(extra_health_, other.extra_health_)
-               && extra_ench_ == other.extra_ench_;
+        return form_ == other.form_ && slot() == other.slot() && name() == other.name()
+               && extra() == other.extra();
     }
 
     /// Returns nullopt if `form` is not a supported gear type.
     ///
-    /// `prefer_left` is ignored if `form` is not a 1h spell/weapon.
+    /// `prefer_left` is ignored if `form` is not a 1h scroll/spell/weapon.
     static std::optional<Gear>
-    New(RE::TESForm* form,
-        bool prefer_left = false,
-        float extra_health = std::numeric_limits<float>::quiet_NaN(),
-        RE::EnchantmentItem* extra_ench = nullptr) {
+    New(RE::TESForm* form, bool prefer_left = false, std::string name = "", Extra extra = {}) {
         return internal::GetExpectedGearslot(form, prefer_left).transform([&](Gearslot slot) {
-            return Gear(form, slot, extra_health, extra_ench);
+            if (name.empty() && form) {
+                name = form->GetName();
+            }
+            return Gear(form, slot, std::move(name), extra);
         });
+    }
+
+    /// Similar to `New()` but derives `name` and `extra` from a real extra list.
+    static std::optional<Gear>
+    NewFromXL(RE::TESBoundObject* bound_obj, RE::ExtraDataList* xl, bool prefer_left = false) {
+        if (!bound_obj) {
+            return std::nullopt;
+        }
+        return New(
+            bound_obj->As<RE::TESForm>(),
+            prefer_left,
+            xl ? xl->GetDisplayName(bound_obj) : bound_obj->GetName(),
+            Extra::FromXL(xl)
+        );
     }
 
 #ifdef ECH_TEST
     static Gear
     NewForTest(Gearslot slot) {
-        return Gear(nullptr, slot, 0.f, nullptr);
+        return Gear(nullptr, slot, "", {});
     }
 #endif
 
     /// Returns nullopt if `slot` is empty.
     ///
-    /// This function does not check if the equipped item is in the player's inventory. Suppose the
-    /// equipped item is a summoned bound sword; attempting to equip that later (equipping does
-    /// check inventory) will fail because the player's inventory will only have the bound sword
-    /// spell instead of the bound sword TESObjectWEAP.
+    /// This function does not check if the equipped item is in the player's inventory. Suppose
+    /// the equipped item is a summoned bound sword; attempting to equip that later (equipping
+    /// does check inventory) will fail because the player's inventory will only have the bound
+    /// sword spell instead of the bound sword TESObjectWEAP.
     ///
-    /// The reason this function doesn't check inventory is because there's no easy way to relate a
-    /// summoned bound sword to the bound sword spell.
+    /// The reason this function doesn't check inventory is because there's no easy way to
+    /// relate a summoned bound sword to the bound sword spell.
     static std::optional<Gear>
     FromEquipped(RE::Actor& actor, Gearslot slot) {
         switch (slot) {
@@ -252,13 +290,13 @@ class Gear final {
         return std::nullopt;
     }
 
-    /// When equipping 1h scrolls and weapons, there exists an edge case where if player swaps an
-    /// item between hands, they will end up equipping in both hands even if only 1 item exists in
-    /// inventory. This specific case is handled by unequipping the other hand first.
+    /// When equipping 1h scrolls and weapons, there exists an edge case where if player swaps
+    /// an item between hands, they will end up equipping in both hands even if only 1 item
+    /// exists in inventory. This specific case is handled by unequipping the other hand first.
     void
     Equip(RE::ActorEquipManager& aem, RE::Actor& actor) const {
         auto success = false;
-        switch (slot_) {
+        switch (slot()) {
             case Gearslot::kLeft:
                 // Scroll handling must precede spell handling since scroll subclasses spell.
                 // clang-format off
@@ -320,26 +358,16 @@ class Gear final {
         if (!weap || !weap->IsWeapon() || !ied || !ied->IsWorn()) {
             return std::nullopt;
         }
-        // This check might be redundant because when looking at the left hand, a 2-handed weapon
-        // will have `weap != nullptr` but `ied == nullptr`.
+        // This check might be redundant because when looking at the left hand, a 2-handed
+        // weapon will have `weap != nullptr` but `ied == nullptr`.
         if (left_hand && tes_util::IsTwoHandedWeapon(weap)) {
             return std::nullopt;
         }
 
-        auto extra_health = std::numeric_limits<float>::quiet_NaN();
-        RE::EnchantmentItem* extra_ench = nullptr;
-
-        tes_util::ForEachExtraList(ied, [&](const RE::ExtraDataList& xl) {
-            if (const auto* xhealth = xl.GetByType<RE::ExtraHealth>()) {
-                extra_health = xhealth->health;
-            }
-            if (const auto* xench = xl.GetByType<RE::ExtraEnchantment>()) {
-                extra_ench = xench->enchantment;
-            }
-            return tes_util::ForEachExtraListControl::kBreak;
-        });
-
-        return New(weap, left_hand, extra_health, extra_ench);
+        for (auto* xl : tes_util::GetXLs(ied)) {
+            return NewFromXL(weap->As<RE::TESBoundObject>(), xl, left_hand);
+        }
+        return std::nullopt;
     }
 
     static std::optional<Gear>
@@ -361,35 +389,19 @@ class Gear final {
         if (it == inv.cend()) {
             return std::nullopt;
         }
-        auto* shield = it->first;
-        auto count = it->second.first;
+        RE::TESBoundObject* shield = it->first;
+        RE::TESObjectREFR::Count count = it->second.first;
         const auto* ied = it->second.second.get();
         if (!shield || count <= 0) {
             return std::nullopt;
         }
 
-        auto equipped = false;
-        auto extra_health = std::numeric_limits<float>::quiet_NaN();
-        RE::EnchantmentItem* extra_ench = nullptr;
-
-        tes_util::ForEachExtraList(ied, [&](const RE::ExtraDataList& xl) {
-            if (!xl.HasType<RE::ExtraWorn>() && !xl.HasType<RE::ExtraWornLeft>()) {
-                return tes_util::ForEachExtraListControl::kContinue;
+        for (auto* xl : tes_util::GetXLs(ied)) {
+            if (xl->HasType<RE::ExtraWorn>() || xl->HasType<RE::ExtraWornLeft>()) {
+                return NewFromXL(shield, xl);
             }
-            equipped = true;
-            if (const auto* xhealth = xl.GetByType<RE::ExtraHealth>()) {
-                extra_health = xhealth->health;
-            }
-            if (const auto* xench = xl.GetByType<RE::ExtraEnchantment>()) {
-                extra_ench = xench->enchantment;
-            }
-            return tes_util::ForEachExtraListControl::kBreak;
-        });
-
-        if (!equipped) {
-            return std::nullopt;
         }
-        return New(shield, false, extra_health, extra_ench);
+        return std::nullopt;
     }
 
     [[nodiscard]] bool
@@ -398,25 +410,18 @@ class Gear final {
         if (!scroll) {
             return false;
         }
-        auto invdata = FindMatchingInventoryData(actor);
-        if (invdata.count <= 0) {
+        const auto& [count_tot, xls] = GetMatchingInvData(actor);
+        if (count_tot <= 0) {
             return false;
         }
-        const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
-            slot_ == Gearslot::kLeft ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand
-        );
-        if (!slot) {
-            return false;
-        }
-
-        if (invdata.non_xl_count() <= 0 && !invdata.xls.unworn) {
-            if (slot_ == Gearslot::kLeft && !invdata.xls.wornleft) {
+        if (count_tot == 1) {
+            if (slot() == Gearslot::kLeft && GetFirstMatchingXL(xls, XLWornType::kWorn)) {
                 UnequipGear(aem, actor, Gearslot::kRight);
-            } else if (slot_ == Gearslot::kRight && !invdata.xls.worn) {
+            } else if (slot() == Gearslot::kRight && GetFirstMatchingXL(xls, XLWornType::kWornLeft)) {
                 UnequipGear(aem, actor, Gearslot::kLeft);
             }
         }
-        aem.EquipObject(&actor, scroll, nullptr, 1, slot, false, false, true, true);
+        aem.EquipObject(&actor, scroll, nullptr, 1, GetBGSEquipSlot(), false, false, true, true);
         return true;
     }
 
@@ -426,13 +431,7 @@ class Gear final {
         if (!spell || !actor.HasSpell(spell)) {
             return false;
         }
-        const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
-            slot_ == Gearslot::kLeft ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand
-        );
-        if (!slot) {
-            return false;
-        }
-        aem.EquipSpell(&actor, spell, slot);
+        aem.EquipSpell(&actor, spell, GetBGSEquipSlot());
         return true;
     }
 
@@ -441,32 +440,37 @@ class Gear final {
         if (!form_->IsWeapon()) {
             return false;
         }
-        auto invdata = FindMatchingInventoryData(actor);
-        if (invdata.count <= 0) {
-            return false;
-        }
-        const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(
-            slot_ == Gearslot::kLeft ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand
-        );
-        if (!slot) {
+        auto invdata = GetMatchingInvData(actor);
+        if (invdata.first <= 0) {
             return false;
         }
 
-        if (invdata.non_xl_count() <= 0 && !invdata.xls.unworn) {
-            if (slot_ == Gearslot::kLeft && !invdata.xls.wornleft) {
+        if (invdata.first == 1) {
+            if (slot() == Gearslot::kLeft
+                && GetFirstMatchingXL(invdata.second, XLWornType::kWorn)) {
                 UnequipGear(aem, actor, Gearslot::kRight);
-                invdata = FindMatchingInventoryData(actor);
-            } else if (slot_ == Gearslot::kRight && !invdata.xls.worn) {
+                invdata = GetMatchingInvData(actor);
+            } else if (slot() == Gearslot::kRight && GetFirstMatchingXL(invdata.second, XLWornType::kWornLeft)) {
                 UnequipGear(aem, actor, Gearslot::kLeft);
-                invdata = FindMatchingInventoryData(actor);
+                invdata = GetMatchingInvData(actor);
             }
+        }
+        const auto& [count_tot, xls] = invdata;
+
+        RE::ExtraDataList* xl = nullptr;
+        if (count_tot - tes_util::SumXLCounts(xls) > 0) {
+            // Matches an inventory item with no extra list.
+        } else if (slot() == Gearslot::kLeft) {
+            xl = GetFirstMatchingXL(xls, std::array{XLWornType::kWornLeft, XLWornType::kUnworn});
+        } else if (slot() == Gearslot::kRight) {
+            xl = GetFirstMatchingXL(xls, std::array{XLWornType::kWorn, XLWornType::kUnworn});
         }
         aem.EquipObject(
             &actor,
             form_->As<RE::TESBoundObject>(),
-            invdata.xls.unworn,
+            xl,
             1,
-            slot,
+            GetBGSEquipSlot(),
             false,
             false,
             true,
@@ -480,7 +484,8 @@ class Gear final {
         if (!form_->Is(RE::FormType::Light)) {
             return false;
         }
-        if (FindMatchingInventoryData(actor).count <= 0) {
+        const auto& [count_tot, _] = GetMatchingInvData(actor);
+        if (count_tot <= 0) {
             return false;
         }
         aem.EquipObject(&actor, form_->As<RE::TESBoundObject>());
@@ -492,14 +497,14 @@ class Gear final {
         if (!tes_util::IsShield(form_)) {
             return false;
         }
-        auto invdata = FindMatchingInventoryData(actor);
-        if (invdata.count <= 0) {
+        const auto& [count_tot, xls] = GetMatchingInvData(actor);
+        if (count_tot <= 0) {
             return false;
         }
         aem.EquipObject(
             &actor,
             form_->As<RE::TESBoundObject>(),
-            invdata.xls.first(),
+            GetFirstMatchingXL(xls, XLWornType::kAny),
             1,
             form_->As<RE::TESObjectARMO>()->GetEquipSlot()
         );
@@ -511,12 +516,12 @@ class Gear final {
         if (!form_->IsAmmo()) {
             return false;
         }
-        auto invdata = FindMatchingInventoryData(actor);
-        if (invdata.count <= 0) {
+        const auto& [count_tot, _] = GetMatchingInvData(actor);
+        if (count_tot <= 0) {
             return false;
         }
         aem.EquipObject(
-            &actor, form_->As<RE::TESBoundObject>(), nullptr, static_cast<uint32_t>(invdata.count)
+            &actor, form_->As<RE::TESBoundObject>(), nullptr, static_cast<uint32_t>(count_tot)
         );
         return true;
     }
@@ -534,155 +539,136 @@ class Gear final {
             if (!actor.HasSpell(spell)) {
                 return false;
             }
-            const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(tes_util::kEqupVoice);
-            if (!slot) {
-                return false;
-            }
-            aem.EquipSpell(&actor, spell, slot);
+            aem.EquipSpell(&actor, spell, GetBGSEquipSlot());
             return true;
         }
         return false;
     }
 
-    /// Extra lists in player inventory that match the current gear.
-    struct MatchingExtraLists final {
-        RE::ExtraDataList* unworn = nullptr;
-        RE::ExtraDataList* worn = nullptr;
-        RE::ExtraDataList* wornleft = nullptr;
-
-        /// Returns the sum of each extra list's `GetCount()` result.
-        int32_t
-        count() const {
-            return (unworn ? unworn->GetCount() : 0) + (worn ? worn->GetCount() : 0)
-                   + (wornleft ? wornleft->GetCount() : 0);
-        }
-
-        /// Returns the first non-null extra list.
-        RE::ExtraDataList*
-        first() const {
-            if (unworn) {
-                return worn;
-            }
-            if (worn) {
-                return worn;
-            }
-            return wornleft;
-        }
-    };
-
-    struct MatchingInventoryData final {
-        int32_t count = 0;
-        MatchingExtraLists xls;
-
-        int32_t
-        non_xl_count() const {
-            return count - xls.count();
-        }
+    enum class XLWornType {
+        kAny,
+        kUnworn,
+        kWorn,
+        kWornLeft,
     };
 
     bool
-    MatchesExtraList(const RE::ExtraDataList& xl) const {
-        const auto* xl_extra_health = xl.GetByType<RE::ExtraHealth>();
-        if (!internal::ExtraHealthEq(
-                extra_health_,
-                xl_extra_health ? xl_extra_health->health : std::numeric_limits<float>::quiet_NaN()
-            )) {
+    MatchesXL(RE::ExtraDataList& xl, XLWornType t) const {
+        // Things that can have extra lists (scrolls, weapons, shields, ammo) all inherit from
+        // TESBoundObject. Assume a non-TESBoundObject cannot match any extra list.
+        auto* bound_obj = form_->As<RE::TESBoundObject>();
+        if (!bound_obj || name_ != xl.GetDisplayName(bound_obj)) {
             return false;
         }
 
-        const auto* xl_extra_ench = xl.GetByType<RE::ExtraEnchantment>();
-        if (extra_ench_ != (xl_extra_ench ? xl_extra_ench->enchantment : nullptr)) {
+        if (extra() != Extra::FromXL(&xl)) {
             return false;
         }
 
-        return true;
+        switch (t) {
+            case XLWornType::kAny:
+                return true;
+            case XLWornType::kUnworn:
+                return !xl.GetByType<RE::ExtraWorn>() && !xl.GetByType<RE::ExtraWornLeft>();
+            case XLWornType::kWorn:
+                return xl.GetByType<RE::ExtraWorn>();
+            case XLWornType::kWornLeft:
+                return xl.GetByType<RE::ExtraWornLeft>();
+        }
+        return false;
     }
 
-    /// Returns the first matching `RE::ExtraDataList` from `ied` along with the number of extra
-    /// lists searched up to that point.
-    MatchingExtraLists
-    FindMatchingExtraLists(const RE::InventoryEntryData* ied) const {
-        auto matches = MatchingExtraLists();
-        tes_util::ForEachExtraList(ied, [&](RE::ExtraDataList& xl) {
-            if (!MatchesExtraList(xl)) {
-                return tes_util::ForEachExtraListControl::kContinue;
-            }
-
-            matches.unworn = &xl;
-            if (xl.GetByType<RE::ExtraWorn>()) {
-                matches.worn = &xl;
-                matches.unworn = nullptr;
-            }
-            if (xl.GetByType<RE::ExtraWornLeft>()) {
-                matches.wornleft = &xl;
-                matches.unworn = nullptr;
-            }
-
-            return tes_util::ForEachExtraListControl::kContinue;
+    RE::ExtraDataList*
+    GetFirstMatchingXL(std::span<RE::ExtraDataList* const> xls, XLWornType t) const {
+        auto it = std::find_if(xls.begin(), xls.end(), [&](RE::ExtraDataList* xl) {
+            return xl && MatchesXL(*xl, t);
         });
-        return matches;
+        return it == xls.end() ? nullptr : *it;
     }
 
-    /// Returns (1) count of matching inventory items and (2) the specific matching extra lists. #1
-    /// can be greater than #2's `count()` if the gear has no extra data and matches inventory
-    /// entries with no extra lists.
+    RE::ExtraDataList*
+    GetFirstMatchingXL(std::span<RE::ExtraDataList* const> xls, std::span<const XLWornType> types)
+        const {
+        for (auto t : types) {
+            if (auto* xl = GetFirstMatchingXL(xls, t)) {
+                return xl;
+            }
+        }
+        return nullptr;
+    }
+
+    /// Returns (1) count of matching inventory items and (2) the specific matching extra lists.
+    /// #1 can be greater than #2's total count if the gear has no extra data and matches
+    /// inventory entries with no extra lists.
     ///
     /// A nonpositive count indicates "gear not found in inventory".
     ///
-    /// This function is only meant for weapons, scrolls, shields, and ammo (i.e. not for spells or
-    /// shouts).
-    MatchingInventoryData
-    FindMatchingInventoryData(RE::Actor& actor) const {
+    /// This function is only meant for weapons, scrolls, shields, and ammo (i.e. not for spells
+    /// or shouts).
+    std::pair<int32_t, std::vector<RE::ExtraDataList*>>
+    GetMatchingInvData(RE::Actor& actor) const {
         auto inv = actor.GetInventory([&](const RE::TESBoundObject& obj) { return &obj == form_; });
         auto it = inv.cbegin();
         if (it == inv.cend()) {
-            return {.count = 0};
+            return {};
         }
-        const auto& [tot_count, ied] = it->second;
-        if (tot_count <= 0) {
-            return {.count = tot_count};
-        }
+        const auto& [count, ied] = it->second;
+        auto xls = tes_util::GetXLs(ied.get());
+        auto count_excl_xl = count - tes_util::SumXLCounts(xls);
 
-        auto matching_xls = FindMatchingExtraLists(ied.get());
-        auto matching_count = matching_xls.count();
-        // Gear with no extra data should also match inventory entries with no extra lists.
-        if (extra_ench_ == nullptr && std::isnan(extra_health_)) {
-            matching_count += tot_count - tes_util::SumExtraListCounts(ied.get());
+        std::erase_if(xls, [&](RE::ExtraDataList* xl) {
+            return !xl || !MatchesXL(*xl, XLWornType::kAny);
+        });
+        auto new_count = tes_util::SumXLCounts(xls);
+        auto matches_non_xl = name() == form_->GetName() && extra() == Extra();
+        if (matches_non_xl) {
+            new_count += count_excl_xl;
         }
-        return {.count = matching_count, .xls = matching_xls};
+        return {new_count, std::move(xls)};
     }
 
-    explicit Gear(
-        RE::TESForm* form, Gearslot slot, float extra_health, RE::EnchantmentItem* extra_ench
-    )
+    const RE::BGSEquipSlot*
+    GetBGSEquipSlot() const {
+        switch (slot()) {
+            case Gearslot::kLeft:
+                return tes_util::GetForm<RE::BGSEquipSlot>(tes_util::kEqupLeftHand);
+            case Gearslot::kRight:
+                return tes_util::GetForm<RE::BGSEquipSlot>(tes_util::kEqupRightHand);
+            case Gearslot::kShout:
+                return tes_util::GetForm<RE::BGSEquipSlot>(tes_util::kEqupVoice);
+        }
+        return nullptr;
+    }
+
+    explicit Gear(RE::TESForm* form, Gearslot slot, std::string name, Extra extra)
         : form_(form),
           slot_(slot),
-          extra_health_(extra_health),
-          extra_ench_(extra_ench) {}
+          name_(std::move(name)),
+          extra_(extra) {}
 
     RE::TESForm* form_;
     Gearslot slot_;
-    float extra_health_;
-    RE::EnchantmentItem* extra_ench_;
+    std::string name_;
+    Extra extra_;
 };
 
 /// Like a `std::variant<Gear, Gearslot>`.
 class GearOrSlot final {
   public:
-    GearOrSlot(ech::Gear gear) : variant_(gear) {}
+    GearOrSlot(Gear gear) : variant_(gear) {}
 
     GearOrSlot(Gearslot slot) : variant_(slot) {}
 
     /// Returns nullptr if this object is storing a `Gearslot`.
-    const ech::Gear*
+    const Gear*
     gear() const {
-        return std::get_if<ech::Gear>(&variant_);
+        return std::get_if<Gear>(&variant_);
     }
 
     Gearslot
     slot() const {
-        if (gear()) {
-            return gear()->slot();
+        if (const auto* g = gear()) {
+            return g->slot();
         }
         if (const auto* slot = std::get_if<Gearslot>(&variant_)) {
             return *slot;
@@ -704,7 +690,7 @@ class GearOrSlot final {
     }
 
   private:
-    std::variant<ech::Gear, Gearslot> variant_;
+    std::variant<Gear, Gearslot> variant_;
 };
 
 }  // namespace ech

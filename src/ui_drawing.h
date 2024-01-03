@@ -379,9 +379,10 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
         arr[static_cast<size_t>(EsItemUI::Choice::kUnequip)] = "(Unequip)";
         return arr;
     }();
+
     constexpr auto item_to_str = [](const EsItemUI& item) {
         if (item.canonical_choice() == EsItemUI::Choice::kGear) {
-            return item.gos.gear()->form().GetName();
+            return item.gos.gear()->name().c_str();
         }
         return opts_template[static_cast<size_t>(item.canonical_choice())];
     };
@@ -402,7 +403,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
 
             auto opts = opts_template;
             if (const auto* gear = item.gos.gear()) {
-                opts[static_cast<size_t>(EsItemUI::Choice::kGear)] = gear->form().GetName();
+                opts[static_cast<size_t>(EsItemUI::Choice::kGear)] = gear->name().c_str();
             }
 
             auto action = Action();

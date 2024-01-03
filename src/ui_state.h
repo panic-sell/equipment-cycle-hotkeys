@@ -70,7 +70,7 @@ class EquipsetUI final : public std::array<EsItemUI, kGearslots.size()> {
                     items.push_back(item_ui.gos);
                     break;
                 case EsItemUI::Choice::kUnequip:
-                    items.emplace_back(item_ui.gos.slot());
+                    items.push_back(item_ui.gos.slot());
                     break;
             }
         }
@@ -366,7 +366,7 @@ class UI final {
         for (auto& s : v) {
             s.erase(s.end() - kProfileExt.size(), s.end());
         }
-        eph->saved_profiles_.emplace(v);
+        eph->saved_profiles_.emplace(std::move(v));
         return *eph->saved_profiles_;
     }
 

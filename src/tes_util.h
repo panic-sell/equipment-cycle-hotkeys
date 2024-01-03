@@ -135,35 +135,28 @@ IsShield(const RE::TESForm* form) {
     return armor && armor->HasPartOf(RE::BGSBipedObjectForm::BipedObjectSlot::kShield);
 }
 
-enum class ForEachExtraListControl {
-    kContinue,
-    kBreak,
-};
-
-/// Performs `action` on all non-null extra lists of `ied`.
-inline void
-ForEachExtraList(
-    const RE::InventoryEntryData* ied,
-    std::function<ForEachExtraListControl(RE::ExtraDataList&)> action
-) {
+/// Gets all extra lists from `ied`. All returned extra lists are guaranteed to be non-null.
+inline std::vector<RE::ExtraDataList*>
+GetXLs(const RE::InventoryEntryData* ied) {
     if (!ied || !ied->extraLists) {
-        return;
+        return {};
     }
+    auto v = std::vector<RE::ExtraDataList*>();
     for (auto* xl : *ied->extraLists) {
-        if (xl && action(*xl) == ForEachExtraListControl::kBreak) {
-            return;
+        if (xl) {
+            v.push_back(xl);
         }
     }
+    return v;
 }
 
 inline int32_t
-SumExtraListCounts(RE::InventoryEntryData* ied) {
-    int32_t count = 0;
-    ForEachExtraList(ied, [&](RE::ExtraDataList& xl) {
-        count += xl.GetCount();
-        return ForEachExtraListControl::kContinue;
-    });
-    return count;
+SumXLCounts(std::span<RE::ExtraDataList* const> xls) {
+    int32_t c = 0;
+    for (auto* xl : xls) {
+        c += xl ? xl->GetCount() : 0;
+    }
+    return c;
 }
 
 }  // namespace tes_util

@@ -43,11 +43,10 @@ class Equipset final {
     FromEquipped(RE::Actor& actor, bool unequip_empty_slots = false) {
         auto items = std::vector<GearOrSlot>();
         for (auto slot : kGearslots) {
-            auto gear = Gear::FromEquipped(actor, slot);
-            if (gear) {
-                items.emplace_back(*gear);
+            if (auto gear = Gear::FromEquipped(actor, slot)) {
+                items.push_back(std::move(*gear));
             } else if (unequip_empty_slots) {
-                items.emplace_back(slot);
+                items.push_back(slot);
             }
         }
         return Equipset(std::move(items));
@@ -65,8 +64,7 @@ class Equipset final {
     void
     Apply(RE::ActorEquipManager& aem, RE::Actor& actor) const {
         for (const auto& item : items_) {
-            const auto* gear = item.gear();
-            if (gear) {
+            if (const auto* gear = item.gear()) {
                 gear->Equip(aem, actor);
             } else {
                 UnequipGear(aem, actor, item.slot());

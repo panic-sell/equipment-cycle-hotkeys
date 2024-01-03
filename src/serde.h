@@ -121,11 +121,14 @@ tag_invoke(const boost::json::value_from_tag&, boost::json::value& jv, const Equ
         if (id != 0) {
             jo.insert_or_assign("id", id);
         }
-        if (std::isfinite(gear->extra_health())) {
-            jo.insert_or_assign("extra_health", gear->extra_health());
+        if (!gear->name().empty()) {
+            jo.insert_or_assign("name", gear->name());
         }
-        if (gear->extra_ench()) {
-            const auto& [ee_mod, ee_id] = tes_util::GetNamedFormID(*gear->extra_ench());
+        if (std::isfinite(gear->extra().health)) {
+            jo.insert_or_assign("extra_health", gear->extra().health);
+        }
+        if (gear->extra().ench) {
+            const auto& [ee_mod, ee_id] = tes_util::GetNamedFormID(*gear->extra().ench);
             if (!ee_mod.empty()) {
                 jo.insert_or_assign("extra_ench_mod", ee_mod);
             }
@@ -176,18 +179,20 @@ tag_invoke(
             return std::nullopt;
         }
 
-        auto extra_health = internal::GetSerObjField<float>(jo, "extra_health", ctx)
-                                .value_or(std::numeric_limits<float>::quiet_NaN());
+        auto name = internal::GetSerObjField<std::string>(jo, "name", ctx).value_or(""s);
 
-        RE::EnchantmentItem* extra_ench = nullptr;
+        auto extra = Gear::Extra();
+        extra.health = internal::GetSerObjField<float>(jo, "extra_health", ctx)
+                           .value_or(std::numeric_limits<float>::quiet_NaN());
+
         auto ee_mod =
             internal::GetSerObjField<std::string>(jo, "extra_ench_mod", ctx).value_or(""s);
         auto ee_id = internal::GetSerObjField<RE::FormID>(jo, "extra_ench_id", ctx).value_or(0);
         if (!ee_mod.empty() || ee_id != 0) {
-            extra_ench = tes_util::GetForm<RE::EnchantmentItem>(ee_mod, ee_id);
+            extra.ench = tes_util::GetForm<RE::EnchantmentItem>(ee_mod, ee_id);
         }
 
-        return Gear::New(form, slot == Gearslot::kLeft, extra_health, extra_ench);
+        return Gear::New(form, slot == Gearslot::kLeft, std::move(name), extra);
     };
 
     if (!jv.is_array()) {
@@ -316,9 +321,10 @@ tag_invoke(
                                    .value_or(settings.menu_font_scale);
     settings.menu_color_style = internal::GetSerObjField<std::string>(jo, "menu_color_style", ctx)
                                     .value_or(settings.menu_color_style);
-    settings.menu_toggle_keysets =
-        Keysets(internal::GetSerObjField<std::vector<Keyset>>(jo, "menu_toggle_keysets", ctx)
-                    .value_or(settings.menu_toggle_keysets.vec()));
+    settings.menu_toggle_keysets = Keysets(
+        internal::GetSerObjField<std::vector<Keyset>>(jo, "menu_toggle_keysets", ctx)
+            .value_or(settings.menu_toggle_keysets.vec())
+    );
     return settings;
 }
 
