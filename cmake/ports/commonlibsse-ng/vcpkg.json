@@ -1,0 +1,19 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "name": "commonlibsse-ng",
+    "version-semver": "3.6.0",
+    "homepage": "https://github.com/alandtse/CommonLibVR",
+    "license": "MIT",
+    "supports": "windows & x64",
+    "dependencies": [
+        {
+            "name": "vcpkg-cmake-config",
+            "host": true
+        },
+        "directxtk",
+        "fmt",
+        "rapidcsv",
+        "spdlog",
+        "xbyak"
+    ]
+}

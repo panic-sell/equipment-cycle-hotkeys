@@ -597,14 +597,20 @@ Init(
     const Settings& settings
 ) {
     auto* renderer = RE::BSGraphics::Renderer::GetSingleton();
-    auto* device = renderer ? renderer->data.forwarder : nullptr;
-    auto* ctx = renderer ? renderer->data.context : nullptr;
-    auto* swapchain = renderer ? renderer->data.renderWindows[0].swapChain : nullptr;
+
+    auto* device = renderer ? renderer->GetDevice() : nullptr;
+
+    auto* data = renderer ? renderer->GetRendererDataSingleton() : nullptr;
+    auto* ctx = data ? data->context : nullptr;
+
+    auto* window = renderer ? renderer->GetCurrentRenderWindow() : nullptr;
+    auto* swapchain = window ? window->swapChain : nullptr;
+
     if (!device || !ctx || !swapchain) {
         return std::unexpected("cannot get renderer");
     }
 
-    DXGI_SWAP_CHAIN_DESC sd;
+    auto sd = DXGI_SWAP_CHAIN_DESC();
     if (swapchain->GetDesc(&sd) != S_OK) {
         return std::unexpected("cannot get swap chain description");
     }

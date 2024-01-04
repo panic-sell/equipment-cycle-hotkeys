@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.28.1)
 project(EquipmentCycleHotkeys VERSION 1.0.0 LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 
 
 ###########################################################
@@ -38,6 +35,7 @@ set(tests
 ###########################################################
 
 find_package(CommonLibSSE CONFIG REQUIRED)
+find_package(directxtk CONFIG REQUIRED)  # for alandtse/CommonLibVR
 find_package(Boost 1.83.0 REQUIRED COMPONENTS json)
 find_package(imgui CONFIG REQUIRED)
 
