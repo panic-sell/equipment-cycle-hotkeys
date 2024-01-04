@@ -590,11 +590,8 @@ Configure(const Settings& settings) {
 
 [[nodiscard]] inline std::expected<void, std::string_view>
 Init(
-    /// The Hotkeys object that InputHandler uses. On closing menu, InputHook will sync this with
-    /// `ui` before clearing `ui` data.
     Hotkeys<>& hotkeys,
     std::mutex& hotkeys_mutex,
-    /// UI context. Nullopt means menu is not active. Likewise, non-nullopt means menu is active.
     UI& ui,
     std::mutex& ui_mutex,
     const Settings& settings
