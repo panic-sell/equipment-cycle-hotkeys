@@ -189,7 +189,7 @@ TEST_CASE("UI tests") {
         }
     }
 
-    SECTION("NormalizeExportName") {
+    SECTION("GetNormalizedExportName") {
         const auto& [orig, want] = GENERATE(
             std::pair("asdf", "asdf"),
             std::pair("AS/\\df_c.json", "ASdf_cjson"),
@@ -198,7 +198,7 @@ TEST_CASE("UI tests") {
             std::pair("   ✒  . ", "")
         );
         ui.export_name = orig;
-        ui.NormalizeExportName();
+        REQUIRE(ui.GetNormalizedExportName() == want);
         REQUIRE(ui.export_name == want);
     }
 

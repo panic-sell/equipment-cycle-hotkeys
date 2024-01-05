@@ -4,7 +4,7 @@
 namespace ech {
 namespace fs {
 
-TEST_CASE("fs read/write file") {
+TEST_CASE("fs ReadFile/WriteFile") {
     auto td = Tempdir();
 
     // Auto creates the intermediate folder `dir`.
@@ -15,6 +15,16 @@ TEST_CASE("fs read/write file") {
     auto read_contents = ReadFile(fp);
     REQUIRE(read_contents);
     REQUIRE(*read_contents == contents);
+}
+
+TEST_CASE("fs RemoveFile") {
+    auto td = Tempdir();
+
+    auto fp = td.path() + "/dir/some_file.txt";
+    REQUIRE(WriteFile(fp, ""));
+
+    REQUIRE(RemoveFile(fp));
+    REQUIRE(!RemoveFile(td.path() + "/nonexistent.txt"));
 }
 
 TEST_CASE("fs ListDirectory") {

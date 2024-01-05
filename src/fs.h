@@ -70,6 +70,17 @@ WriteFile(std::string_view path, std::string_view contents) {
     return true;
 }
 
+/// Returns false on failure. Attempting to remove a nonexistent file is considered a failure.
+[[nodiscard]] inline bool
+RemoveFile(std::string_view path) {
+    auto fp = PathFromStr(path);
+    if (!fp) {
+        return false;
+    }
+    auto ec = std::error_code();
+    return std::filesystem::remove(*fp, ec);
+}
+
 /// Will create intermediate directories as needed. Returns false on failure.
 [[nodiscard]] inline bool
 EnsureDirExists(std::string_view path) {
@@ -88,7 +99,7 @@ ListDirToBuf(std::string_view dir_path, std::vector<std::string>& buf) {
     if (!dp) {
         return false;
     }
-    std::error_code ec;
+    auto ec = std::error_code();
     auto it = std::filesystem::directory_iterator(*dp, ec);
     if (ec.value() == ERROR_PATH_NOT_FOUND) {
         return true;

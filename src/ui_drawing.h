@@ -190,27 +190,33 @@ DrawProfilesMenu(UI& ui) {
 
     auto action = Action();
     auto confirm_export = false;
+    auto confirm_delete = false;
 
     if (ImGui::BeginMenu("Profiles")) {
         // Export new profile.
         ImGui::InputTextWithHint("##export_name", "Profile Name", &ui.export_name);
         if (ImGui::IsItemDeactivated()) {
-            action = [&ui]() { ui.NormalizeExportName(); };
+            action = [&ui]() { ui.GetNormalizedExportName(); };
         }
         ImGui::SameLine();
         if (ImGui::Button("Export")) {
             confirm_export = !ui.export_name.empty();
         }
+        if (!ui.GetSavedProfiles().empty()) {
+            ImGui::SameLine();
+            if (ImGui::Button("X")) {
+                confirm_delete = !ui.export_name.empty() && ui.GetSavedProfileMatchingExportName();
+            }
+        }
 
         // List of importable profiles.
-        auto profiles = ui.GetSavedProfiles();
-        if (!profiles.empty()) {
+        if (!ui.GetSavedProfiles().empty()) {
             ImGui::SeparatorText("Import");
-            for (const auto& profile : profiles) {
+            for (const auto& profile : ui.GetSavedProfiles()) {
                 if (!ImGui::MenuItem(profile.c_str())) {
                     continue;
                 }
-                action = [&ui, profile]() {
+                action = [&ui, profile = profile]() {
                     if (ui.ImportProfile(profile)) {
                         return;
                     }
@@ -226,10 +232,13 @@ DrawProfilesMenu(UI& ui) {
 
     if (confirm_export) {
         ImGui::OpenPopup("confirm_export");
+    } else if (confirm_delete) {
+        ImGui::OpenPopup("confirm_delete");
     }
+
     if (ImGui::BeginPopup("confirm_export")) {
-        if (auto existing_profile = ui.GetSavedProfileMatchingExportName()) {
-            ImGui::Text("Overwrite profile '%s'?", existing_profile->data());
+        if (const auto* existing_profile = ui.GetSavedProfileMatchingExportName()) {
+            ImGui::Text("Overwrite profile '%s'?", existing_profile->c_str());
         } else {
             ImGui::Text("Save as new profile '%s'?", ui.export_name.c_str());
         }
@@ -241,6 +250,26 @@ DrawProfilesMenu(UI& ui) {
                 auto fp = ui.GetProfilePath(ui.export_name);
                 ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to write '{}'", fp));
                 SKSE::log::error("exporting '{}' aborted: cannot write '{}'", ui.export_name, fp);
+            };
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("No")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    if (ImGui::BeginPopup("confirm_delete")) {
+        ImGui::Text("Delete profile '%s'?", ui.export_name.c_str());
+        if (ImGui::Button("Yes")) {
+            action = [&ui]() {
+                if (ui.DeleteProfile()) {
+                    return;
+                }
+                auto fp = ui.GetProfilePath(ui.export_name);
+                ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to remove '{}'", fp));
+                SKSE::log::error("deleting '{}' aborted: cannot remove '{}'", ui.export_name, fp);
             };
             ImGui::CloseCurrentPopup();
         }

@@ -250,9 +250,10 @@ class UI final {
             return true;
         }
 
-        auto p = GetProfilePath(profile);
+        auto fp = GetProfilePath(profile);
+        eph->saved_profiles_.reset();
         // clang-format off
-        auto hksui = fs::ReadFile(p)
+        auto hksui = fs::ReadFile(fp)
             .and_then([](std::string&& s) { return Deserialize<Hotkeys<>>(s); })
             .transform([](Hotkeys<>&& hotkeys) {
                 return HotkeysUI(hotkeys).ConvertEquipset(EquipsetUI::From);
@@ -278,20 +279,36 @@ class UI final {
         auto hotkeys =
             HotkeysUI(eph->hotkeys_ui).ConvertEquipset(std::mem_fn(&EquipsetUI::To)).Into();
         auto s = Serialize<Hotkeys<>>(hotkeys);
-        NormalizeExportName();
-        auto p = GetProfilePath(export_name);
-        if (!fs::WriteFile(p, s)) {
+        auto fp = GetProfilePath(GetNormalizedExportName());
+        eph->saved_profiles_.reset();
+        if (!fs::WriteFile(fp, s)) {
             return false;
         }
-        eph->saved_profiles_.reset();
         return true;
     }
 
-    /// 1. Removes all chars that are not `a-z`, `A-Z`, `0-9`, `-`, `_`, or ASCII 32 space.
-    /// 1. Removes all leading/trailing spaces.
-    /// 1. Truncates whatever is left to 32 bytes.
-    void
-    NormalizeExportName() {
+    /// Returns false on failing to remove the profile's file.
+    ///
+    /// No-op and returns true if UI is not active.
+    [[nodiscard]] bool
+    DeleteProfile() {
+        if (!eph) {
+            return true;
+        }
+        auto fp = GetProfilePath(GetNormalizedExportName());
+        eph->saved_profiles_.reset();
+        if (!fs::RemoveFile(fp)) {
+            return false;
+        }
+        return true;
+    }
+
+    /// Returns a reference to export_name after:
+    /// 1. Removing all chars that are not `a-z`, `A-Z`, `0-9`, `-`, `_`, or ASCII 32 space.
+    /// 1. Removing all leading/trailing spaces.
+    /// 1. Truncating whatever is left to 32 bytes.
+    std::string&
+    GetNormalizedExportName() {
         constexpr auto rm_invalid_chars = [](std::string& s) {
             std::erase_if(s, [](char c) {
                 auto valid = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')
@@ -325,6 +342,7 @@ class UI final {
         rm_invalid_chars(export_name);
         trim_space(export_name);
         truncate_to_size(export_name, 32);
+        return export_name;
     }
 
     std::string
@@ -333,7 +351,7 @@ class UI final {
     }
 
     /// Returns the list of profiles current saved to disk. This cache is refreshed on the next call
-    /// to `Activate()`, `Deactivate()`, or `ExportProfile()`.
+    /// to `ImportProfile()`, `ExportProfile()`, or `DeleteProfile()`.
     ///
     /// Returns an empty vec if UI is not active.
     const std::vector<std::string>&
@@ -370,17 +388,15 @@ class UI final {
         return *eph->saved_profiles_;
     }
 
-    /// Returned string_view is guaranteed to point to a std::string (meaning the underlying char
-    /// array is null-terminated). Returned string_view must not outlive elements of
-    /// `saved_profiles_`.
-    std::optional<std::string_view>
+    /// Returned string must not outlive elements of `saved_profiles_`.
+    const std::string*
     GetSavedProfileMatchingExportName() {
         auto export_fp = fs::PathFromStr(GetProfilePath(export_name));
         if (!export_fp) {
-            return std::nullopt;
+            return nullptr;
         }
 
-        for (std::string_view profile : GetSavedProfiles()) {
+        for (const auto& profile : GetSavedProfiles()) {
             auto existing_fp = fs::PathFromStr(GetProfilePath(profile));
             if (!existing_fp) {
                 continue;
@@ -389,10 +405,10 @@ class UI final {
             // For this function to return true, the paths must actually exist.
             auto eq = std::filesystem::equivalent(*export_fp, *existing_fp, ec);
             if (!ec && eq) {
-                return profile;
+                return &profile;
             }
         }
-        return std::nullopt;
+        return nullptr;
     }
 };
 
