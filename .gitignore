@@ -3,3 +3,4 @@
 !.vscode/launch.json
 .sandbox/*
 build/*
+**.dll

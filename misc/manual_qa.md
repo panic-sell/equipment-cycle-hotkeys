@@ -3,6 +3,19 @@
 ```
 coc WhiterunDragonsreach
 
+// Shouts
+player.teachword 13e22
+player.unlockword 13e22
+player.teachword 13e23
+player.unlockword 13e23
+player.teachword 602a3
+player.unlockword 602a3
+
+// Arcane Blacksmith
+// Steel Smithing
+player.addperk 5218e
+player.addperk cb40d
+
 // Learn some enchantments.
 player.additem 2e4ff 20
 player.additem f82fa 1
@@ -60,19 +73,6 @@ player.additem 10dfc8 1
 player.additem fc03d 1
 player.additem fc04f 1
 player.additem fc067 1
-
-// Shouts
-player.teachword 13e22
-player.unlockword 13e22
-player.teachword 13e23
-player.unlockword 13e23
-player.teachword 602a3
-player.unlockword 602a3
-
-// Arcane Blacksmith
-// Steel Smithing
-player.addperk 5218e
-player.addperk cb40d
 
 // Iron Sword
 // Iron Shield

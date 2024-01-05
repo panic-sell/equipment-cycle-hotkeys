@@ -76,21 +76,23 @@ add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 
 
 ###########################################################
-### Copy DLL to Skyrim
+### DLL Distribution
 ###########################################################
 
+set(OUTPUT_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/misc/SKSE/Plugins")
 # Example contents:
-# set(DLL_FOLDER "C:/mo2_skyrimse/mods/Equipment Cycle Hotkeys/SKSE/Plugins")
-include(".sandbox/dll_folder.cmake" OPTIONAL)
+# list(APPEND OUTPUT_DIRS "C:/mo2_skyrim_ae/mods/Equipment Cycle Hotkeys/SKSE/Plugins")
+# list(APPEND OUTPUT_DIRS "C:/mo2_skyrim_se/mods/Equipment Cycle Hotkeys/SKSE/Plugins")
+include(".sandbox/output_dirs.cmake" OPTIONAL)
 
-if(DEFINED DLL_FOLDER)
-    message(STATUS "SKSE plugin output folder: ${DLL_FOLDER}")
+foreach(DIR ${OUTPUT_DIRS})
+    message(STATUS "Output dir: ${DIR}")
 
     add_custom_command(
         TARGET "${PROJECT_NAME}"
         POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${DLL_FOLDER}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${DLL_FOLDER}/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${DIR}/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
         VERBATIM
     )
-endif()
+endforeach()
