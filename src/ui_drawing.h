@@ -528,8 +528,8 @@ Draw(UI& ui) {
     if (!main_viewport) {
         return;
     }
-    const auto window_initial_pos = main_viewport->WorkSize * ImVec2(.4f, .1f);
-    const auto window_initial_size = main_viewport->WorkSize * ImVec2(.5f, .8f);
+    const auto window_initial_pos = main_viewport->WorkSize * ImVec2(.3f, .2f);
+    const auto window_initial_size = main_viewport->WorkSize * ImVec2(.6f, .6f);
     const auto window_min_size = main_viewport->WorkSize * ImVec2(.25f, .25f);
     const auto hotkeylist_initial_size = main_viewport->WorkSize * ImVec2(.15f, .0f);
     const auto hotkeylist_min_size = main_viewport->WorkSize * ImVec2(.15f, .0f);
