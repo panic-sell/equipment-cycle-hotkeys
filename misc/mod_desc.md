@@ -27,16 +27,18 @@ Mod was tested on SE (1.5.97) and AE (1.6.1130), but should theoretically suppor
 1. Under "Keysets", click "New", then configure button bindings.
 1. Under "Equipsets", click "Add Currently Equipped".
 1. Close the UI.
+1. To add more equipsets to the hotkey, repeat steps 1, 2, 5, and 6.
 
-Video demonstration: TODO
+### Video demos
 
-### Create a second hotkey
+Create a new hotkey:
+[![Video demonstration](https://img.youtube.com/vi/priJxgjqztw/maxresdefault.jpg)](https://youtu.be/priJxgjqztw)
 
-TODO video
+Create a second hotkey:
+[![Video demonstration](https://img.youtube.com/vi/qhBi3Rr0PfI/maxresdefault.jpg)](https://youtu.be/qhBi3Rr0PfI)
 
-### Manage profiles
-
-TODO video
+Profile management:
+[![Video demonstration](https://img.youtube.com/vi/Z_HZpSg37qk/maxresdefault.jpg)](https://youtu.be/Z_HZpSg37qk)
 
 
 ## Limitations

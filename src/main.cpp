@@ -172,6 +172,12 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     InitSKSEMessaging(*mi);
     InitSKSESerialization(*si);
 
-    SKSE::log::info("{} loaded", plugin_decl->GetName());
+    SKSE::log::info(
+        "{} {}.{}.{} loaded",
+        plugin_decl->GetName(),
+        plugin_decl->GetVersion().major(),
+        plugin_decl->GetVersion().minor(),
+        plugin_decl->GetVersion().patch()
+    );
     return true;
 }
