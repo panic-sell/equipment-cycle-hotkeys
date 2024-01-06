@@ -202,21 +202,20 @@ TEST_CASE("UI tests") {
         REQUIRE(ui.export_name == want);
     }
 
-    SECTION("GetSavedProfileMatchingExportName") {
+    SECTION("GetSavedProfileMatching") {
         REQUIRE(fs::WriteFile(td.path() + "/aaa.json", ""));
         REQUIRE(fs::WriteFile(td.path() + "/bbb.json", ""));
         REQUIRE(fs::WriteFile(td.path() + "/ccc.json", ""));
         REQUIRE(fs::EnsureDirExists(td.path() + "/DDD.json"));
 
-        const auto& [profile_for_export, want_match] = GENERATE(
+        const auto& [name, want_match] = GENERATE(
             std::pair("aaa", "aaa"),
             std::pair("AaA", "aaa"),
             std::pair("a", nullptr),
             std::pair("ddd", "DDD")
         );
 
-        ui.export_name = profile_for_export;
-        auto found = ui.GetSavedProfileMatchingExportName();
+        auto found = ui.GetSavedProfileMatching(name);
         if (want_match) {
             REQUIRE(found);
             REQUIRE(*found == want_match);

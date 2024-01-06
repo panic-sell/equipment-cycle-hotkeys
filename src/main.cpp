@@ -54,7 +54,7 @@ InitLogging(const SKSE::PluginDeclaration& plugin_decl) {
 
 void
 InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
-    constexpr auto listener = [](SKSE::MessagingInterface::Message* msg) {
+    constexpr auto listener = [](SKSE::MessagingInterface::Message* msg) -> void {
         if (!msg || msg->type != SKSE::MessagingInterface::kInputLoaded) {
             return;
         }
@@ -73,7 +73,7 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
 
 void
 InitSKSESerialization(const SKSE::SerializationInterface& si) {
-    static constexpr auto on_save = [](SKSE::SerializationInterface* si) {
+    static constexpr auto on_save = [](SKSE::SerializationInterface* si) -> void {
         if (!si) {
             SKSE::log::error("SerializationInterface save callback called with null pointer");
             return;
@@ -92,7 +92,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
         SKSE::log::debug("active hotkeys saved to SKSE cosave");
     };
 
-    static constexpr auto on_load = [](SKSE::SerializationInterface* si) {
+    static constexpr auto on_load = [](SKSE::SerializationInterface* si) -> void {
         if (!si) {
             SKSE::log::error("SerializationInterface load callback called with null pointer");
             return;
@@ -129,7 +129,7 @@ InitSKSESerialization(const SKSE::SerializationInterface& si) {
         gUI.hotkey_in_focus = 0;
     };
 
-    static constexpr auto on_revert = [](SKSE::SerializationInterface* si) {
+    static constexpr auto on_revert = [](SKSE::SerializationInterface* si) -> void {
         if (!si) {
             SKSE::log::error("SerializationInterface revert callback called with null pointer");
             return;

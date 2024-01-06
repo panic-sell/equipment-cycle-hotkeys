@@ -47,7 +47,7 @@ class EquipsetUI final : public std::array<EsItemUI, kGearslots.size()> {
 
     static EquipsetUI
     From(const Equipset& equipset) {
-        EquipsetUI equipset_ui;
+        auto equipset_ui = EquipsetUI();
         for (auto& item_ui : equipset_ui) {
             const auto* gos = QueryEquipset(equipset, item_ui.gos.slot());
             if (!gos) {
@@ -61,7 +61,7 @@ class EquipsetUI final : public std::array<EsItemUI, kGearslots.size()> {
 
     Equipset
     To() const {
-        std::vector<GearOrSlot> items;
+        auto items = std::vector<GearOrSlot>();
         for (const auto& item_ui : *this) {
             switch (item_ui.canonical_choice()) {
                 case EsItemUI::Choice::kIgnore:
@@ -185,8 +185,9 @@ class UI final {
     /// state that persists across UI activations.
     class StateEphemeral final {
       public:
-        Status status;
         HotkeysUI<EquipsetUI> hotkeys_ui;
+        Status status;
+        std::string import_name;
         /// This becomes false when user clicks the "close" widget on the UI window.
         bool imgui_begin_p_open = true;
 
@@ -245,12 +246,12 @@ class UI final {
     ///
     /// No-op and returns true if UI is not active.
     [[nodiscard]] bool
-    ImportProfile(std::string_view profile) {
+    ImportProfile() {
         if (!eph) {
             return true;
         }
 
-        auto fp = GetProfilePath(profile);
+        auto fp = GetProfilePath(eph->import_name);
         eph->saved_profiles_.reset();
         // clang-format off
         auto hksui = fs::ReadFile(fp)
@@ -295,7 +296,7 @@ class UI final {
         if (!eph) {
             return true;
         }
-        auto fp = GetProfilePath(GetNormalizedExportName());
+        auto fp = GetProfilePath(export_name);
         eph->saved_profiles_.reset();
         if (!fs::RemoveFile(fp)) {
             return false;
@@ -309,7 +310,7 @@ class UI final {
     /// 1. Truncating whatever is left to 32 bytes.
     std::string&
     GetNormalizedExportName() {
-        constexpr auto rm_invalid_chars = [](std::string& s) {
+        constexpr auto rm_invalid_chars = [](std::string& s) -> void {
             std::erase_if(s, [](char c) {
                 auto valid = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')
                              || (c >= 'a' && c <= 'z') || c == ' ' || c == '_' || c == '-';
@@ -317,7 +318,7 @@ class UI final {
             });
         };
 
-        constexpr auto trim_space = [](std::string& s) {
+        constexpr auto trim_space = [](std::string& s) -> void {
             auto last = s.find_last_not_of(' ');
             if (last == std::string::npos) {
                 s.clear();
@@ -333,7 +334,7 @@ class UI final {
             s.erase(s.begin(), s.begin() + first);
         };
 
-        constexpr auto truncate_to_size = [](std::string& s, size_t size) {
+        constexpr auto truncate_to_size = [](std::string& s, size_t size) -> void {
             if (s.size() > size) {
                 s.erase(s.begin() + size, s.end());
             }
@@ -390,9 +391,9 @@ class UI final {
 
     /// Returned string must not outlive elements of `saved_profiles_`.
     const std::string*
-    GetSavedProfileMatchingExportName() {
-        auto export_fp = fs::PathFromStr(GetProfilePath(export_name));
-        if (!export_fp) {
+    GetSavedProfileMatching(std::string_view name) {
+        auto fp = fs::PathFromStr(GetProfilePath(name));
+        if (!fp) {
             return nullptr;
         }
 
@@ -401,9 +402,9 @@ class UI final {
             if (!existing_fp) {
                 continue;
             }
-            std::error_code ec;
+            auto ec = std::error_code();
             // For this function to return true, the paths must actually exist.
-            auto eq = std::filesystem::equivalent(*export_fp, *existing_fp, ec);
+            auto eq = std::filesystem::equivalent(*fp, *existing_fp, ec);
             if (!ec && eq) {
                 return &profile;
             }

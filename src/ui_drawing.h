@@ -183,29 +183,70 @@ struct Table final {
 };
 
 inline Action
+DrawStatusPopup(UI::Status& status) {
+    auto action = Action();
+    if (status.should_call_imgui_open_popup) {
+        action = [&status]() { status.should_call_imgui_open_popup = false; };
+        ImGui::OpenPopup("status");
+    }
+    if (ImGui::BeginPopup("status")) {
+        ImGui::Text(status.msg.c_str());
+        ImGui::EndPopup();
+    }
+    return action;
+}
+
+/// Draws a yes/no confirmation popup. Returns true if "yes" was pressed.
+inline bool
+DrawConfirmPopup(const char* popup_id, bool should_open, std::function<void()> draw_prompt) {
+    if (should_open) {
+        ImGui::OpenPopup(popup_id);
+    }
+    if (!ImGui::BeginPopup(popup_id)) {
+        return false;
+    }
+
+    draw_prompt();
+    auto out = false;
+    if (ImGui::Button("Yes")) {
+        out = true;
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("No")) {
+        ImGui::CloseCurrentPopup();
+    }
+
+    ImGui::EndPopup();
+    return out;
+}
+
+inline Action
 DrawProfilesMenu(UI& ui) {
     if (!ui.eph) {
         return {};
     }
 
     auto action = Action();
-    auto confirm_export = false;
-    auto confirm_delete = false;
+    auto should_open_export_popup = false;
+    auto should_open_delete_popup = false;
+    auto should_open_import_popup = false;
 
     if (ImGui::BeginMenu("Profiles")) {
-        // Export new profile.
+        // Export/delete profile.
         ImGui::InputTextWithHint("##export_name", "Profile Name", &ui.export_name);
         if (ImGui::IsItemDeactivated()) {
             action = [&ui]() { ui.GetNormalizedExportName(); };
         }
         ImGui::SameLine();
         if (ImGui::Button("Export")) {
-            confirm_export = !ui.export_name.empty();
+            should_open_export_popup = !ui.export_name.empty();
         }
         if (!ui.GetSavedProfiles().empty()) {
             ImGui::SameLine();
             if (ImGui::Button("X")) {
-                confirm_delete = !ui.export_name.empty() && ui.GetSavedProfileMatchingExportName();
+                should_open_delete_popup = !ui.export_name.empty()
+                                           && ui.GetSavedProfileMatching(ui.export_name);
             }
         }
 
@@ -213,71 +254,63 @@ DrawProfilesMenu(UI& ui) {
         if (!ui.GetSavedProfiles().empty()) {
             ImGui::SeparatorText("Import");
             for (const auto& profile : ui.GetSavedProfiles()) {
-                if (!ImGui::MenuItem(profile.c_str())) {
-                    continue;
+                if (ImGui::MenuItem(profile.c_str())) {
+                    ui.eph->import_name = profile;
+                    should_open_import_popup = true;
                 }
-                action = [&ui, profile = profile]() {
-                    if (ui.ImportProfile(profile)) {
-                        return;
-                    }
-                    auto fp = ui.GetProfilePath(profile);
-                    ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to read '{}'", fp));
-                    SKSE::log::error("importing '{}' aborted: cannot read '{}'", profile, fp);
-                };
             }
         }
 
         ImGui::EndMenu();
     }
 
-    if (confirm_export) {
-        ImGui::OpenPopup("confirm_export");
-    } else if (confirm_delete) {
-        ImGui::OpenPopup("confirm_delete");
+    if (DrawConfirmPopup("##confirm_export", should_open_export_popup, [&ui]() {
+            if (const auto* existing_profile = ui.GetSavedProfileMatching(ui.export_name)) {
+                ImGui::Text("Overwrite profile '%s'?", existing_profile->c_str());
+            } else {
+                ImGui::Text("Save as new profile '%s'?", ui.export_name.c_str());
+            }
+        })) {
+        action = [&ui]() {
+            if (ui.ExportProfile()) {
+                return;
+            }
+            auto fp = ui.GetProfilePath(ui.export_name);
+            ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to write '{}'", fp));
+            SKSE::log::error("exporting '{}' aborted: cannot write '{}'", ui.export_name, fp);
+        };
     }
 
-    if (ImGui::BeginPopup("confirm_export")) {
-        if (const auto* existing_profile = ui.GetSavedProfileMatchingExportName()) {
-            ImGui::Text("Overwrite profile '%s'?", existing_profile->c_str());
-        } else {
-            ImGui::Text("Save as new profile '%s'?", ui.export_name.c_str());
-        }
-        if (ImGui::Button("Yes")) {
-            action = [&ui]() {
-                if (ui.ExportProfile()) {
-                    return;
-                }
-                auto fp = ui.GetProfilePath(ui.export_name);
-                ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to write '{}'", fp));
-                SKSE::log::error("exporting '{}' aborted: cannot write '{}'", ui.export_name, fp);
-            };
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("No")) {
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
+    if (DrawConfirmPopup(
+            "##confirm_delete",
+            should_open_delete_popup,
+            [profile = ui.export_name.c_str()]() { ImGui::Text("Delete profile '%s'?", profile); }
+        )) {
+        action = [&ui]() {
+            if (ui.DeleteProfile()) {
+                return;
+            }
+            auto fp = ui.GetProfilePath(ui.export_name);
+            ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to remove '{}'", fp));
+            SKSE::log::error("deleting '{}' aborted: cannot remove '{}'", ui.export_name, fp);
+        };
     }
 
-    if (ImGui::BeginPopup("confirm_delete")) {
-        ImGui::Text("Delete profile '%s'?", ui.export_name.c_str());
-        if (ImGui::Button("Yes")) {
-            action = [&ui]() {
-                if (ui.DeleteProfile()) {
-                    return;
-                }
-                auto fp = ui.GetProfilePath(ui.export_name);
-                ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to remove '{}'", fp));
-                SKSE::log::error("deleting '{}' aborted: cannot remove '{}'", ui.export_name, fp);
-            };
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("No")) {
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
+    if (DrawConfirmPopup(
+            "##confirm_import",
+            should_open_import_popup,
+            [profile = ui.eph->import_name.c_str()]() {
+                ImGui::Text("Import profile '%s'?", profile);
+            }
+        )) {
+        action = [&ui]() {
+            if (ui.ImportProfile()) {
+                return;
+            }
+            auto fp = ui.GetProfilePath(ui.eph->import_name);
+            ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to read '{}'", fp));
+            SKSE::log::error("importing '{}' aborted: cannot read '{}'", ui.eph->import_name, fp);
+        };
     }
 
     return action;
@@ -294,16 +327,16 @@ DrawHotkeyList(UI& ui) {
         .headers = std::array{""},
         .viewmodel = ui.eph->hotkeys_ui,
         .draw_cell = [&ui](const HotkeyUI<EquipsetUI>& hotkey, size_t row, size_t) -> Action {
-            auto a = Action();
+            auto action = Action();
             if (ImGui::RadioButton("##hotkey_radio", row == ui.hotkey_in_focus)) {
-                a = [&ui, row]() { ui.hotkey_in_focus = row; };
+                action = [&ui, row]() { ui.hotkey_in_focus = row; };
             }
             ImGui::SameLine();
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
             ImGui::InputTextWithHint(
                 "##hotkey_name", "Hotkey Name", const_cast<std::string*>(&hotkey.name)
             );
-            return a;
+            return action;
         },
         .draw_drag_tooltip = [](const HotkeyUI<EquipsetUI>& hotkey
                              ) { ImGui::Text("%s", hotkey.name.c_str()); },
@@ -379,17 +412,13 @@ DrawKeysets(std::vector<Keyset>& keysets) {
             ImGui::EndCombo();
             return action;
         },
-        .draw_drag_tooltip =
-            [](const Keyset& keyset) {
-                auto names = std::array{
-                    keycode_names[KeycodeNormalized(keyset[0])],
-                    keycode_names[KeycodeNormalized(keyset[1])],
-                    keycode_names[KeycodeNormalized(keyset[2])],
-                    keycode_names[KeycodeNormalized(keyset[3])],
-                };
-                static_assert(std::tuple_size_v<decltype(names)> == std::tuple_size_v<Keyset>);
-                ImGui::Text("%s+%s+%s+%s", names[0], names[1], names[2], names[3]);
-            },
+        .draw_drag_tooltip = [](const Keyset& keyset) -> void {
+            auto names = std::array<const char*, std::tuple_size_v<Keyset>>();
+            for (size_t i = 0; i < names.size(); i++) {
+                names[i] = keycode_names[KeycodeNormalized(keyset[i])];
+            }
+            ImGui::Text("%s+%s+%s+%s", names[0], names[1], names[2], names[3]);
+        },
     };
 
     ImGui::SeparatorText("Keysets");
@@ -409,7 +438,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
         return arr;
     }();
 
-    constexpr auto item_to_str = [](const EsItemUI& item) {
+    constexpr auto item_to_str = [](const EsItemUI& item) -> const char* {
         if (item.canonical_choice() == EsItemUI::Choice::kGear) {
             return item.gos.gear()->name().c_str();
         }
@@ -454,17 +483,13 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
             ImGui::EndCombo();
             return action;
         },
-        .draw_drag_tooltip =
-            [](const EquipsetUI& equipset) {
-                auto names = std::array{
-                    item_to_str(equipset[static_cast<size_t>(Gearslot::kLeft)]),
-                    item_to_str(equipset[static_cast<size_t>(Gearslot::kRight)]),
-                    item_to_str(equipset[static_cast<size_t>(Gearslot::kAmmo)]),
-                    item_to_str(equipset[static_cast<size_t>(Gearslot::kShout)]),
-                };
-                static_assert(std::tuple_size_v<decltype(names)> == kGearslots.size());
-                ImGui::Text("%s, %s, %s, %s", names[0], names[1], names[2], names[3]);
-            },
+        .draw_drag_tooltip = [](const EquipsetUI& equipset) -> void {
+            auto names = std::array<const char*, kGearslots.size()>();
+            for (size_t i = 0; i < names.size(); i++) {
+                names[i] = item_to_str(equipset[i]);
+            }
+            ImGui::Text("%s, %s, %s, %s", names[0], names[1], names[2], names[3]);
+        },
     };
 
     ImGui::SeparatorText("Equipsets");
@@ -487,19 +512,6 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
     return action;
 }
 
-inline Action
-DrawStatusPopup(UI::Status& status) {
-    auto action = Action();
-    if (status.should_call_imgui_open_popup) {
-        action = [&status]() { status.should_call_imgui_open_popup = false; };
-        ImGui::OpenPopup("status");
-    }
-    if (ImGui::BeginPopup("status")) {
-        ImGui::Text(status.msg.c_str());
-        ImGui::EndPopup();
-    }
-    return action;
-}
 }  // namespace internal
 
 inline void

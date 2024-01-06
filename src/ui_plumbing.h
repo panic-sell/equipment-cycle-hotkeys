@@ -16,7 +16,7 @@ class RenderHook final {
     static void
     Init(UI& ui, std::mutex& ui_mutex) {
         static auto instance = RenderHook(ui, ui_mutex);
-        static constexpr auto hook = [](uint32_t n) { instance.Render(n); };
+        static constexpr auto hook = [](uint32_t n) -> void { instance.Render(n); };
 
         auto loc = REL::Relocation<uintptr_t>(REL::RelocationID(75461, 77246), REL::Offset(0x9));
         SKSE::AllocTrampoline(14);
@@ -72,7 +72,7 @@ class InputHook final {
             ui, ui_mutex, hotkeys, hotkeys_mutex, std::move(toggle_keysets)
         );
         static constexpr auto hook = [](RE::BSTEventSource<RE::InputEvent*>* event_src,
-                                        RE::InputEvent* const* events) {
+                                        RE::InputEvent* const* events) -> void {
             instance.Input(event_src, events);
         };
 
