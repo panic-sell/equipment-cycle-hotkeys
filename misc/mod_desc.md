@@ -1,10 +1,10 @@
 # Equipment Cycle Hotkeys
 
-Minimalist SKSE hotkey mod to allow cycling multiple equipsets using a single hotkey.
-
-Supports both SE and AE.
+Minimalist SKSE plugin to allow cycling multiple equipsets using a single hotkey.
 
 Heavily inspired by [Serio's Cycle Hotkeys](https://www.nexusmods.com/skyrimspecialedition/mods/27184).
+
+Mod was tested on SE (1.5.97) and AE (1.6.1130), but should theoretically support any version for which [Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/32444) is available.
 
 
 ## Features
@@ -37,16 +37,6 @@ TODO video
 ### Manage profiles
 
 TODO video
-
-
-## Installation
-
-Install like any other SKSE mod.
-
-### Requirements
-
-- [SKSE](https://skse.silverlock.org)
-- [Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/32444)
 
 
 ## Limitations
