@@ -208,10 +208,16 @@ class Gear final {
         return slot_;
     }
 
-    /// Display name.
     const std::string&
     name() const {
         return name_;
+    }
+
+    /// Display name from the perspective of this mod. Does not necessarily match the result of
+    /// `RE::ExtraDataList::GetDisplayName()`.
+    const std::string&
+    display_name() const {
+        return name_.empty() ? display_name_ : name_;
     }
 
     const Extra&
@@ -222,10 +228,10 @@ class Gear final {
     bool
     operator==(const Gear& other) const {
         return form_ == other.form_ && slot() == other.slot() && name() == other.name()
-               && extra() == other.extra();
+               && display_name() == other.display_name() && extra() == other.extra();
     }
 
-    /// Returns nullopt if `form` is not a supported gear type.
+    /// Returns nullopt if `form` is null or not a supported gear type.
     ///
     /// `prefer_left` is ignored if `form` is not a 1h scroll/spell/weapon.
     static std::optional<Gear>
@@ -238,18 +244,10 @@ class Gear final {
         });
     }
 
-    /// Similar to `New()` but derives `name` and `extra` from a real extra list.
+    /// Similar to `New()` but derives `name` and `extra` from an extra list.
     static std::optional<Gear>
-    NewFromXL(RE::TESBoundObject* bound_obj, RE::ExtraDataList* xl, bool prefer_left = false) {
-        if (!bound_obj) {
-            return std::nullopt;
-        }
-        return New(
-            bound_obj->As<RE::TESForm>(),
-            prefer_left,
-            xl ? xl->GetDisplayName(bound_obj) : bound_obj->GetName(),
-            Extra::FromXL(xl)
-        );
+    NewFromXL(RE::TESForm* form, RE::ExtraDataList* xl, bool prefer_left = false) {
+        return New(form, prefer_left, tes_util::GetInvName(form, xl), Extra::FromXL(xl));
     }
 
 #ifdef ECH_TEST
@@ -554,17 +552,12 @@ class Gear final {
 
     bool
     MatchesXL(RE::ExtraDataList& xl, XLWornType t) const {
-        // Things that can have extra lists (scrolls, weapons, shields, ammo) all inherit from
-        // TESBoundObject. Assume a non-TESBoundObject cannot match any extra list.
-        auto* bound_obj = form_->As<RE::TESBoundObject>();
-        if (!bound_obj || name_ != xl.GetDisplayName(bound_obj)) {
+        if (name() != tes_util::GetInvName(form_, &xl)) {
             return false;
         }
-
         if (extra() != Extra::FromXL(&xl)) {
             return false;
         }
-
         switch (t) {
             case XLWornType::kAny:
                 return true;
@@ -644,11 +637,16 @@ class Gear final {
         : form_(form),
           slot_(slot),
           name_(std::move(name)),
+          display_name_(
+              (name_.empty() && form) ? std::format("<MISSING NAME {:08X}>", form->GetFormID())
+                                      : ""s
+          ),
           extra_(extra) {}
 
     RE::TESForm* form_;
     Gearslot slot_;
     std::string name_;
+    std::string display_name_;
     Extra extra_;
 };
 

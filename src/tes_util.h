@@ -109,6 +109,29 @@ GetNamedFormID(const RE::TESForm& form) {
     return {file->GetFilename(), form.GetLocalFormID()};
 }
 
+/// Gets an item's canonical inventory name. This is the item's display name, except missing names
+/// are coerced to the empty string.
+inline const char*
+GetInvName(RE::TESForm* form, RE::ExtraDataList* xl) {
+    if (!form) {
+        return "";
+    }
+    auto* bound_obj = form->As<RE::TESBoundObject>();
+    if (!xl || !bound_obj) {
+        return form->GetName();
+    }
+    // WARNING: `GetDisplayName()` can return nullptr instead of empty string:
+    // https://github.com/alandtse/CommonLibVR/blame/92c4029671e11f0e70850a4954d0d11ee53d6cd6/src/RE/E/ExtraDataList.cpp#L213
+    const char* name = xl->GetDisplayName(bound_obj);
+    if (!name) {
+        return "";
+    }
+    auto* gsc = RE::GameSettingCollection::GetSingleton();
+    auto* missing_name_setting = gsc ? gsc->GetSetting("sMissingName") : nullptr;
+    const char* missing_name = missing_name_setting ? missing_name_setting->GetString() : "";
+    return std::string_view(name) == missing_name ? "" : name;
+}
+
 inline bool
 IsVoiceEquippable(const RE::TESForm* form) {
     const auto* eqt = form ? form->As<RE::BGSEquipType>() : nullptr;

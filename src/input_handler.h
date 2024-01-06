@@ -128,7 +128,9 @@ class InputHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             return;
         }
 
-        // internal::InspectEquipped(keystroke_buf_, *player);
+#ifndef NDEBUG
+        internal::InspectEquipped(keystroke_buf_, *player);
+#endif
 
         auto lock = std::lock_guard(*hotkeys_mutex_);
         const auto* orig = hotkeys_->GetSelectedEquipset();
