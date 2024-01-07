@@ -51,14 +51,6 @@ struct fmt::formatter<ech::Gearslot> : fmt::formatter<std::string_view> {
 namespace ech {
 namespace internal {
 
-inline bool
-ExtraHealthEq(float a, float b) {
-    if (std::isnan(a) && std::isnan(b)) {
-        return true;
-    }
-    return std::fabsf(a - b) < .001f;
-}
-
 inline std::optional<Gearslot>
 GetExpectedGearslot(const RE::TESForm* form, bool prefer_left) {
     if (!form) {
@@ -74,11 +66,9 @@ GetExpectedGearslot(const RE::TESForm* form, bool prefer_left) {
             return Gearslot::kLeft;
         case RE::FormType::Armor:
             return tes_util::IsShield(form) ? std::optional(Gearslot::kLeft) : std::nullopt;
-    }
-
-    if (const auto* weap = form->As<RE::TESObjectWEAP>()) {
-        return !prefer_left || tes_util::IsTwoHandedWeapon(weap) ? Gearslot::kRight
-                                                                 : Gearslot::kLeft;
+        case RE::FormType::Weapon:
+            return !prefer_left || tes_util::IsTwoHandedWeapon(form) ? Gearslot::kRight
+                                                                     : Gearslot::kLeft;
     }
 
     if (const auto* spell = form->As<RE::SpellItem>()) {
@@ -93,22 +83,22 @@ GetExpectedGearslot(const RE::TESForm* form, bool prefer_left) {
 
 inline void
 UnequipHand(RE::ActorEquipManager& aem, RE::Actor& actor, bool left_hand) {
-    auto equipslot_id = left_hand ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand;
-    const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(equipslot_id);
+    auto equp_id = left_hand ? tes_util::kEqupLeftHand : tes_util::kEqupRightHand;
+    const auto* bgs_slot = tes_util::GetForm<RE::BGSEquipSlot>(equp_id);
     auto* dummy = tes_util::GetForm<RE::TESObjectWEAP>(tes_util::kWeapDummy);
-    if (!slot || !dummy) {
+    if (!bgs_slot || !dummy) {
         SKSE::log::error(
             "{} unequip failed: cannot look up {:08X} or {:08X}",
             left_hand ? Gearslot::kLeft : Gearslot::kRight,
-            equipslot_id,
+            equp_id,
             tes_util::kWeapDummy
         );
         // Swallow the error and do nothing. Players can still unequip via menus.
         return;
     }
-    //                                              queue, force, sounds, apply_now
-    aem.EquipObject(&actor, dummy, nullptr, 1, slot, false, false, false, true);
-    aem.UnequipObject(&actor, dummy, nullptr, 1, slot, false, false, false, true);
+    //                                                 queue, force, sounds, apply_now
+    aem.EquipObject(&actor, dummy, nullptr, 1, bgs_slot, false, false, false, true);
+    aem.UnequipObject(&actor, dummy, nullptr, 1, bgs_slot, false, false, false, true);
 }
 
 inline void
@@ -176,12 +166,16 @@ UnequipGear(RE::ActorEquipManager& aem, RE::Actor& actor, Gearslot slot) {
 class Gear final {
   public:
     struct Extra final {
+        static constexpr float kHealthEpsilon = .001f;
+
         float health = std::numeric_limits<float>::quiet_NaN();
         RE::EnchantmentItem* ench = nullptr;
 
         bool
         operator==(const Extra& other) const {
-            return internal::ExtraHealthEq(health, other.health) && ench == other.ench;
+            auto health_eq = (std::isnan(health) && std::isnan(other.health))
+                             || std::fabsf(health - other.health) < kHealthEpsilon;
+            return health_eq && ench == other.ench;
         }
 
         static Extra
@@ -269,24 +263,36 @@ class Gear final {
     /// relate a summoned bound sword to the bound sword spell.
     static std::optional<Gear>
     FromEquipped(RE::Actor& actor, Gearslot slot) {
+        auto out = std::optional<Gear>();
         switch (slot) {
             case Gearslot::kLeft:
                 // Scroll handling must precede spell handling since scroll subclasses spell.
-                return FromEquippedScroll(actor, true)
-                    .or_else([&]() { return FromEquippedSpell(actor, true); })
-                    .or_else([&]() { return FromEquippedWeapon(actor, true); })
-                    .or_else([&]() { return FromEquippedTorch(actor); })
-                    .or_else([&]() { return FromEquippedShield(actor); });
+                out = FromEquippedScroll(actor, true)
+                          .or_else([&]() { return FromEquippedSpell(actor, true); })
+                          .or_else([&]() { return FromEquippedWeapon(actor, true); })
+                          .or_else([&]() { return FromEquippedTorch(actor); })
+                          .or_else([&]() { return FromEquippedShield(actor); });
+                break;
             case Gearslot::kRight:
-                return FromEquippedScroll(actor, false)
-                    .or_else([&]() { return FromEquippedSpell(actor, false); })
-                    .or_else([&]() { return FromEquippedWeapon(actor, false); });
+                out = FromEquippedScroll(actor, false)
+                          .or_else([&]() { return FromEquippedSpell(actor, false); })
+                          .or_else([&]() { return FromEquippedWeapon(actor, false); });
+                break;
             case Gearslot::kAmmo:
-                return New(actor.GetCurrentAmmo());
+                out = New(actor.GetCurrentAmmo());
+                break;
             case Gearslot::kShout:
-                return New(actor.GetActorRuntimeData().selectedPower);
+                out = New(actor.GetActorRuntimeData().selectedPower);
+                break;
         }
-        return std::nullopt;
+
+        if (out) {
+            SKSE::log::trace("{} contains {}", slot, out->form());
+        } else {
+            SKSE::log::trace("{} is empty", slot);
+        }
+
+        return out;
     }
 
     /// When equipping 1h scrolls and weapons, there exists an edge case where if player swaps an

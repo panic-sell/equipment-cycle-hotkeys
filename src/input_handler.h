@@ -12,7 +12,7 @@ namespace internal {
 /// items.
 inline void
 InspectEquipped(std::span<const Keystroke> keystrokes, RE::Actor& actor) {
-    static const auto keysets = Keysets({{KeycodeFromName("/"), KeycodeFromName("'")}});
+    static const auto keysets = Keysets({{KeycodeFromName("."), KeycodeFromName(";")}});
     if (keysets.Match(keystrokes) != Keypress::kPress) {
         return;
     }

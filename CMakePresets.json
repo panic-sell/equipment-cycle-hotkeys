@@ -17,7 +17,7 @@
             },
             "cacheVariables": {
                 "CMAKE_CXX_COMPILER": "cl.exe",
-                "CMAKE_CXX_FLAGS": "/permissive- /Zc:preprocessor /EHsc /MP /W4 /utf-8 -DWIN32_LEAN_AND_MEAN -DNOMINMAX -DUNICODE -D_UNICODE",
+                "CMAKE_CXX_FLAGS": "/permissive- /Zc:preprocessor /EHsc /MP /W4 /utf-8",
                 "CMAKE_CXX_STANDARD": "23",
                 "CMAKE_CXX_STANDARD_REQUIRED": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",

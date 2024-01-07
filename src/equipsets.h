@@ -39,6 +39,15 @@ class Equipset final {
         return items_;
     }
 
+    /// Returns nullptr if no item exists with the given slot.
+    const GearOrSlot*
+    Get(Gearslot slot) const {
+        auto it = std::find_if(items_.cbegin(), items_.cend(), [=](const GearOrSlot& item) {
+            return item.slot() == slot;
+        });
+        return it == items_.cend() ? nullptr : &*it;
+    }
+
     static Equipset
     FromEquipped(RE::Actor& actor, bool unequip_empty_slots = false) {
         auto items = std::vector<GearOrSlot>();
@@ -50,15 +59,6 @@ class Equipset final {
             }
         }
         return Equipset(std::move(items));
-    }
-
-    bool
-    IsEquipped(RE::Actor& actor) const {
-        auto equipped = FromEquipped(actor, true);
-        return std::all_of(items_.cbegin(), items_.cend(), [&](const GearOrSlot& item) {
-            return std::find(equipped.vec().cbegin(), equipped.vec().cend(), item)
-                   != equipped.vec().cend();
-        });
     }
 
     void

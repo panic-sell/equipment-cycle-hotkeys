@@ -49,7 +49,7 @@ class EquipsetUI final : public std::array<EsItemUI, kGearslots.size()> {
     From(const Equipset& equipset) {
         auto equipset_ui = EquipsetUI();
         for (auto& item_ui : equipset_ui) {
-            const auto* gos = QueryEquipset(equipset, item_ui.gos.slot());
+            const auto* gos = equipset.Get(item_ui.gos.slot());
             if (!gos) {
                 continue;
             }
@@ -75,17 +75,6 @@ class EquipsetUI final : public std::array<EsItemUI, kGearslots.size()> {
             }
         }
         return Equipset(std::move(items));
-    }
-
-  private:
-    /// Finds the first item in `equipset` with the given slot.
-    static const GearOrSlot*
-    QueryEquipset(const Equipset& equipset, Gearslot slot) {
-        const auto& v = equipset.vec();
-        auto it = std::find_if(v.cbegin(), v.cend(), [=](const GearOrSlot& item) {
-            return item.slot() == slot;
-        });
-        return it == v.cend() ? nullptr : &*it;
     }
 };
 

@@ -1,7 +1,12 @@
-// Stdlib headers from https://stackoverflow.com/a/2029106
 #pragma once
 
-// clang-format off
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define UNICODE
+#define _UNICODE
+#define IMGUI_DEFINE_MATH_OPERATORS
+
+// https://stackoverflow.com/a/2029106
 #include <algorithm>
 #include <any>
 #include <array>
@@ -89,6 +94,7 @@
 #include <vector>
 #include <version>
 
+// https://stackoverflow.com/a/2029106
 #include <cassert>
 #include <cctype>
 #include <cerrno>
@@ -110,8 +116,8 @@
 #include <cuchar>
 #include <cwchar>
 #include <cwctype>
-// clang-format on
 
+// CommonLibSSE
 #include <RE/Skyrim.h>
 #include <REL/Relocation.h>
 #include <SKSE/SKSE.h>
@@ -126,7 +132,6 @@
 #include <Windows.h>
 #include <d3d11.h>
 #include <dxgi.h>
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
