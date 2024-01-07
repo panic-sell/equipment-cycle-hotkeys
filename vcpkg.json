@@ -3,7 +3,7 @@
     "name": "equipment-cycle-hotkeys",
     "version": "0.0.0",
     "dependencies": [
-        "commonlibsse-ng",
+        "commonlibsse-ng-flatrim",
         "boost-json",
         "catch2",
         {
@@ -20,8 +20,16 @@
             "repository": "https://github.com/microsoft/vcpkg.git",
             "baseline": "ce46ba8777d8f899d8dc11afefb8eca39293df39"
         },
-        "overlay-ports": [
-            "cmake/ports"
+        "registries": [
+            {
+                "kind": "git",
+                "repository": "https://gitlab.com/colorglass/vcpkg-colorglass",
+                "baseline": "6309841a1ce770409708a67a9ba5c26c537d2937",
+                "packages": [
+                    "commonlibsse-ng",
+                    "commonlibsse-ng-flatrim"
+                ]
+            }
         ]
     }
 }
