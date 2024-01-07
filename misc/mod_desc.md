@@ -9,16 +9,20 @@ This is a minimalist hotkey mod heavily inspired by [Serio's Cycle Hotkeys](http
 
 - SKSE-only, no Papyrus scripts. Install/uninstall at any time.
 - Bind any number of equipsets to each hotkey. Or just bind one, and have this mod function as a basic, non-cycling hotkey mod.
-- Bind up to four keys (including modifier keys) per button combo.
+- Bind up to four keys per button combo. You can bind normal keys, modifier keys, mouse buttons, or gamepad buttons.
 - Bind any number of button combos to each hotkey. This enables setting up one combo for the keyboard and another for the gamepad, and using both to trigger the same hotkey.
 - Hotkeys remember their last selected equipset. Activating hotkeys A, then B, then A again will re-equip whatever A had selected prior to activating B.
 - Hold a hotkey to reset to the first equipset (a la Elden Ring).
 - Equipsets can be configured to ignore or unequip specific slots.
 - Hotkey profiles can be exported and transferred across saves.
 
-## **Configuration**
+### Configuration
 
 See **`Data/SKSE/Plugins/EquipmentCycleHotkeys.json`** for configurable options, including UI toggle keys and UI font size.
+
+### Gamepad Support
+
+In addition to activating hotkeys, you can use the gamepad for UI toggling (configure **`EquipmentCycleHotkeys.json`** per above) and navigation (see [navigation controls](https://drive.google.com/file/d/1STcKJ7hCKOj6I4IvgWlgPgdLmnYBhEC3/view)).
 
 
 ## **Getting Started**
