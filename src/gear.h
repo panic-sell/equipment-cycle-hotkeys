@@ -288,9 +288,10 @@ class Gear final {
         return std::nullopt;
     }
 
-    /// When equipping 1h scrolls and weapons, there exists an edge case where if player swaps
-    /// an item between hands, they will end up equipping in both hands even if only 1 item
-    /// exists in inventory. This specific case is handled by unequipping the other hand first.
+    /// When equipping 1h scrolls and weapons, there exists an edge case where if player swaps an
+    /// item between hands, they will end up equipping it in both hands even if there is only one
+    /// item in the player's inventory. This specific case is handled by unequipping the other hand
+    /// first.
     void
     Equip(RE::ActorEquipManager& aem, RE::Actor& actor) const {
         auto success = false;

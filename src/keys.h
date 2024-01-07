@@ -333,8 +333,7 @@ KeycodeFromScancode(uint32_t scancode, RE::INPUT_DEVICE device) {
 ///
 /// Invariants:
 /// - `keycode_` is valid.
-/// - `heldsecs_` nonnegative and finite.
-/// - One of `IsKeyboard()`, `IsMouse()`, and `IsGamepad()` is true.
+/// - `heldsecs_` is nonnegative and finite.
 class Keystroke final {
   public:
     static void
