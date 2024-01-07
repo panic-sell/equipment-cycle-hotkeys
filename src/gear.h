@@ -97,13 +97,14 @@ UnequipHand(RE::ActorEquipManager& aem, RE::Actor& actor, bool left_hand) {
     const auto* slot = tes_util::GetForm<RE::BGSEquipSlot>(equipslot_id);
     auto* dummy = tes_util::GetForm<RE::TESObjectWEAP>(tes_util::kWeapDummy);
     if (!slot || !dummy) {
-        // Swallow the error and do nothing. Players can still unequip via menus.
         SKSE::log::error(
             "{} unequip failed: cannot look up {:08X} or {:08X}",
             left_hand ? Gearslot::kLeft : Gearslot::kRight,
             equipslot_id,
             tes_util::kWeapDummy
         );
+        // Swallow the error and do nothing. Players can still unequip via menus.
+        return;
     }
     //                                              queue, force, sounds, apply_now
     aem.EquipObject(&actor, dummy, nullptr, 1, slot, false, false, false, true);
