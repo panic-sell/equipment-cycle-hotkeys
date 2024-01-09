@@ -394,20 +394,15 @@ class Gear final {
         auto inv = actor.GetInventory([](const RE::TESBoundObject& obj) {
             return tes_util::IsShield(&obj);
         });
-        auto it = inv.cbegin();
-        if (it == inv.cend()) {
-            return std::nullopt;
-        }
-        RE::TESBoundObject* shield = it->first;
-        RE::TESObjectREFR::Count count = it->second.first;
-        const auto* ied = it->second.second.get();
-        if (!shield || count <= 0) {
-            return std::nullopt;
-        }
-
-        for (auto* xl : tes_util::GetXLs(ied)) {
-            if (xl->HasType<RE::ExtraWorn>() || xl->HasType<RE::ExtraWornLeft>()) {
-                return New(shield, true, Extra(xl));
+        for (const auto& [item, invdata] : inv) {
+            const auto& [count, ied] = invdata;
+            if (count <= 0) {
+                continue;
+            }
+            for (auto* xl : tes_util::GetXLs(ied.get())) {
+                if (xl->HasType<RE::ExtraWorn>() || xl->HasType<RE::ExtraWornLeft>()) {
+                    return New(item, true, Extra(xl));
+                }
             }
         }
         return std::nullopt;
