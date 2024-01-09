@@ -169,7 +169,7 @@ tag_invoke(
             return GearOrSlot(*slot);
         }
 
-        auto mod = internal::GetSerObjField<std::string>(jo, "mod", ctx).value_or(""s);
+        auto mod = internal::GetSerObjField<std::string>(jo, "mod", ctx).value_or("");
         auto id = internal::GetSerObjField<RE::FormID>(jo, "id", ctx).value_or(0);
         auto* form = tes_util::GetForm(mod, id);
         if (!form) {
@@ -179,8 +179,7 @@ tag_invoke(
         auto extra = Gear::Extra();
         extra.name = internal::GetSerObjField<std::string>(jo, "extra_name", ctx).value_or("");
 
-        auto ee_mod =
-            internal::GetSerObjField<std::string>(jo, "extra_ench_mod", ctx).value_or(""s);
+        auto ee_mod = internal::GetSerObjField<std::string>(jo, "extra_ench_mod", ctx).value_or("");
         auto ee_id = internal::GetSerObjField<RE::FormID>(jo, "extra_ench_id", ctx).value_or(0);
         if (!ee_mod.empty() || ee_id != 0) {
             extra.ench = tes_util::GetForm<RE::EnchantmentItem>(ee_mod, ee_id);

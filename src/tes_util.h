@@ -109,29 +109,6 @@ GetNamedFormID(const RE::TESForm& form) {
     return {file->GetFilename(), form.GetLocalFormID()};
 }
 
-/// Gets an item's canonical inventory name. This is the item's display name, except missing names
-/// are coerced to the empty string.
-inline const char*
-GetInvName(RE::TESForm* form, RE::ExtraDataList* xl) {
-    if (!form) {
-        return "";
-    }
-    auto* bound_obj = form->As<RE::TESBoundObject>();
-    if (!xl || !bound_obj) {
-        return form->GetName();
-    }
-    // WARNING: `GetDisplayName()` can return nullptr instead of empty string:
-    // https://github.com/alandtse/CommonLibVR/blame/92c4029671e11f0e70850a4954d0d11ee53d6cd6/src/RE/E/ExtraDataList.cpp#L213
-    const char* name = xl->GetDisplayName(bound_obj);
-    if (!name) {
-        return "";
-    }
-    auto* gsc = RE::GameSettingCollection::GetSingleton();
-    auto* missing_name_setting = gsc ? gsc->GetSetting("sMissingName") : nullptr;
-    const char* missing_name = missing_name_setting ? missing_name_setting->GetString() : "";
-    return std::string_view(name) == missing_name ? "" : name;
-}
-
 inline bool
 IsVoiceEquippable(const RE::TESForm* form) {
     const auto* eqt = form ? form->As<RE::BGSEquipType>() : nullptr;
@@ -183,20 +160,19 @@ SumXLCounts(std::span<RE::ExtraDataList* const> xls) {
 }
 
 inline float
+GetXLHealth(RE::ExtraDataList* xl) {
+    auto* xhealth = xl ? xl->GetByType<RE::ExtraHealth>() : nullptr;
+    return xhealth ? xhealth->health : 1.f;
+}
+
+inline float
 GetXLEnchCharge(RE::ExtraDataList* xl) {
-    auto neg_inf = -std::numeric_limits<float>::infinity();
-    if (!xl) {
-        return neg_inf;
-    }
-    auto xench = xl->GetByType<RE::ExtraEnchantment>();
+    auto* xench = xl ? xl->GetByType<RE::ExtraEnchantment>() : nullptr;
     if (!xench) {
-        return neg_inf;
+        return -std::numeric_limits<float>::infinity();
     }
-    auto xcharge = xl->GetByType<RE::ExtraCharge>();
-    if (!xcharge) {
-        return static_cast<float>(xench->charge);
-    }
-    return xcharge->charge;
+    auto* xcharge = xl->GetByType<RE::ExtraCharge>();
+    return xcharge ? xcharge->charge : static_cast<float>(xench->charge);
 }
 
 }  // namespace tes_util

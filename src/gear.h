@@ -32,16 +32,16 @@ struct fmt::formatter<ech::Gearslot> : fmt::formatter<std::string_view> {
         auto name = "UNKNOWN SLOT"sv;
         switch (slot) {
             case ech::Gearslot::kLeft:
-                name = "LEFT HAND";
+                name = "LEFT HAND"sv;
                 break;
             case ech::Gearslot::kRight:
-                name = "RIGHT HAND";
+                name = "RIGHT HAND"sv;
                 break;
             case ech::Gearslot::kAmmo:
-                name = "AMMO SLOT";
+                name = "AMMO SLOT"sv;
                 break;
             case ech::Gearslot::kShout:
-                name = "VOICE SLOT";
+                name = "VOICE SLOT"sv;
                 break;
         }
         return formatter<string_view>::format(name, ctx);
@@ -178,11 +178,25 @@ class Gear final {
             return name == other.name && ench == other.ench;
         }
 
+        explicit Extra(RE::ExtraDataList* xl = nullptr) {
+            if (!xl) {
+                return;
+            }
+            if (const auto* xtext = xl->GetByType<RE::ExtraTextDisplayData>()) {
+                if (xtext->IsPlayerSet()) {
+                    name = xtext->displayName;
+                }
+            }
+            if (const auto* xench = xl->GetByType<RE::ExtraEnchantment>()) {
+                ench = xench->enchantment;
+            }
+        }
+
         // Empty name is considered equivalent to any name. This enables a hotkeyed gear with no
         // custom name to match inventory items with custom names, but a hotkeyed gear with custom
         // name will only match inventory items with the same custom name.
         bool
-        EquivalentTo(const Extra& other) const {
+        Matches(const Extra& other) const {
             if (ench != other.ench) {
                 return false;
             }
@@ -190,23 +204,6 @@ class Gear final {
                 return false;
             }
             return true;
-        }
-
-        static Extra
-        FromXL(RE::ExtraDataList* xl) {
-            if (!xl) {
-                return {};
-            }
-            auto extra = Extra();
-            if (const auto* xtext = xl->GetByType<RE::ExtraTextDisplayData>()) {
-                if (xtext->IsPlayerSet()) {
-                    extra.name = xtext->displayName;
-                }
-            }
-            if (const auto* xench = xl->GetByType<RE::ExtraEnchantment>()) {
-                extra.ench = xench->enchantment;
-            }
-            return extra;
         }
     };
 
@@ -245,7 +242,7 @@ class Gear final {
     ///
     /// `prefer_left` is ignored if `form` is not a 1h scroll/spell/weapon.
     static std::optional<Gear>
-    New(RE::TESForm* form, bool prefer_left = false, Extra extra = {}) {
+    New(RE::TESForm* form, bool prefer_left = false, Extra extra = Extra()) {
         return internal::GetExpectedGearslot(form, prefer_left).transform([&](Gearslot slot) {
             return Gear(form, slot, extra);
         });
@@ -254,7 +251,7 @@ class Gear final {
 #ifdef ECH_TEST
     static Gear
     NewForTest(Gearslot slot) {
-        return Gear(nullptr, slot, {});
+        return Gear(nullptr, slot, Extra());
     }
 #endif
 
@@ -377,7 +374,7 @@ class Gear final {
         }
 
         for (auto* xl : tes_util::GetXLs(ied)) {
-            return New(weap, left_hand, Extra::FromXL(xl));
+            return New(weap, left_hand, Extra(xl));
         }
         return std::nullopt;
     }
@@ -410,7 +407,7 @@ class Gear final {
 
         for (auto* xl : tes_util::GetXLs(ied)) {
             if (xl->HasType<RE::ExtraWorn>() || xl->HasType<RE::ExtraWornLeft>()) {
-                return New(shield, true, Extra::FromXL(xl));
+                return New(shield, true, Extra(xl));
             }
         }
         return std::nullopt;
@@ -566,7 +563,7 @@ class Gear final {
 
     bool
     MatchesXL(RE::ExtraDataList& xl, XLWornType t) const {
-        if (!extra().EquivalentTo(Extra::FromXL(&xl))) {
+        if (!extra().Matches(Extra(&xl))) {
             return false;
         }
         switch (t) {
@@ -623,7 +620,7 @@ class Gear final {
         std::erase_if(xls, [&](RE::ExtraDataList* xl) {
             return !xl || !MatchesXL(*xl, XLWornType::kAny);
         });
-        // Prioritize tempering level, followed by enchant charges.
+        // Prioritize (1) tempering level and (2) enchant charges, in that order.
         std::sort(
             xls.begin(),
             xls.end(),
@@ -635,17 +632,12 @@ class Gear final {
             xls.begin(),
             xls.end(),
             [](RE::ExtraDataList* const a, RE::ExtraDataList* const b) {
-                auto* a_xhp = a->GetByType<RE::ExtraHealth>();
-                auto a_hp = a_xhp ? a_xhp->health : 1.f;
-                auto* b_xhp = b->GetByType<RE::ExtraHealth>();
-                auto b_hp = b_xhp ? b_xhp->health : 1.f;
-                return a_hp > b_hp;
+                return tes_util::GetXLHealth(a) > tes_util::GetXLHealth(b);
             }
         );
 
         auto new_count = tes_util::SumXLCounts(xls);
-        auto matches_non_xl = extra().name.empty() && extra().ench == nullptr;
-        if (matches_non_xl) {
+        if (extra() == Extra()) {
             new_count += count_excl_xl;
         }
         return {new_count, std::move(xls)};
