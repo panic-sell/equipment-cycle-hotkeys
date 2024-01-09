@@ -48,6 +48,16 @@ Video demo (make sure to enable captions):
 - When hotkeying bound equipment, make sure you have the spells equipped instead of their summoned forms.
 
 
+## **Troubleshooting**
+
+If things don't work as expected, check logs for anything suspicious.
+1. In **`EquipmentCycleHotkeys.json`**, set "log_level" to "trace".
+1. Launch Skyrim, replicate your issue.
+1. Inspect the contents of **`Documents/My Games/Skyrim Special Edition/SKSE/EquipmentCycleHotkeys.log`**
+
+Please include logs if you post for help.
+
+
 ## **Source**
 
 https://github.com/panic-sell/equipment-cycle-hotkeys
