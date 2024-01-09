@@ -110,6 +110,7 @@ class InputHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             || ui->GameIsPaused()
             || ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)
             || ui->IsMenuOpen(RE::CraftingMenu::MENU_NAME)
+            || ui->IsMenuOpen("LootMenu")  // QuickLoot support
             || !control_map
             || !control_map->IsMovementControlsEnabled()
         ) {  // clang-format on
