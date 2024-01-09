@@ -38,7 +38,7 @@ set(test_sources
 ###########################################################
 
 find_package(CommonLibSSE CONFIG REQUIRED)
-find_package(directxtk CONFIG REQUIRED)  # for alandtse/CommonLibVR
+find_package(directxtk CONFIG REQUIRED)  # for clib-ng-alt -> alandtse/CommonLibVR
 find_package(Boost 1.83.0 REQUIRED COMPONENTS json)
 find_package(imgui CONFIG REQUIRED)
 
@@ -145,7 +145,7 @@ add_custom_target(zip_mod ALL
         "${PROJECT_SOURCE_DIR}/dist/SKSE/Plugins/EquipmentCycleHotkeys.json"
 
     COMMAND "${CMAKE_COMMAND}" -E tar cvf
-        "${PROJECT_SOURCE_DIR}/dist/${PROJECT_NAME}-${PROJECT_VERSION}.zip"
+        "${PROJECT_SOURCE_DIR}/dist/${PROJECT_NAME}-${CMAKE_BUILD_TYPE}-${PROJECT_VERSION}.zip"
         --format=zip -- "${PROJECT_SOURCE_DIR}/dist/SKSE"
 
     DEPENDS mk_dist_dir "${PROJECT_NAME}"
