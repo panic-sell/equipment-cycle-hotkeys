@@ -121,11 +121,8 @@ tag_invoke(const boost::json::value_from_tag&, boost::json::value& jv, const Equ
         if (id != 0) {
             jo.insert_or_assign("id", id);
         }
-        if (!gear->name().empty()) {
-            jo.insert_or_assign("name", gear->name());
-        }
-        if (std::isfinite(gear->extra().health)) {
-            jo.insert_or_assign("extra_health", gear->extra().health);
+        if (!gear->extra().name.empty()) {
+            jo.insert_or_assign("extra_name", gear->extra().name);
         }
         if (gear->extra().ench) {
             const auto& [ee_mod, ee_id] = tes_util::GetNamedFormID(*gear->extra().ench);
@@ -179,11 +176,8 @@ tag_invoke(
             return std::nullopt;
         }
 
-        auto name = internal::GetSerObjField<std::string>(jo, "name", ctx).value_or(""s);
-
         auto extra = Gear::Extra();
-        extra.health = internal::GetSerObjField<float>(jo, "extra_health", ctx)
-                           .value_or(std::numeric_limits<float>::quiet_NaN());
+        extra.name = internal::GetSerObjField<std::string>(jo, "extra_name", ctx).value_or("");
 
         auto ee_mod =
             internal::GetSerObjField<std::string>(jo, "extra_ench_mod", ctx).value_or(""s);
@@ -192,7 +186,7 @@ tag_invoke(
             extra.ench = tes_util::GetForm<RE::EnchantmentItem>(ee_mod, ee_id);
         }
 
-        return Gear::New(form, slot == Gearslot::kLeft, std::move(name), extra);
+        return Gear::New(form, slot == Gearslot::kLeft, extra);
     };
 
     if (!jv.is_array()) {

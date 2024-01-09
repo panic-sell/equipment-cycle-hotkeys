@@ -43,7 +43,7 @@ Video demo (make sure to enable captions):
 ## **Limitations**
 
 - You can only hotkey items/spells equipped to the hands, ammo, and voice slots. In particular, you can't hotkey armor.
-- Hotkeys don't track items across upgrades. You'll have to rehotkey items you temper or enchant.
+- Hotkeys don't track items across enchantments. You'll have to rehotkey items you enchant.
 - When adding a new hotkey in the UI menu, make sure to configure at least one keyset or one equipset before closing the menu. Hotkeys with no keysets and no equipsets are discarded.
 - When hotkeying bound equipment, make sure you have the spells equipped instead of their summoned forms.
 

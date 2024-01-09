@@ -182,5 +182,22 @@ SumXLCounts(std::span<RE::ExtraDataList* const> xls) {
     return c;
 }
 
+inline float
+GetXLEnchCharge(RE::ExtraDataList* xl) {
+    auto neg_inf = -std::numeric_limits<float>::infinity();
+    if (!xl) {
+        return neg_inf;
+    }
+    auto xench = xl->GetByType<RE::ExtraEnchantment>();
+    if (!xench) {
+        return neg_inf;
+    }
+    auto xcharge = xl->GetByType<RE::ExtraCharge>();
+    if (!xcharge) {
+        return static_cast<float>(xench->charge);
+    }
+    return xcharge->charge;
+}
+
 }  // namespace tes_util
 }  // namespace ech

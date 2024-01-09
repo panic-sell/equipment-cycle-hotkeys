@@ -440,7 +440,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
 
     constexpr auto item_to_str = [](const EsItemUI& item) -> const char* {
         if (item.canonical_choice() == EsItemUI::Choice::kGear) {
-            return item.gos.gear()->display_name().c_str();
+            return item.gos.gear()->name();
         }
         return opts_template[static_cast<size_t>(item.canonical_choice())];
     };
@@ -461,7 +461,7 @@ DrawEquipsets(std::vector<EquipsetUI>& equipsets, UI::Status& status) {
 
             auto opts = opts_template;
             if (const auto* gear = item.gos.gear()) {
-                opts[static_cast<size_t>(EsItemUI::Choice::kGear)] = gear->display_name().c_str();
+                opts[static_cast<size_t>(EsItemUI::Choice::kGear)] = gear->name();
             }
 
             auto action = Action();
