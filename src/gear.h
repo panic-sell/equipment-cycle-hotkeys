@@ -160,8 +160,8 @@ UnequipGear(RE::ActorEquipManager& aem, RE::Actor& actor, Gearslot slot) {
 /// Invariants:
 /// - `form_` is non-null.
 /// - `form_` is of a supported gear type per `GetExpectedGearslot()`.
-/// - `extra_.health == NaN` indicates weapon/shield has not been improved.
 /// - `extra_.ench == nullptr` indicates weapon/shield does not have custom enchantment.
+/// - If `extra_.name` is not empty, then `extra_.name != form_->GetName()`.
 /// - A 2h scroll/spell/weapon will always be assigned `Gearslot::kRight`.
 class Gear final {
   public:
@@ -185,6 +185,7 @@ class Gear final {
             if (const auto* xtext = xl->GetByType<RE::ExtraTextDisplayData>()) {
                 if (xtext->IsPlayerSet()) {
                     name = xtext->displayName;
+                    name.erase(name.begin() + xtext->customNameLength, name.end());
                 }
             }
             if (const auto* xench = xl->GetByType<RE::ExtraEnchantment>()) {
@@ -244,7 +245,10 @@ class Gear final {
     static std::optional<Gear>
     New(RE::TESForm* form, bool prefer_left = false, Extra extra = Extra()) {
         return internal::GetExpectedGearslot(form, prefer_left).transform([&](Gearslot slot) {
-            return Gear(form, slot, extra);
+            if (extra.name == form->GetName()) {
+                extra.name = "";
+            }
+            return Gear(form, slot, std::move(extra));
         });
     }
 
