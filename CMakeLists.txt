@@ -38,7 +38,6 @@ set(test_sources
 ###########################################################
 
 find_package(CommonLibSSE CONFIG REQUIRED)
-find_package(directxtk CONFIG REQUIRED)  # for clib-ng-alt -> alandtse/CommonLibVR
 find_package(Boost 1.83.0 REQUIRED COMPONENTS json)
 find_package(imgui CONFIG REQUIRED)
 

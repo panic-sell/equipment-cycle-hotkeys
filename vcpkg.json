@@ -3,7 +3,7 @@
     "name": "equipment-cycle-hotkeys",
     "version": "0.0.0",
     "dependencies": [
-        "clib-ng-alt",
+        "commonlibsse-ng",
         "boost-json",
         "catch2",
         {
