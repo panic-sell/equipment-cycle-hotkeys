@@ -85,8 +85,8 @@ add_test(NAME "${TEST_NAME}" COMMAND "${TEST_NAME}")
 set(DLL_DEST_DIRS)
 
 # Example contents:
-# list(APPEND DLL_DEST_DIRS "C:/mo2_skyrim_ae/mods/EquipmentCycleHotkeys/SKSE/Plugins")
-# list(APPEND DLL_DEST_DIRS "C:/mo2_skyrim_se/mods/EquipmentCycleHotkeys/SKSE/Plugins")
+# list(APPEND DLL_DEST_DIRS "C:/mo2_skyrim_ae/mods/${PROJECT_NAME}/SKSE/Plugins")
+# list(APPEND DLL_DEST_DIRS "C:/mo2_skyrim_se/mods/${PROJECT_NAME}/SKSE/Plugins")
 include("cmake/dirs.cmake" OPTIONAL)
 
 # Copy DLL to destinations.
@@ -112,11 +112,6 @@ endforeach()
 ### Mod Distribution
 ###########################################################
 
-add_custom_target(mk_dist_dir
-    COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/dist"
-    VERBATIM
-)
-
 # Create mod description for Nexus Mods using https://github.com/ceejbot/md2nexus.
 set(MD2NEXUS "${PROJECT_SOURCE_DIR}/.resources/md2nexus.exe")
 if(EXISTS "${MD2NEXUS}")
@@ -124,10 +119,8 @@ if(EXISTS "${MD2NEXUS}")
 
     add_custom_target(md2nexus ALL
         COMMAND "${MD2NEXUS}"
-            --input "${PROJECT_SOURCE_DIR}/misc/mod_desc.md"
+            --input "${PROJECT_SOURCE_DIR}/dist/mod_desc.md"
             --output "${PROJECT_SOURCE_DIR}/dist/mod_desc.bbcode"
-
-        DEPENDS mk_dist_dir
         VERBATIM
     )
 endif()
@@ -140,15 +133,11 @@ add_custom_target(zip_mod ALL
         "$<TARGET_FILE:${PROJECT_NAME}>"
         "${PROJECT_SOURCE_DIR}/dist/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
 
-    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-        "${PROJECT_SOURCE_DIR}/misc/EquipmentCycleHotkeys.json"
-        "${PROJECT_SOURCE_DIR}/dist/SKSE/Plugins/EquipmentCycleHotkeys.json"
-
     COMMAND "${CMAKE_COMMAND}" -E tar cvf
         "${PROJECT_SOURCE_DIR}/dist/${PROJECT_NAME}-${PROJECT_VERSION}-${CMAKE_BUILD_TYPE}.zip"
         --format=zip -- "${PROJECT_SOURCE_DIR}/dist/SKSE"
 
-    DEPENDS mk_dist_dir "${PROJECT_NAME}"
+    DEPENDS "${PROJECT_NAME}"
     # tar is sensitive to the working directory.
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/dist"
     VERBATIM

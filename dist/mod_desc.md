@@ -1,7 +1,3 @@
-# **Equipment Cycle Hotkeys**
-
-Cycle through multiple gearsets using a single hotkey.
-
 This is a minimalist hotkey mod heavily inspired by [Serio's Cycle Hotkeys](https://www.nexusmods.com/skyrimspecialedition/mods/27184).
 
 

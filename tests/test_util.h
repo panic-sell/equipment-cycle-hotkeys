@@ -10,7 +10,7 @@ class Tempdir {
     Tempdir& operator=(Tempdir&&) = delete;
 
     Tempdir()
-        : path_(std::format(
+        : path_(fmt::format(
             "{}/" ECH_NAME "_{}", std::filesystem::temp_directory_path().string(), std::rand()
         )) {
         std::filesystem::create_directory(path_);

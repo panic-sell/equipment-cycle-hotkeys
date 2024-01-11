@@ -8,11 +8,17 @@
 namespace ech {
 namespace internal {
 
-/// Dev utility function. Used in combination with a debugger to inspect player's currently equipped
-/// items.
 inline void
-InspectEquipped(std::span<const Keystroke> keystrokes, RE::Actor& actor) {
-    static const auto keysets = Keysets({{KeycodeFromName("."), KeycodeFromName(";")}});
+DebugInspectEquipped(std::span<const Keystroke> keystrokes) {
+    auto* player = RE::PlayerCharacter::GetSingleton();
+    if (!player) {
+        return;
+    }
+
+    static const auto keysets = Keysets({{
+        KeycodeFromName("NumpadEnter"),
+        KeycodeFromName("Numpad1"),
+    }});
     if (keysets.Match(keystrokes) != Keypress::kPress) {
         return;
     }
@@ -46,21 +52,41 @@ InspectEquipped(std::span<const Keystroke> keystrokes, RE::Actor& actor) {
     };
 
     auto sd_left = SlotData(
-        Gear::FromEquipped(actor, Gearslot::kLeft),
-        actor.GetEquippedObject(true),
-        actor.GetEquippedEntryData(true)
+        Gear::FromEquipped(*player, Gearslot::kLeft),
+        player->GetEquippedObject(true),
+        player->GetEquippedEntryData(true)
     );
     auto sd_right = SlotData(
-        Gear::FromEquipped(actor, Gearslot::kRight),
-        actor.GetEquippedObject(false),
-        actor.GetEquippedEntryData(false)
+        Gear::FromEquipped(*player, Gearslot::kRight),
+        player->GetEquippedObject(false),
+        player->GetEquippedEntryData(false)
     );
-    auto sd_ammo = SlotData(Gear::FromEquipped(actor, Gearslot::kAmmo), actor.GetCurrentAmmo());
+    auto sd_ammo = SlotData(Gear::FromEquipped(*player, Gearslot::kAmmo), player->GetCurrentAmmo());
     auto sd_shout = SlotData(
-        Gear::FromEquipped(actor, Gearslot::kShout), actor.GetActorRuntimeData().selectedPower
+        Gear::FromEquipped(*player, Gearslot::kShout), player->GetActorRuntimeData().selectedPower
     );
 
-    (void)actor;  // breakpoint here
+    (void)player;  // breakpoint here
+}
+
+inline bool
+AcceptingInput() {
+    auto* ui = RE::UI::GetSingleton();
+    if (!ui || ui->GameIsPaused() || ui->IsMenuOpen("LootMenu")) {
+        return false;
+    }
+
+    const auto* control_map = RE::ControlMap::GetSingleton();
+    if (!control_map || !control_map->IsFightingControlsEnabled()) {
+        return false;
+    }
+
+    const auto& cmstack = control_map->GetRuntimeData().contextPriorityStack;
+    if (cmstack.empty() || cmstack.back() != RE::UserEvents::INPUT_CONTEXT_ID::kGameplay) {
+        return false;
+    }
+
+    return true;
 }
 
 }  // namespace internal
@@ -89,8 +115,8 @@ class InputHandler final : public RE::BSTEventSink<RE::InputEvent*> {
   private:
     InputHandler(Hotkeys<>& hotkeys, std::mutex& hotkeys_mutex)
         : RE::BSTEventSink<RE::InputEvent*>(),
-          hotkeys_(&hotkeys),
-          hotkeys_mutex_(&hotkeys_mutex) {}
+          hotkeys_(hotkeys),
+          hotkeys_mutex_(hotkeys_mutex) {}
 
     InputHandler(const InputHandler&) = delete;
     InputHandler& operator=(const InputHandler&) = delete;
@@ -103,23 +129,17 @@ class InputHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             return;
         }
 
-        auto* ui = RE::UI::GetSingleton();
-        auto* control_map = RE::ControlMap::GetSingleton();
-        if ( // clang-format off
-            !ui
-            || ui->GameIsPaused()
-            || ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)
-            || ui->IsMenuOpen(RE::CraftingMenu::MENU_NAME)
-            || ui->IsMenuOpen("LootMenu")  // QuickLoot support
-            || !control_map
-            || !control_map->IsMovementControlsEnabled()
-        ) {  // clang-format on
+        buf_.clear();
+        Keystroke::InputEventsToBuffer(*events, buf_);
+        if (buf_.empty()) {
             return;
         }
 
-        keystroke_buf_.clear();
-        Keystroke::InputEventsToBuffer(*events, keystroke_buf_);
-        if (keystroke_buf_.empty()) {
+#ifndef NDEBUG
+        internal::DebugInspectEquipped(buf_);
+#endif
+
+        if (!internal::AcceptingInput()) {
             return;
         }
 
@@ -129,38 +149,34 @@ class InputHandler final : public RE::BSTEventSink<RE::InputEvent*> {
             return;
         }
 
-#ifndef NDEBUG
-        internal::InspectEquipped(keystroke_buf_, *player);
-#endif
-
-        auto lock = std::lock_guard(*hotkeys_mutex_);
-        const auto* orig = hotkeys_->GetSelectedEquipset();
-        auto press_type = hotkeys_->SelectNextEquipset(keystroke_buf_);
+        auto lock = std::lock_guard(hotkeys_mutex_);
+        const auto* orig = hotkeys_.GetSelectedEquipset();
+        auto press_type = hotkeys_.SelectNextEquipset(buf_);
         if (press_type == Keypress::kNone || press_type == Keypress::kSemihold) {
             return;
         }
-        const auto* current = hotkeys_->GetSelectedEquipset();
+        const auto* current = hotkeys_.GetSelectedEquipset();
         if (!current || (orig == current && press_type == Keypress::kHold)) {
             return;
         }
         current->Apply(*aem, *player);
-        const auto& hkname = hotkeys_->vec()[hotkeys_->selected()].name;
+        const auto& hkname = hotkeys_.vec()[hotkeys_.selected()].name;
         SKSE::log::debug(
             "selected hotkey {}{}{}{}{} equipset {}",
-            hotkeys_->selected() + 1,
+            hotkeys_.selected() + 1,
             hkname.empty() ? "" : " ",
             hkname.empty() ? "" : "(",
             hkname.empty() ? "" : hkname.c_str(),
             hkname.empty() ? "" : ")",
-            hotkeys_->vec()[hotkeys_->selected()].equipsets.selected() + 1
+            hotkeys_.vec()[hotkeys_.selected()].equipsets.selected() + 1
         );
     }
 
-    Hotkeys<>* hotkeys_;
-    std::mutex* hotkeys_mutex_;
+    Hotkeys<>& hotkeys_;
+    std::mutex& hotkeys_mutex_;
     /// Reusable buffer for storing input keystrokes and avoiding per-input-event allocations. We
     /// assume `HandleInputEvents()` will only be called from one thread at a time.
-    std::vector<Keystroke> keystroke_buf_;
+    std::vector<Keystroke> buf_;
 };
 
 }  // namespace ech

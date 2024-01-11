@@ -276,7 +276,7 @@ DrawProfilesMenu(UI& ui) {
                 return;
             }
             auto fp = ui.GetProfilePath(ui.export_name);
-            ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to write '{}'", fp));
+            ui.eph->status.SetMsg(fmt::format("FILESYSTEM ERROR: Failed to write '{}'", fp));
             SKSE::log::error("exporting '{}' aborted: cannot write '{}'", ui.export_name, fp);
         };
     }
@@ -291,7 +291,7 @@ DrawProfilesMenu(UI& ui) {
                 return;
             }
             auto fp = ui.GetProfilePath(ui.export_name);
-            ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to remove '{}'", fp));
+            ui.eph->status.SetMsg(fmt::format("FILESYSTEM ERROR: Failed to remove '{}'", fp));
             SKSE::log::error("deleting '{}' aborted: cannot remove '{}'", ui.export_name, fp);
         };
     }
@@ -308,7 +308,7 @@ DrawProfilesMenu(UI& ui) {
                 return;
             }
             auto fp = ui.GetProfilePath(ui.eph->import_name);
-            ui.eph->status.SetMsg(std::format("FILESYSTEM ERROR: Failed to read '{}'", fp));
+            ui.eph->status.SetMsg(fmt::format("FILESYSTEM ERROR: Failed to read '{}'", fp));
             SKSE::log::error("importing '{}' aborted: cannot read '{}'", ui.eph->import_name, fp);
         };
     }
@@ -531,8 +531,8 @@ Draw(UI& ui) {
     const auto window_initial_pos = main_viewport->WorkSize * ImVec2(.3f, .2f);
     const auto window_initial_size = main_viewport->WorkSize * ImVec2(.6f, .6f);
     const auto window_min_size = main_viewport->WorkSize * ImVec2(.25f, .25f);
-    const auto hotkeylist_initial_size = main_viewport->WorkSize * ImVec2(.15f, .0f);
-    const auto hotkeylist_min_size = main_viewport->WorkSize * ImVec2(.15f, .0f);
+    const auto hotkeylist_initial_size = main_viewport->WorkSize * ImVec2(.15f, 0.f);
+    const auto hotkeylist_min_size = main_viewport->WorkSize * ImVec2(.15f, 0.f);
 
     auto action = internal::Action();
 
@@ -567,7 +567,7 @@ Draw(UI& ui) {
     ImGui::SameLine();
 
     // Hotkey details.
-    ImGui::BeginChild("hotkey_in_focus", ImVec2(.0f, .0f));
+    ImGui::BeginChild("hotkey_in_focus", ImVec2(0.f, 0.f));
     if (ui.hotkey_in_focus < ui.eph->hotkeys_ui.size()) {
         auto& hotkey = ui.eph->hotkeys_ui[ui.hotkey_in_focus];
 
@@ -575,7 +575,7 @@ Draw(UI& ui) {
             action = a;
         }
 
-        ImGui::Dummy(ImVec2(.0f, ImGui::GetTextLineHeight()));
+        ImGui::Dummy(ImVec2(0.f, ImGui::GetTextLineHeight()));
         if (auto a = internal::DrawEquipsets(hotkey.equipsets, ui.eph->status)) {
             action = a;
         }

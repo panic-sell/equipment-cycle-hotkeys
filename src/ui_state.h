@@ -337,7 +337,7 @@ class UI final {
 
     std::string
     GetProfilePath(std::string_view profile) const {
-        return std::format("{}/{}{}", profile_dir, profile, kProfileExt);
+        return fmt::format("{}/{}{}", profile_dir, profile, kProfileExt);
     }
 
     /// Returns the list of profiles current saved to disk. This cache is refreshed on the next call

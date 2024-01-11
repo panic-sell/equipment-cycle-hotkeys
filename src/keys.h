@@ -485,7 +485,7 @@ class Keysets final {
             return Keypress::kNone;
         } else if (min_heldsecs >= kKeypressHoldThreshold) {
             return Keypress::kHold;
-        } else if (min_heldsecs > .0f) {
+        } else if (min_heldsecs > 0.f) {
             return Keypress::kSemihold;
         } else {
             return Keypress::kPress;
