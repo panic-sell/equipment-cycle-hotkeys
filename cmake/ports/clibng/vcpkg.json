@@ -1,6 +1,6 @@
 {
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-    "name": "clib-ng-alt",
+    "name": "clibng",
     "version": "0.0.0",
     "homepage": "https://github.com/alandtse/CommonLibVR",
     "license": "MIT",

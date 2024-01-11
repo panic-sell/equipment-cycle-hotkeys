@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.x.x
+- Distribute as a single DLL for all supported game versions.
+
 ## 1.2.0
 - Prevent hotkey activation in QuickLoot menu.
 - Fix shields not being recognized during equipset creation.
