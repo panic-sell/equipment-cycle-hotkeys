@@ -61,7 +61,7 @@ InitSKSEMessaging(const SKSE::MessagingInterface& mi) {
         if (auto res = ui::Init(gHotkeys, gHotkeysMutex, gUI, gUIMutex, gSettings); !res) {
             SKSE::stl::report_and_fail(res.error());
         }
-        if (auto res = InputHandler::Init(gHotkeys, gHotkeysMutex); !res) {
+        if (auto res = InputHandler::Init(gHotkeys, gHotkeysMutex, gSettings); !res) {
             SKSE::stl::report_and_fail(res.error());
         }
     };

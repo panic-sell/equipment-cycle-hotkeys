@@ -352,6 +352,7 @@ TEST_CASE("Settings de") {
                 "menu_font_scale": 123,
                 "menu_color_style": "asdf",
                 "menu_toggle_keysets": [["LCtrl", "4"], ["5"]],
+                "notify_equipset_change": false,
             })",
             .want{
                 .log_level = "qwerty",
@@ -361,6 +362,7 @@ TEST_CASE("Settings de") {
                     {KeycodeFromName("LCtrl"), KeycodeFromName("4")},
                     {KeycodeFromName("5")},
                 }),
+                .notify_equipset_change = false,
             },
         },
         Testcase{

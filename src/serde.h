@@ -308,16 +308,23 @@ tag_invoke(
     }
     auto jo = jv.get_object();
 
-    settings.log_level =
-        internal::GetSerObjField<std::string>(jo, "log_level", ctx).value_or(settings.log_level);
-    settings.menu_font_scale = internal::GetSerObjField<float>(jo, "menu_font_scale", ctx)
-                                   .value_or(settings.menu_font_scale);
-    settings.menu_color_style = internal::GetSerObjField<std::string>(jo, "menu_color_style", ctx)
-                                    .value_or(settings.menu_color_style);
-    settings.menu_toggle_keysets = Keysets(
-        internal::GetSerObjField<std::vector<Keyset>>(jo, "menu_toggle_keysets", ctx)
-            .value_or(settings.menu_toggle_keysets.vec())
-    );
+    if (auto field = internal::GetSerObjField<std::string>(jo, "log_level", ctx)) {
+        settings.log_level = std::move(*field);
+    }
+    if (auto field = internal::GetSerObjField<float>(jo, "menu_font_scale", ctx)) {
+        settings.menu_font_scale = *field;
+    }
+    if (auto field = internal::GetSerObjField<std::string>(jo, "menu_color_style", ctx)) {
+        settings.menu_color_style = std::move(*field);
+    }
+    if (auto field = internal::GetSerObjField<std::vector<Keyset>>(
+            jo, "menu_toggle_keysets", ctx
+        )) {
+        settings.menu_toggle_keysets = Keysets(std::move(*field));
+    }
+    if (auto field = internal::GetSerObjField<bool>(jo, "notify_equipset_change", ctx)) {
+        settings.notify_equipset_change = *field;
+    }
     return settings;
 }
 

@@ -1,6 +1,7 @@
 # Changelog
 
-## 1.x.x
+## 1.3.0
+- Hotkey activation now shows a HUD message listing newly equipped gear. This feature can be disabled in EquipmentCycleHotkeys.json if you find it too distracting.
 - Distribute as a single DLL for all supported game versions.
 
 ## 1.2.0

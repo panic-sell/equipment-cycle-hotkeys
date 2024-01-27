@@ -226,7 +226,7 @@ class Gear final {
         if (*form().GetName()) {
             return form().GetName();
         }
-        return "<MISSING NAME>";
+        return "???";
     }
 
     const Extra&

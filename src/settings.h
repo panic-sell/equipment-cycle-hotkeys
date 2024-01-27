@@ -13,6 +13,7 @@ struct Settings final {
         {KeycodeFromName("LShift"), KeycodeFromName("\\")},
         {KeycodeFromName("RShift"), KeycodeFromName("\\")},
     });
+    bool notify_equipset_change = true;
 };
 
 }  // namespace ech

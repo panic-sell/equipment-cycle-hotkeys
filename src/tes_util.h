@@ -175,5 +175,53 @@ GetXLEnchCharge(RE::ExtraDataList* xl) {
     return xcharge ? xcharge->charge : static_cast<float>(xench->charge);
 }
 
+/// Returns false on failing to acquire the necessary resources.
+template <class... Args>
+[[nodiscard]] inline bool
+SetSubtitle(fmt::format_string<Args...> fmt, Args&&... args) {
+    auto subtitle = fmt::vformat(fmt.get(), fmt::make_format_args(args...));
+
+    auto* q = RE::UIMessageQueue::GetSingleton();
+    if (!q) {
+        return false;
+    }
+
+    auto* facman = RE::MessageDataFactoryManager::GetSingleton();
+    auto* istrs = RE::InterfaceStrings::GetSingleton();
+    auto* fac = facman && istrs ? facman->GetCreator<RE::HUDData>(istrs->hudData) : nullptr;
+    auto* huddata = fac ? fac->Create() : nullptr;
+    if (!huddata) {
+        return false;
+    }
+
+    huddata->type = RE::HUDData::Type::kSubtitle;
+    huddata->text = std::move(subtitle);
+    q->AddMessage(RE::HUDMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kUpdate, huddata);
+    return true;
+}
+
+/// Clears `actor`'s subtitles if `subtitle` is the empty string.
+///
+/// The caller is expected to invoke `stm->lock.Lock()` and `stm->lock.Unlock()` before and after
+/// this function.
+inline void
+SetSubtitle(RE::SubtitleManager& stm, RE::Actor& actor, std::string_view subtitle) {
+    auto staging = RE::BSTArray<RE::SubtitleInfo>();
+    for (auto& info : stm.subtitles) {
+        if (info.speaker != actor.GetHandle()) {
+            staging.push_back(std::move(info));
+        }
+    }
+    if (!subtitle.empty()) {
+        staging.push_back(RE::SubtitleInfo{
+            .speaker = actor.GetHandle(),
+            .subtitle = subtitle,
+        });
+    }
+
+    stm.KillSubtitles();
+    stm.subtitles = std::move(staging);
+}
+
 }  // namespace tes_util
 }  // namespace ech

@@ -17,9 +17,14 @@
     "menu_color_style": "dark",
 
     // Default: Shift+\
-    // See https://github.com/panic-sell/equipment-cycle-hotkeys/blob/1d63629c369c1c64f3c7a1f44550ed572d92072c/src/keys.h#L6 for all key names. Names are case-sensitive.
+    // Key names can be found at the following link (names are case-sensitive):
+    // https://github.com/panic-sell/equipment-cycle-hotkeys/blob/1d63629c369c1c64f3c7a1f44550ed572d92072c/src/keys.h#L6
     "menu_toggle_keysets": [
         ["LShift", "\\"],
         ["RShift", "\\"],
     ],
+
+    // Default: true
+    // Whether hotkey activations should show newly equipped gear in the HUD.
+    "notify_equipset_change": true,
 }
