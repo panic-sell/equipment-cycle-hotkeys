@@ -7,7 +7,8 @@ namespace ech {
 /// Global settings.
 struct Settings final {
     std::string log_level = "info";
-    float menu_font_scale = 1.f;
+    float menu_font_size = 13.f;
+    std::string menu_font_file = "";
     std::string menu_color_style = "dark";
     Keysets menu_toggle_keysets = Keysets({
         {KeycodeFromName("LShift"), KeycodeFromName("\\")},

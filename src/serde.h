@@ -311,8 +311,11 @@ tag_invoke(
     if (auto field = internal::GetSerObjField<std::string>(jo, "log_level", ctx)) {
         settings.log_level = std::move(*field);
     }
-    if (auto field = internal::GetSerObjField<float>(jo, "menu_font_scale", ctx)) {
-        settings.menu_font_scale = *field;
+    if (auto field = internal::GetSerObjField<float>(jo, "menu_font_size", ctx)) {
+        settings.menu_font_size = *field;
+    }
+    if (auto field = internal::GetSerObjField<std::string>(jo, "menu_font_file", ctx)) {
+        settings.menu_font_file = std::move(*field);
     }
     if (auto field = internal::GetSerObjField<std::string>(jo, "menu_color_style", ctx)) {
         settings.menu_color_style = std::move(*field);

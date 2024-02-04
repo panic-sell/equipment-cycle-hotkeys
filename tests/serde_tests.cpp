@@ -349,14 +349,16 @@ TEST_CASE("Settings de") {
             .name = "normal",
             .src_str = R"({
                 "log_level": "qwerty",
-                "menu_font_scale": 123,
+                "menu_font_size": 123,
+                "menu_font_file": "path/to/file",
                 "menu_color_style": "asdf",
                 "menu_toggle_keysets": [["LCtrl", "4"], ["5"]],
                 "notify_equipset_change": false,
             })",
             .want{
                 .log_level = "qwerty",
-                .menu_font_scale = 123,
+                .menu_font_size = 123.f,
+                .menu_font_file = "path/to/file",
                 .menu_color_style = "asdf",
                 .menu_toggle_keysets = Keysets({
                     {KeycodeFromName("LCtrl"), KeycodeFromName("4")},
@@ -375,7 +377,7 @@ TEST_CASE("Settings de") {
     CAPTURE(testcase.name);
     auto settings = Deserialize<Settings>(testcase.src_str);
     REQUIRE(settings);
-    REQUIRE(settings->menu_font_scale == testcase.want.menu_font_scale);
+    REQUIRE(settings->menu_font_size == testcase.want.menu_font_size);
     REQUIRE(settings->menu_color_style == testcase.want.menu_color_style);
     REQUIRE(settings->menu_toggle_keysets.vec() == testcase.want.menu_toggle_keysets.vec());
 }

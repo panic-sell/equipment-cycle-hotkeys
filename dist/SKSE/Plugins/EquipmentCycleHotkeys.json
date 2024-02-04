@@ -8,8 +8,13 @@
     // off
     "log_level": "info",
 
-    // Default: 1.0
-    "menu_font_scale": 1.0,
+    // Default: 13
+    // Pixel size of menu text.
+    "menu_font_size": 13,
+
+    // Default: ""
+    // Path to a font file, for example "C:/Windows/Fonts/arial.ttf" or "C:\\Windows\\Fonts\\arial.ttf". The default font only supports Latin languages. If you play with a non-Latin language (such as Chinese), you'll need to configure a font that supports your language.
+    "menu_font_file": "",
 
     // dark (default)
     // light

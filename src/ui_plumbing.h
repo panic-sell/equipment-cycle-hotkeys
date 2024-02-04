@@ -574,7 +574,30 @@ Configure(const Settings& settings) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
     io.IniFilename = fs::kImGuiIniPath;
 
-    io.FontGlobalScale = settings.menu_font_scale;
+    if (settings.menu_font_file.empty()) {
+        auto cfg = ImFontConfig();
+        cfg.SizePixels = settings.menu_font_size;
+        io.Fonts->AddFontDefault(&cfg);
+    } else {
+        auto builder = ImFontGlyphRangesBuilder();
+        builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+        builder.AddRanges(io.Fonts->GetGlyphRangesChineseFull());
+        builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic());
+        builder.AddRanges(io.Fonts->GetGlyphRangesGreek());
+        builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+        builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
+        builder.AddRanges(io.Fonts->GetGlyphRangesThai());
+        builder.AddRanges(io.Fonts->GetGlyphRangesVietnamese());
+
+        auto ranges = ImVector<ImWchar>();
+        builder.BuildRanges(&ranges);
+
+        io.Fonts->AddFontFromFileTTF(
+            settings.menu_font_file.c_str(), settings.menu_font_size, nullptr, ranges.Data
+        );
+        io.Fonts->Build();
+    }
+
     if (settings.menu_color_style == "dark") {
         ImGui::StyleColorsDark();
     } else if (settings.menu_color_style == "light") {
